@@ -1,0 +1,223 @@
+/* 
+*  GENERAL RULES ONLY
+*  see google scripts for page-only font sizes etc.
+*
+*/
+
+
+@media screen { /* MUST BE KEPT WITHIN SCREEN SELECTOR */
+  body {
+    font-family: sans-serif;
+    padding: 0;
+    margin: 0;
+    width: 100%;
+    overflow-x: hidden;
+  }
+}
+
+/* QUESTIONS DIV */
+div#questionsDiv {
+  width: 100%;
+}
+
+/* SOLUTIONS DIV */
+div#solutionsDiv {
+  /* width: 100%; */
+  clear: both;
+  /* padding-left: 20px; */
+  border-collapse: collapse;
+  page-break-before: always;
+}
+
+div#solutionsDiv > p {
+  margin: 0;
+}
+
+/* JUMBLED SOLUTIONS DIV */
+div#jumbledSolutionsDivContainer {
+  clear: both;
+  padding: 20px 0px; 
+}
+
+div.jumbleDivs {
+  display: inline-block;
+  margin: 0px 20px; 
+}
+
+/* ANTI CHEAT DIV */
+div.anticheat {
+  color: red;
+  padding: 20px;
+  border-style: solid;
+}
+
+/* TIMER DIV */
+div.timer {
+  position: fixed;
+  right: 10px;
+  top: 10px;
+}
+
+div.red {
+  color: red;
+}
+
+
+/* OUTER DIV - ONE PER ROW, CONTAINS DYNAMIC AND OTHER SMALLER DIVS */
+div.outer {
+  clear: both;
+  page-break-inside: avoid;
+  margin: 3em 0 0 3em;
+  padding: 10px 20px 0 0;
+}
+
+/* DYNAMIC DIV */
+div.dynamic { width: 100%; }
+div.dynamic div.fullWidth {  width: 100%; position:relative; }
+div.dynamic div.leftHalfWidth { width: 48%; float: left; position:relative;}
+div.dynamic div.rightHalfWidth { width: 48%; padding-left: 4%; float: left; clear: right; position:relative;  }
+
+/* MARGIN DIV */
+div.margin { position:absolute; left:5px; width: 20px}
+
+/* TITLE DIV */
+div.title {  }
+
+/* SUCCESS DIV */
+div.successDiv {
+  margin-left: 30px;
+  margin-top: 10px;
+}
+
+/* FINAL SCORE PARAGRAPH */
+p#scoreParagraph {
+  text-align: center;
+}
+
+/* BUTTONS */
+div#buttons {
+  z-index: 10;
+  position: fixed;
+  top: 0;
+  width: 100%;  
+  background-color: #fff;
+  padding: 10px;
+}
+
+/*MARKDOWN CODE BLOCK*/
+div.codeblock {
+    background: #F1F1F1;
+    border: 1px solid #E1E1E1;
+    border-radius: 4px;
+    font-size: 90%;
+    padding: .2rem .5rem;
+    font-family: 'Roboto Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
+}
+
+/* MARKDOWN TABLE */
+table.markdowntable > tbody > tr > td {
+  border-width: 1px;
+  border-style: solid;
+  border-color: black;
+  height: 2em;
+}
+table.markdowntable {
+  border-width: 1px;
+  border-style: solid;
+  border-color: black;
+  overflow: visible;
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+}
+
+textarea { width: 90% }
+
+/* SUBMIT BUTTON */
+#submitButton {
+  display: block;
+  clear: both;
+  margin: 200px auto;
+}
+
+/*QUESTION NUMBERS*/
+p.questionNumber {
+  margin: 0;
+}
+
+/* DELETE REFRESH DUPLICATE BUTTON */
+img.deleteButton, img.duplicateButton,img.refreshButton {
+  cursor: pointer;
+}
+
+/* FRACTIONS */
+table.fraction {
+  display: inline-table;
+  font-size: 75%;
+  transform: translateY(-15%);
+  width: auto;
+  border-style: none;
+  
+}
+
+table.fraction > tbody > tr > td {
+  border-style: none;
+}
+
+table.fraction > tbody > tr:first-child > td {
+  border-style: none none solid none;
+  border-width: 1px;
+}
+
+/*** IMAGES ***/
+img {
+  background-color:#fff;
+}
+
+/*** GRIDLINES ***/
+.gridlinecontainer {
+  position: absolute;
+  left: 0%;
+  top: 0%;
+  width: 100%;
+  height: 100%;
+  z-index: 1000;
+  font-size: 10;
+}
+
+.hgridline {
+  padding: 0;
+  margin: 0;
+  position: relative; 
+  height: 10%;
+}
+
+.hgridline p {
+  height: 0;
+  padding: 0;
+  margin: 0;
+  position: relative;
+  border-bottom: 1px solid #ccc;
+  top: 100%;
+}
+
+.vgridline {
+  padding: 0;
+  margin: 0;
+  position: relative;
+  height: 100%;
+  width: 10%;
+  float: left;
+  top: -100%;
+}
+
+.vgridline p {
+  padding: 0;
+  margin: 0;
+  position: relative;
+  height: 100%;
+  border-right: 1px solid #ccc;
+  width: 10px;
+  left: 88%;
+  
+}

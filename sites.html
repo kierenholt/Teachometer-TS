@@ -1,0 +1,115 @@
+<html>
+<head> 
+	<meta charset="UTF-8"> 
+	<link rel="stylesheet" type="text/css" href="style.css">
+<script src=assignmentHTML.js></script>
+<script src=cup.js></script>
+<script src=helpers.js></script>
+<script src=rowHTML.js></script>
+<script src=solution.js></script>
+<script src=template.js></script>
+  <script async src="acorn_interpreter.js"></script>
+
+
+<script>
+
+    function init() {
+		
+
+        //settings
+		//var settingsString = <?=settingsString?>; //NO QUOTES!!
+        //alert("settingsString: "+settingsString);
+		//settings = JSON.parse(settingsString);
+        var internalSettings = {
+        	"questionsDiv": document.getElementById("questionsDiv"),
+
+            "allowRowDelete" : false,
+        	"allowRefresh" : false,
+            "submitOnlyOnce" : false,
+            "submitButtonText" : "check answers",
+            "showRowTitles" : true,
+            "reportScoreAsPercentage": true,
+            "showGridlines" : false
+        };
+
+  		var markbookSettings = {
+			"url" : "url2",
+			"author" : "author2", 
+			"score attempted questions only":"ON",
+			"shuffle": "OFF",
+			"truncate": -1,
+			"check limit": -1,
+			"time limit": -1,
+			"truncate": -1,
+			"journal mode": "OFF",
+			"anticheat mode": "OFF",
+			"allow refresh": "ON"
+			
+        };
+        markbookSettings.user = "<?=user?>";
+        markbookSettings.workbookId = "<?=workbookId?>";
+        markbookSettings.sheetName = "<?=sheetName?>";
+        
+        //responses
+        
+        var responsesString = `[
+        	"1","2","","1","0"
+        	]`;
+        if (responsesString) {
+          markbookSettings.responses = JSON.parse(responsesString);
+        }
+        
+        //rows
+        var rowsString = document.getElementById("rowsString").value;
+        //alert("rowsString: "+rowsString);
+		
+        //markbookupdate
+        var userRow = Number(2); //NO QUOTES!!!
+        if (userRow > 0) {
+          var markbookUpdateInjector = function(workbookId, sheetName, _userRow) {
+            var workbookId = workbookId;
+            var sheetName = sheetName;
+            var userRow = _userRow;
+        
+            return function(markbookColumn, response, color, append, scoreOutOf) {
+              					let str = (`${workbookId},${sheetName}
+userRow:${userRow}
+markbookColumn:${markbookColumn}
+response:${response}
+color: ${color}
+append:  ${append}
+score: ${scoreOutOf}`);
+              					let shortstr = (`
+markbookColumn:${markbookColumn} response:${response} append: ${append} score: ${scoreOutOf}`);
+              //alert(str);
+              document.getElementById("feedback").value += shortstr;
+              
+            };
+          }
+        
+          markbookSettings.markbookUpdate = markbookUpdateInjector(markbookSettings.workbookId,markbookSettings.sheetName,userRow);
+        };
+
+		/*** CALL CONSTRUCTOR ***/
+		window.assignment = new AssignmentHTML(internalSettings,markbookSettings);
+		window.assignment.consumeRowsString(rowsString);
+
+
+    }
+
+</script>
+
+</head>
+<body >
+	
+	<button id=button type="button" onclick="init()">init</button> 
+	<input type="text" value="" id="rowsString"/>
+	<br>
+	<textarea id="feedback"></textarea>
+
+
+	<div id="questionsDiv"></div>
+
+
+</body>
+</html>

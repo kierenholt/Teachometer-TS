@@ -1,0 +1,140 @@
+<html>
+<head> 
+	<meta charset="UTF-8"> 
+<link rel="stylesheet" type="text/css" href="style.css">
+    <style>
+    table {
+      border-collapse: collapse;
+    }
+    
+    table > tbody > tr > td {
+      /*border-width: 1px;
+      border-style: solid;*/
+      padding: 20px;
+      font-size: small;
+    }
+    
+    table > tbody > tr:hover {
+      background-color: #ccc;
+      cursor: hand;
+    }
+
+	tr.shaded {background-color: #eee}
+	tr.unshaded {background-color: #fff}
+	tr.header {background-color: #333; color: #fff; font-weight: bold;}
+	tr.header:hover {background-color: #333; }
+    tr > td.urgency1 {color: green;font-weight: bold}
+    tr > td.urgency2 {color: darkcyan;font-weight: bold}
+    tr > td.urgency3 {color: red;font-weight: bold}
+    
+    input {padding: 10px}
+    
+
+    
+    </style>
+<script>
+
+  var states = ["NEW","CREATED","TURNED_IN","RETURNED","RECLAIMED_BY_STUDENT"];
+  var descriptions = ["Not started",
+                "In progress",
+                "Submitted",
+                "Returned",
+                "In progress"];
+  var urgency = ["3","2","1","1","2"];
+
+function refreshTable() {
+	var table = document.getElementById("output");
+
+	for (let r = 0, rowHTML; rowHTML = window.rowHTMLs[r]; r++) {
+		
+		rowHTML.isShaded = (r%2 == 0);
+		var tableRow = table.insertRow(-1);
+		rowHTML.fillTR(tableRow);
+
+	}
+}
+
+function RowHTML(row) {
+	this.row = row;
+	if (this.row.dueDate) {
+		this.row.dueDate = new Date(this.row.dueDate.year, this.row.dueDate.month, this.row.dueDate.day);
+	}
+	var index = states.indexOf(this.row.state);
+	this.urgency = urgency[index];
+	this.row.state = descriptions[index];
+
+	//courseName, dueDate, title, description, dueDate, state
+	this.fillTR = function(TR) {
+		var options = { weekday: 'long', year: undefined, month: 'short', day: 'numeric' };
+		TR.innerHTML = "<td>" + (this.row.dueDate ? this.row.dueDate.toLocaleString("en-GB",options) : " ") + 
+						"</td><td>" + this.row.courseName +
+						"</td><td>" + this.row.title +
+						"</td><td>" + (this.row.description ? this.row.description : " ") +
+						"</td><td class='urgency" + this.urgency + "'>" + this.row.state + 
+						"</td>";
+		var injector = function(link) {
+			var link = link;
+			return function() {window.open(link);}
+		}
+		TR.onclick = injector(this.row.link);
+		TR.className = this.isShaded ? "shaded" : "unshaded";
+		this.TR = TR;
+	};
+
+	this
+	
+}
+
+
+
+function init() {
+	window.rows = JSON.parse('[{\x22link\x22:\x22http:\/\/classroom.google.com\/c\/MTc1MTY5MTExMzJa\/a\/MTg3NzY5MDg1ODda\/details\x22,\x22courseName\x22:\x227AN\/Sc\x22,\x22title\x22:\x22Lab write up: Table and graph\x22,\x22description\x22:\x22How much does reaction time vary between people?\\nWhat is the best launch angle for a marble?\\nHow does mass affect the length of a spring?\\n\\nFor each experiment draw up a table and then plot a graph with variables on correct axes\x22,\x22state\x22:\x22TURNED_IN\x22,\x22dueDate\x22:{\x22month\x22:7,\x22year\x22:2018,\x22day\x22:4}},{\x22link\x22:\x22http:\/\/classroom.google.com\/c\/MTc1MTY5MTExMzJa\/a\/MTc3MjQ3NTk5OTZa\/details\x22,\x22courseName\x22:\x227AN\/Sc\x22,\x22title\x22:\x22Lab write up: Risk assessment and method\x22,\x22description\x22:\x22Write up the boiling water investigation - you will be assessed on the detail of your risk assessment and clarity of your method\x22,\x22state\x22:\x22NEW\x22},{\x22link\x22:\x22http:\/\/classroom.google.com\/c\/MTc2MzEwMDQ3NzFa\/a\/MTc5NjgyNjc3NzFa\/details\x22,\x22dueDate\x22:{\x22month\x22:11,\x22year\x22:2018,\x22day\x22:4},\x22courseName\x22:\x22Year 7 Computing\x22,\x22title\x22:\x22E-safety survey - do not do this homework until your teacher sets the work\x22,\x22state\x22:\x22CREATED\x22},{\x22link\x22:\x22http:\/\/classroom.google.com\/c\/MTc2MzEwMDQ3NzFa\/a\/MTc2MzE3NjQ4OTda\/details\x22,\x22dueDate\x22:{\x22month\x22:10,\x22year\x22:2018,\x22day\x22:4},\x22courseName\x22:\x22Year 7 Computing\x22,\x22title\x22:\x22Cyberbullying homework\x22,\x22state\x22:\x22CREATED\x22}]');
+	window.rowHTMLs = window.rows.map(function(r) {return new RowHTML(r);});
+	window.rowHTMLs.sort(function(a, b){
+		if (a.row.dueDate) {
+			if (b.row.dueDate) {
+				return a.row.dueDate - b.row.dueDate
+			}
+			return -1;
+		}
+		else {
+			if (b.row.dueDate) {
+				return +1;
+			}
+			return 0
+		}
+		});
+	refreshTable();
+	toggleSubmitted()
+}
+
+window.hideSubmitted = false;
+function toggleSubmitted() {
+	window.hideSubmitted = !window.hideSubmitted;
+	for (let r = 0, rowHTML; rowHTML = window.rowHTMLs[r]; r++) {
+		if (rowHTML.urgency == 1) {
+			rowHTML.TR.hidden = window.hideSubmitted;
+		}
+	}
+	document.getElementById("toggleSubmittedButtom").value = window.hideSubmitted ? "Show Submitted" : "Hide Submitted";
+}
+
+
+</script>
+
+</head>
+<body onload="init()">
+	<input type=button id="toggleSubmittedButtom" onclick="toggleSubmitted()" value="Hide Submitted"></input>
+
+	<table id="output">
+	<tr class="header">
+		<td>Due</td>
+		<td>Course</td>
+		<td>Title</td>
+		<td>Description</td>
+		<td>State</td>
+	</tr>
+	</table>
+
+</body>
+</html>
