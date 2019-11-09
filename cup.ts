@@ -2,6 +2,7 @@
 
 
 class Cup {
+  str: any;
   constructor(str) {
     this.str = str;
   }
@@ -12,6 +13,9 @@ class Cup {
 }
 
 class ImageCup extends Cup {
+  comment: any;
+  source: any;
+  width: number;
   constructor(str) {
     super(str);
 
@@ -45,6 +49,8 @@ class ImageCup extends Cup {
 
 
 class AnchorCup extends Cup {
+  text: any;
+  url: any;
   constructor(str) {
     super(str);
     [, this.text, this.url,] = str.split(/\[([^\]]*)]\(([^\)]*)\)/);
@@ -74,6 +80,8 @@ class AnchorCup extends Cup {
 ///has a different replace function from chunkcup
 ///replacing is done by innerfractioncup
 class FractionCup extends Cup {
+  top: InnerFractionCup;
+  bottom: InnerFractionCup;
   constructor(str) { 
     super(str); 
     
@@ -106,6 +114,8 @@ class FractionCup extends Cup {
 
 ///does not replace chunks or dollars
 class CodeCup extends Cup {
+  children: ChunkCup[];
+  childrenHTML: any;
   constructor(str) {
     str = helpers.trimChar(str,"`");
     str = helpers.trimChar(str,"\n");
@@ -220,6 +230,7 @@ class TitleCup extends ChunkCup {
 
 
 class CupContainer extends Cup {
+  children: any;
   constructor(str) { 
     super(str); 
   }
@@ -259,7 +270,9 @@ class CupContainer extends Cup {
 }
 
 class RelativePositionCup extends CupContainer {
-  constructor(str,inPixels) {
+  xPos: string;
+  yPos: string;
+  constructor(str,inPixels?:Boolean) {
     super(str); //in pixels is used by questionnumber
     //strip newline
     // if (this.str.StartsWith("\n")){
@@ -305,6 +318,8 @@ class ParagraphCup extends CupContainer {
 
 
 class DivCup extends CupContainer {
+  class: any;
+  containsRelativeCup: any;
   constructor(str) {
     super(str);
     this.children = [new ChunkCup(this.str)];
@@ -348,6 +363,7 @@ return `
 
 
 class TableCup extends CupContainer {
+  hasBorder: any;
   //children are rows
 
   constructor(str) {
@@ -376,6 +392,9 @@ class RowCup extends CupContainer {
 }
 
 class CellCup extends CupContainer {
+  hasBorder: any;
+  isRelative: boolean;
+  colSpan: any;
   constructor(str) {
     super(str);
     this.hasBorder = str.startsWith("|");
@@ -395,6 +414,13 @@ class CellCup extends CupContainer {
 
 //FIELD PRESENTATION LAYER
 class FieldCup extends Cup {
+  UID: string;
+  onResponse: () => void;
+  defaultText: string;
+  imageHTML: string;
+  disabledText: string;
+  document: any;
+  _element: any;
   constructor(str, window) {
     super(str);
     this.UID = helpers.createUID();
@@ -497,6 +523,9 @@ class FieldCup extends Cup {
 }
 
 class RadioCup extends FieldCup {
+  letter: any;
+  radioCups: this[];
+  _elements: any;
   constructor(str, window) {
     super(str, window);
     this.letter = str[0];
@@ -561,7 +590,7 @@ class RadioCup extends FieldCup {
 
   set elementValue(value) {
     if (this.elements) {
-      this.elements,forEach(r => r.checked = (r.letter == value));
+      this.elements.forEach(r => r.checked = (r.letter == value));
     }
     else {
       this.radioCups.forEach(r => r.defaultText = (value == r.letter) ? " checked " : "");
@@ -614,6 +643,7 @@ class InputCup extends FieldCup {
 
 
 class ComboCup extends FieldCup {
+  options: string[];
   constructor(str, window) {
     super(str, window);
     this.options = [" "].concat(this.str.substring(1, this.str.length - 1).split("/"));
@@ -650,6 +680,7 @@ class ComboCup extends FieldCup {
 
 
 class CheckBoxCup extends FieldCup {
+  _image: string;
   constructor(str, window) {
     super(str, window);
     this._image = "hourglass";
@@ -664,12 +695,14 @@ class CheckBoxCup extends FieldCup {
       this.element.title = value;
   }
   
-  set elementValue(value) {
-    if (value == "✓" || value == true) {
-      this._image = "tick"; 
+  set elementValue(value:any) {
+    //if (value == "✓" || value == true) { BEFORE TSC AUTO CORRECTION
+    if (value == "✓") {
+        this._image = "tick"; 
     }
-    if (value == "✗" || value == false) {
-      this._image = "cross"; 
+    //if (value == "✗" || value == false) { BEFORE TSC AUTO CORRECTION
+    if (value == "✗") {
+        this._image = "cross"; 
     }
     if (value == "!") {
       this._image = "error"; 

@@ -107,6 +107,10 @@ var helpersMaker = function() {
         }
         return str.toString();
     }
+    
+    var isNumeric = function(str) {
+      return !isNaN(parseFloat(str)) && isFinite(str);
+    }
 
 
     return {
@@ -118,7 +122,8 @@ var helpersMaker = function() {
         replaceAll: replaceAll, 
         startsWith: startsWith,
         stripQuotes: stripQuotes,
-        trimChar: trimChar
+        trimChar: trimChar,
+        isNumeric: isNumeric
       };
 
 };
@@ -134,7 +139,8 @@ var helpers = helpersMaker();
  * http://www.firstpr.com.au/dsp/rand31/
  */
 class Random {
-  constructor(seed) {
+  _seed: number;
+  constructor(seed?: number) {
     if (seed == undefined) {
         var now = new Date();
         seed = now.getTime();

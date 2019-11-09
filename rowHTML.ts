@@ -1,8 +1,19 @@
 
 
-//questionsDiv -> ._outerDiv -> .marginDiv .dynamicDiv  
 
+//RowHTML -> QuestionHTML -> TemplateHTML 
 class RowHTML {
+    
+    row: any;
+    settings: any;
+    _outerDiv: HTMLDivElement;
+    marginDiv: HTMLDivElement;
+    dynamicDiv: HTMLDivElement;
+    titleDiv: HTMLDivElement;
+    _cellCups: any;
+    solutions: any[];
+    _softErrors: any;
+    
     constructor(row, showTitle, settings) { //pass in a row object, sent from server side script
         this.row = row;
         this.settings = settings;
@@ -30,7 +41,7 @@ class RowHTML {
             deleteButton.className = "deleteButton hideOnPrint";
             deleteButton.onclick = (function(ref) { var r = ref; return function() 
                 {
-                    assignment.deleteRows([r]);
+                    window.assignment.deleteRows([r]);
                 } })(this);
             deleteButton.src = imageData.trash;
             this.marginDiv.appendChild(deleteButton);        
@@ -40,7 +51,7 @@ class RowHTML {
         if (this.settings.allowRowDelete) {
             let duplicateButton =  document.createElement("img");
             duplicateButton.className = "duplicateButton hideOnPrint";
-            duplicateButton.onclick = (function(ref) { var r = ref; return function() {assignment.duplicateRow(r)} })(this);
+            duplicateButton.onclick = (function(ref) { var r = ref; return function() {window.assignment.duplicateRow(r)} })(this);
             duplicateButton.src = imageData.duplicate;
             this.marginDiv.appendChild(duplicateButton);        
         }
@@ -53,8 +64,16 @@ class RowHTML {
         return this._outerDiv;
     }
 
+    get solutionDiv() { return null; }
+    get jumbleDivs() { return null; }
+    
     delete() {
         this._outerDiv.parentNode.removeChild(this._outerDiv);
+    }
+    getInjectorInstance() { return null; }
+    
+    replaceSudokuDollar(arg0: RegExp, arg1: (s: any) => InputCup, replaceSudokuDollar: any) {
+        throw new Error("Method not implemented.");
     }
 
     get cellCups() {
@@ -62,11 +81,7 @@ class RowHTML {
             this._cellCups = [];
 
            //for questionHTML this persists the dollar replacer etc.
-            let injectorInstance = null;
-            if (this.injector) {
-                this.solutions = [];
-                injectorInstance = this.injector(this.replacedTemplates(), this.solutions, this.settings);
-            }            //for sudoku this also instantiates replaceSudokuDollar
+            let injectorInstance = this.getInjectorInstance();
             
             for (let markdown of this.row.leftRight) {
                 if (markdown) {
@@ -163,10 +178,10 @@ class RowHTML {
 
                     //GRIDLINES
                     if (this.settings.showGridlines) {
-                        var relCounter = function() {
+                        let relCounter = function() {
                             var foundRelativeContainer = false;
 
-                            return function(cup) {
+                            return function(cup?) {
                                 if (cup instanceof RelativePositionCup) {
                                     foundRelativeContainer = true;
                                 }
@@ -230,6 +245,10 @@ class RowHTML {
 
 
 class QuestionHTML extends RowHTML {
+    questionNumberDiv: HTMLParagraphElement;
+    _solutionDiv: any;
+    _jumbleDivs: any;
+    questionNum: string;
     constructor(row, showTitle, paramSettings) {
         super(row, showTitle, paramSettings);
         
@@ -252,9 +271,15 @@ class QuestionHTML extends RowHTML {
         }
     }
 
-//    get outerDiv() {
-//    } SAME AS SUPER
-
+    //    get outerDiv() {
+    //    } SAME AS SUPER
+    
+    getInjectorInstance() {
+            this.solutions = [];
+            return this.injector(this.replacedTemplates(), this.solutions, this.settings);
+            //for sudoku this also instantiates replaceSudokuDollar
+    }   
+    
     get jumbleDivs() {
         if (!this._jumbleDivs) {
             this._jumbleDivs = [];
@@ -315,7 +340,7 @@ class QuestionHTML extends RowHTML {
     }
     
     //INJECT SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
-     injector(paramTemplates, paramSolutions, paramSettings)  {
+    injector(paramTemplates, paramSolutions, paramSettings)  {
             
             var firstRadioCup = null;
             var templates = paramTemplates.slice().reverse();
@@ -404,7 +429,7 @@ class QuestionHTML extends RowHTML {
 
 
 //takes square grid of rows (equations) with variables as true (columns)
-function showVariables(arr,numDollars) {
+function showVariables(arr:boolean[][],numDollars) {
     //automatically show variables (columns) that only appear once (in diagonal)
     var colsToShow = arr[0].map(a => false); //set all cols to false
     for (var rowCol = 0; rowCol < arr[0].length; rowCol++) {
@@ -448,7 +473,7 @@ function showVariables(arr,numDollars) {
             for (var col = 0; col < numDollars; col++) {
                 var hasATrue = false;
                 for (var row = 0; row < arr.length; row++) {
-                    hasATrue |= arr[row][col]; 
+                    hasATrue = hasATrue || arr[row][col]; 
                 }
                 if (hasATrue) {
                     colsWithATrue.push(col);
@@ -470,8 +495,9 @@ function showVariables(arr,numDollars) {
         //if any rows have 1 true, remove that col too since these equations can be solved 
         var rowsWithOneTrue = arr.filter(r => r.filter(p => p).length == 1);
         while (rowsWithOneTrue.length > 0) {
-            for (var r = 0, row; row = rowsWithOneTrue[r]; r++) {
-                var singleCol = row.indexOf(true);
+            for (var r = 0; r < rowsWithOneTrue.length; r++) {
+                var row2 = rowsWithOneTrue[r];
+                var singleCol = row2.indexOf(true);
                 //set col to false 
                 arr.forEach(f => f[singleCol] = false);
                 //remove rows with only one true
@@ -485,6 +511,7 @@ function showVariables(arr,numDollars) {
 
 
 class TemplateHTML extends QuestionHTML{
+    randomForTemplate: any;
     constructor(row, showTitle, paramSettings) {
         super(row, showTitle, paramSettings);
         

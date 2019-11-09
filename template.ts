@@ -503,7 +503,7 @@ function FunctionExpression(s, i) {
                 let date = evaluatedParameters[2];
                 let firstOfYear = new Date(year,0,1);
                 let today = new Date(year,month-1,date);
-                let ret = Math.round((today - firstOfYear)/8.64e7+1);
+                let ret = Math.round((today.valueOf() - firstOfYear.valueOf())/8.64e7+1);
                 return JSON.stringify(ret);
             }
 
@@ -521,7 +521,7 @@ function FunctionExpression(s, i) {
             if (this.functionName == "median") {
                 evaluatedParameters.sort();
                 let l = evaluatedParameters.length;
-                let ret = "";
+                let ret = null;
                 if (l%2 == 0) {
                     ret = 0.5*(evaluatedParameters[l/2-1] + evaluatedParameters[l/2]);
                 }
@@ -535,7 +535,7 @@ function FunctionExpression(s, i) {
             if (this.functionName == "lowerquartile") {
                 evaluatedParameters.sort();
                 let l = evaluatedParameters.length;
-                let ret = "";
+                let ret = null;
                 if (l%4 == 0) {
                     ret = 0.5*(evaluatedParameters[l/4-1] + evaluatedParameters[l/4]);
                 }
@@ -570,13 +570,14 @@ function FunctionExpression(s, i) {
                 }
                 let bestF = 0;
                 let best = -1;
-                for (f in freqs) {
+                let ret = null;
+                for (var f in freqs) {
                   if (freqs[f] > bestF) {
-                    bestF = freqs[f]
-                    best = f
+                    bestF = freqs[f];
+                    ret  = f;
                   }
                 }
-                return JSON.stringify(best);
+                return JSON.stringify(ret);
             }
 
             if (this.functionName == "max") {
@@ -826,6 +827,11 @@ function FunctionExpression(s, i) {
 }
 
 class JSFunction {
+    interpreter: any;
+    error: any;
+    code: any;
+    JSName: any;
+    cache: {};
     constructor(code, JSName) {
         try {
             this.interpreter = new Interpreter(code);
@@ -888,6 +894,7 @@ class JSFunction {
 }
 
 class questionTemplate {
+    _text: any;
     constructor(paramText) {
       this._text = paramText;
     }
@@ -914,6 +921,14 @@ class questionTemplate {
 }
 
 class Template extends questionTemplate {
+    allTemplateComments: any;
+    random: any;
+    indexForListEvaluation: any;
+    customFunctions: any;
+    overflowCounter: number;
+    OVERFLOW_LIMIT: number;
+    variablesUsed: any;
+    _calculatedValue: string;
     //delimiters
     constructor(paramText, paramAllTemplates, paramRandom, paramIndexForRangeEvaluation, paramCustomFunctions)
     {

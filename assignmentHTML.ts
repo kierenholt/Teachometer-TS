@@ -1,6 +1,18 @@
+//tell typescript that the assignment property exists on the window interface
 
+interface Window { assignment: any; }
+
+window.assignment = window.assignment || {};
 
 class AssignmentHTML {
+    rowHTMLs: any[];
+    settings: any;
+    timerDiv: HTMLDivElement;
+    timerInterval: number;
+    _questionNumbers: any[];
+    submitButton: any;
+    anticheatDiv: HTMLDivElement;
+    
     constructor(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
 
@@ -78,7 +90,7 @@ class AssignmentHTML {
     }
     
     //CALLED FROM A BUTTON
-    addRows(paramRows, index) {
+    addRows(paramRows: RowHTML[], index?: number) {
         for (let r = 0, row; row = paramRows[r]; r++) {
             //FILL TITLE ROWS
             let showTitle = true;
@@ -115,7 +127,7 @@ class AssignmentHTML {
         this.settings.questionsDiv.lastChild.scrollIntoView();
     }
 
-    insertRowIntoDivs(newRowHTML,index) {
+    insertRowIntoDivs(newRowHTML:RowHTML,index?:number) {
         if (index == undefined) {
             index = this.rowHTMLs.length;
         }
@@ -298,7 +310,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
         //numChecksLeft - must come after markbookIndex stuff
         this.settings.checksLeftIndex = this.settings.markbookIndex++;
         var storedNumChecks = this.settings.responses ? this.settings.responses[this.settings.checksLeftIndex] : null;
-        if (isNumeric(storedNumChecks)) { //numchecksleft has already been set to default
+        if (helpers.isNumeric(storedNumChecks)) { //numchecksleft has already been set to default
             this.settings.numChecksLeft = Number(storedNumChecks);
         }
 
@@ -339,7 +351,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
         //anticheatCount - must come after markbookIndex stuff
         if (this.settings.antiCheatMode) {
             var storedCheatCount = this.settings.responses ? this.settings.responses[this.settings.markbookIndex++] : null;
-            var anticheatCount = isNumeric(storedCheatCount) ? Number(storedCheatCount) : 0;
+            var anticheatCount = helpers.isNumeric(storedCheatCount) ? Number(storedCheatCount) : 0;
             
             this.anticheatDiv = document.createElement("div");
             this.anticheatDiv.innerHTML = "<p>ANTI CHEAT MODE IS ACTIVE. <br> IF YOU CHANGE TAB OR LEAVE THIS PAGE, IT WILL BE LOGGED</p>";
@@ -365,10 +377,6 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
             }
         } //end of anticheat 
         
-    }
-    
-    isNumeric(str) {
-        return !isNaN(parseFloat(str)) && isFinite(str);
     }
 
     //called by solution 

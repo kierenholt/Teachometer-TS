@@ -2,6 +2,19 @@ const ALLOWABLE_ERROR_FOR_CORRECT_ANSWER = 0.05;
 
 //DECISION LOGIC
 class Solution {
+    allSolutions: any;
+    settings: any;
+    markbookIndex: number;
+    template: any;
+    field: any;
+    score: number;
+    triggerCalculateFromLateFunction: boolean;
+    elementHasChangedSinceLastChecked: boolean;
+    notYetChecked: boolean;
+    notYetAnswered: boolean;
+    color: string;
+    image: string;
+
     constructor(field, template, settings, allSolutions) {
 
         this.allSolutions = allSolutions;
@@ -96,7 +109,7 @@ class Solution {
         this.elementHasChangedSinceLastChecked = false;
         this.notYetChecked = false;
     }
-
+    
 //ONRESPONSE - check and store decision, call markbookUpdate
     onResponseInjector(solution) {
         let s = solution;
@@ -129,7 +142,7 @@ class Solution {
             if (this.field instanceof CheckBoxCup) {
                 try  {
                     this.score = (this.template.calculatedValue == "true") ? 1 : 0;
-                    this.field.elementValue = this.score == 1; 
+                    this.field.elementValue = (this.score == 1); 
                 }
                 catch (e) {
                     this.field.elementValue = "!";
