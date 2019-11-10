@@ -1,37 +1,36 @@
-    var alphaIndex = function(str) { //lowercase only!!!
+    function alphaIndex(str) { //lowercase only!!!
         if (isLowerAlpha(str)) { return str.charCodeAt(0) - 97; }
         if (isUpperAlpha(str)) { return str.charCodeAt(0) - 65; }
         throw "function alphaindex called on non alphanumeric string";
     };
 
-    var isAlpha = function(str) {
+    function isAlpha(str) {
         var code = str.charCodeAt(0);
         return (code >= 65 && code <= 90) || (code >= 97 && code <= 122);
     };
 
-    var isLowerAlpha = function(str) {
+    function isLowerAlpha(str) {
         var code = str.charCodeAt(0);
         return (code >= 97 && code <= 122);
     };
 
-    var isUpperAlpha = function(str) {
+    function isUpperAlpha(str) {
         var code = str.charCodeAt(0);
         return (code >= 65 && code <= 90);
     };
 
-    var isNumeric = function(str) {
+    function isNumeric(str) {
         return !isNaN(parseFloat(str)) && isFinite(str);
     }
 
-
-    var getDigits = function(n) {
+    function getDigits(n) {
         if (n < 10) {
             return [n];
         }
         return getDigits(Math.floor(n/10)).concat([n%10])
     }
 
-    var HCF = function(a,b) {
+    function HCF(a,b) {
         if (a <= 0 || b <= 0) {
             return 0;
         }
@@ -44,7 +43,7 @@
         return HCF(b, a%b);
     }
 
-    var hcfMulti = function(args) {
+    function hcfMulti(args) {
         var ret = args.splice(-1);
         while (args.length > 0) {
             var arg = args.splice(-1);
@@ -53,7 +52,7 @@
         return ret;
     }
 
-    var lcm = function(args) {
+    function lcm(args) {
         var ret = args.splice(-1);
         while (args.length > 0) {
             var arg = args.splice(-1);
@@ -62,26 +61,22 @@
         return ret;
     }
     
-    var factorial = function(n) {
+    function factorial(n) {
         if (n < 2) {
             return 1;
         }
         return n * factorial(n - 1);
     };
 
-    var binomial = function(x,N,p) {
+    function binomial(x,N,p) {
         return factorial(N)/factorial(N-x)/factorial(x)*Math.pow(p,x)*Math.pow(1-p,N-x);
     }
 
-    var roundToSF = function(n,d) {
+    function roundToSF(n,d) {
         if (n==0) {return n};
         var biggestTen = Math.floor(Math.log(Math.abs(n))/Math.LN10)+1;
         return Math.round(n*Math.pow(10,d-biggestTen))/Math.pow(10,d-biggestTen);
     } 
-
-function strip(number) {
-    return parseFloat(number.toPrecision(12));
-}
 
     var calculatedJSONtoViewable = function(ret) {
         ret = JSON.parse(ret);
@@ -91,7 +86,7 @@ function strip(number) {
                 return ret.toString();
             }
             else {
-                ret = strip(ret);
+                ret = parseFloat(ret.toPrecision(12));
                 return ret.toString();
             }
         }
@@ -99,7 +94,7 @@ function strip(number) {
     }
 
     //takes in string which may not be strict JSON e.g. missing quotes
-    var safeStringify = function(str) {
+    function safeStringify(str) {
         let ret = undefined;
         try {
             let obj = JSON.parse(str);
@@ -111,7 +106,7 @@ function strip(number) {
         return ret;
     }
 
-    var JSONtoEval = function(str) {
+    function JSONtoEval(str) {
         let obj = JSON.parse(str);
         if (typeof(obj) == "string") {
             return str;
@@ -122,45 +117,9 @@ function strip(number) {
         //.toString() causes problems with arrays [2] -> "2"
     }
 
-function SimpleExpression(s, i, commaIsTerminator) { //i must be char after first bracket
-
-    ///EVAL
-    this.eval = function(injector) {
-        injector.count();
-        if (this.children.length == 1 && typeof(this.children[0]) != "string" ) {
-            return this.children[0].eval(injector);
-        }
-
-        let buffer = ""; 
-        for (let i = 0, expr; expr = this.children[i]; i++) {
-            if (typeof(expr) == "string") {
-                buffer += this.replaceVariables(expr,injector);
-            }
-            else {
-                buffer += JSONtoEval(expr.eval(injector));
-            }
-        };
-
-        if (helpers.IsNullOrWhiteSpace(buffer)) {
-            return "";
-        }
-        
-        //replace -- with +
-        buffer = helpers.replaceAll(buffer," ","");
-        buffer = helpers.replaceAll(buffer,"\t","");
-        //if (buffer[0] == '"') {return buffer;}
-        
-        buffer = helpers.replaceAll(buffer,"--","+");
-
-        /*** THE ONLY EVAL ***/
-
-        var evaluated =  eval(buffer);
-        return JSON.stringify(evaluated);                    
-
-    }
 
     //REPLACE VARIABLES
-    this.replaceVariables = function(s, injector) {
+    function replaceVariables(s, injector) {
         let buffer = "";
         for (let i = 0; i < s.length; i++) {
             if (isLowerAlpha(s[i]) && 
@@ -197,7 +156,18 @@ function SimpleExpression(s, i, commaIsTerminator) { //i must be char after firs
     }
 
 
-        //PARSES THE COMMENT
+interface Expression {
+
+
+}
+
+class SimpleExpression implements Expression {
+    children: any;
+    i: any; //i must be char after first bracket
+
+    constructor(s, i, commaIsTerminator?) {
+
+        //PARSES s (the comment)
         this.children = [];
 
         let buffer = "";
@@ -253,9 +223,49 @@ function SimpleExpression(s, i, commaIsTerminator) { //i must be char after firs
         //always end on the last bracket, since i gets incremented afterwards
 
         this.i = i;
+    }
+
+    ///EVAL
+    eval(injector) {
+        injector.count();
+        if (this.children.length == 1 && typeof(this.children[0]) != "string" ) {
+            return this.children[0].eval(injector);
+        }
+
+        let buffer = ""; 
+        for (let i = 0, expr; expr = this.children[i]; i++) {
+            if (typeof(expr) == "string") {
+                buffer += this.replaceVariables(expr,injector);
+            }
+            else {
+                buffer += JSONtoEval(expr.eval(injector));
+            }
+        };
+
+        if (helpers.IsNullOrWhiteSpace(buffer)) {
+            return "";
+        }
+        
+        //replace -- with +
+        buffer = helpers.replaceAll(buffer," ","");
+        buffer = helpers.replaceAll(buffer,"\t","");
+        //if (buffer[0] == '"') {return buffer;}
+        
+        buffer = helpers.replaceAll(buffer,"--","+");
+
+        /*** THE ONLY EVAL ***/
+
+        var evaluated =  eval(buffer);
+        return JSON.stringify(evaluated);                    
+    }
+
 }
 
-function QuoteExpression(s,i) {
+class QuoteExpression {
+    i: any;
+    s: string;
+
+    constructor(s,i) {
         i++; //skip first quote
 
         this.s  = "";
@@ -264,21 +274,28 @@ function QuoteExpression(s,i) {
             i++;
         }
         this.i = i;
+    }
     
-    this.eval = function(injector) {
+    eval(injector) {
         injector.count();
         return `"${this.s}"`;
     }
 }
 
-function RangeExpression(firstBuffer, s, i) {
+class RangeExpression  {
+    minExpr: any;
+    maxExpr: SimpleExpression;
+    i: any;
+
+    constructor(firstBuffer, s, i) {
         this.minExpr = firstBuffer;
         this.maxExpr = new SimpleExpression(s, i+2);
         this.i = this.maxExpr.i;
+    }
 
     ///EVAL
     //always returns number
-    this.eval = function(injector) {
+    eval(injector) {
         injector.count();
         let decimalmin = Number(this.minExpr.eval(injector));
         let decimalmax = Number(this.maxExpr.eval(injector));
@@ -297,7 +314,8 @@ function RangeExpression(firstBuffer, s, i) {
 }
 
 
-function ListExpression(firstBuffer, s, i) {
+class ListExpression {
+    constructor(firstBuffer, s, i) {
         this.options = [];
         if (firstBuffer != null) {
             this.options.push(firstBuffer);
@@ -316,9 +334,9 @@ function ListExpression(firstBuffer, s, i) {
             }
         }
         this.i = i;
-
+    }
     ///EVAL
-    this.eval = function(injector) {
+    eval(injector) {
         injector.count();
         let randomIndex = injector.indexForListEvaluation % this.options.length;
         let evaluated = this.options[randomIndex].eval(injector);
@@ -608,7 +626,7 @@ function FunctionExpression(s, i) {
             if (this.functionName == "coprime") {
                 let denom = evaluatedParameters[0];
                 if (denom < 2) {
-                    return new StringInt("0", i);
+                    throw new Error("no smaller coprime number exists for "+denom);
                 }
                 let guess = injector.random.next(denom-1) + 1;
                 while (HCF(denom, guess) > 1) {
@@ -983,8 +1001,9 @@ class Template extends questionTemplate {
         //turn value into JSON
         if (this.calculatedValue != null) {
             if (isNumeric(this.calculatedValue) ) {
+                let n = this.calculatedValue;
                 return isNumeric(value) && 
-                    Math.abs(value-this.calculatedValue) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*this.calculatedValue);
+                    Math.abs(value-n) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*n);
             }
             return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
         }
