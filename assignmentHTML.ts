@@ -187,7 +187,10 @@ class AssignmentHTML {
 
         //shuffle jumbledSolutionsDiv
         if (this.settings.jumbledSolutionsDiv) {
-            var divs = Array.from(this.settings.jumbledSolutionsDiv.children);
+            var divs = []; //HTML collection is not an array
+            for (var i = 0; i < this.settings.jumbledSolutionsDiv.children.length; i++) {
+                divs.push(this.settings.jumbledSolutionsDiv.children[i])
+            }
             while (this.settings.jumbledSolutionsDiv.firstChild) {
                 this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
             }
@@ -268,7 +271,7 @@ ${document.getElementById("style").innerText}
 settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
 settings.window =  myWindow;
 
-myWindow.helpers = helpersMaker();			
+myWindow["helpers"] = helpersMaker();			
 myWindow.assignment = new AssignmentHTML(settings,null);
 myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
 

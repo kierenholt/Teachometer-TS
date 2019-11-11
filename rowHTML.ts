@@ -395,7 +395,7 @@ class QuestionHTML extends RowHTML {
     }
     
     get revealSection() {
-        let solutionPlainText = this.solutions.map((s,i) => String.fromCodePoint(97+i) + ". " + s.solutionText ).join("<br>");
+        let solutionPlainText = this.solutions.map((s,i) => String.fromCharCode(97+i) + ". " + s.solutionText ).join("<br>");
         return `<section>
             <section>
             <h1>${this.row.title}</h1>
@@ -546,7 +546,12 @@ class TemplateHTML extends QuestionHTML{
                 //number of dollars
                 var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
                 //sudoku only
-                var variablesUsed = templates.map(function(t) { if (t) return t.variablesUsed; return Array(26).fill(false); });
+                var variablesUsed = templates.map(function(t) {
+                        if (t) return t.variablesUsed;
+                        let ret =  [];
+                        for (var i = 0; i < 26; i++) ret.push(false);
+                        return ret; 
+                    });
                 //add variables to their own equations
                 for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
                     eqn[i] = true;

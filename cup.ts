@@ -457,7 +457,7 @@ class FieldCup extends Cup {
 
   get element() {
       if (this._element == undefined) {
-        let found = Array.from(this.document.getElementsByName(this.UID).values());
+        let found = this.document.getElementsByName(this.UID);
         if (found.length > 0) { this._element = found[0]; }
       }
       return this._element;
@@ -546,7 +546,11 @@ class RadioCup extends FieldCup {
 
   get elements() {
       if (this._elements == undefined) {
-          this._elements = Array.from(this.document.getElementsByName(this.UID).values());
+          var found = this.document.getElementsByName(this.UID);
+          this._elements = [];
+          for (var i = 0; i < found.length; i++) {
+            this._elements.push(found[i]);
+          }
           if (this._elements.length < 1) { this._elements = undefined; }
       }
       return this._elements;
