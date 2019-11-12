@@ -785,15 +785,16 @@ var CheckBoxCup = /** @class */ (function (_super) {
             if (this._image == "error") {
                 return "!";
             }
+            if (this._image == "hourglass") {
+                return "⌛";
+            }
             return "";
         },
         set: function (value) {
-            //if (value == "✓" || value == true) { BEFORE TSC AUTO CORRECTION
-            if (value == "✓") {
+            if ((value == "✓") || (value == true)) {
                 this._image = "tick";
             }
-            //if (value == "✗" || value == false) { BEFORE TSC AUTO CORRECTION
-            if (value == "✗") {
+            if ((value == "✗") || (value == false)) {
                 this._image = "cross";
             }
             if (value == "!") {

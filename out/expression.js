@@ -78,7 +78,7 @@ function roundToSF(n, d) {
     var biggestTen = Math.floor(Math.log(Math.abs(n)) / Math.LN10) + 1;
     return Math.round(n * Math.pow(10, d - biggestTen)) / Math.pow(10, d - biggestTen);
 }
-var calculatedJSONtoViewable = function (ret) {
+function calculatedJSONtoViewable(ret) {
     ret = JSON.parse(ret);
     if (typeof (ret) == "string") {
         return helpers.stripQuotes(ret);
@@ -95,7 +95,7 @@ var calculatedJSONtoViewable = function (ret) {
     if (ret) {
         return ret.toString();
     }
-};
+}
 //takes in string which may not be strict JSON e.g. missing quotes
 function safeStringify(str) {
     var ret = undefined;
@@ -185,14 +185,14 @@ function toExpressionTree(s, i, commaIsTerminator) {
             i = expr.i;
         }
         else if (i + 1 < s.length && s.substr(i, 2) == "..") {
-            if (buffer.length == 0) {
+            if (buffer.length + children.length == 0) {
                 throw new Error("Range expression missing something before ..");
             }
             children.push(buffer);
             return new RangeExpression(new SimpleExpression(children, i), s, i);
         }
         else if (s[i] == ",") {
-            if (buffer.length == 0) {
+            if (buffer.length + children.length == 0) {
                 throw new Error("List expression missing something before ,");
             }
             children.push(buffer);
@@ -712,7 +712,7 @@ var FunctionExpression = /** @class */ (function () {
             //if text is entered
             var JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
-            var DEFAULTCODE = "function " + JSName + "() {\n\n//your code goes here\n\n}";
+            var DEFAULTCODE = "function " + JSName + "() {\n\n    //your code goes here\n\n    }";
             if (injector.allSolutions) {
                 var thisSolution = injector.allSolutions.filter(function (s) { return s.template == injector; });
                 if (thisSolution.length == 1) {
@@ -744,18 +744,22 @@ var FunctionExpression = /** @class */ (function () {
         if (this.functionName == "variable") {
             var JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
-            if (injector.allSolutions) {
-                var thisSolution = injector.allSolutions.filter(function (s) { return s.template == injector; });
-                if (thisSolution.length == 1) {
-                    thisSolution[0].triggerCalculateFromLateFunction = false;
-                    if (thisSolution[0].field.elementValue) {
-                        injector.customFunctions[JSName] = safeStringify(thisSolution[0].field.elementValue); //needs to be in JSON before going in to template
-                        injector.allSolutions.filter(function (s) { return s.triggerCalculateFromLateFunction; }).forEach(function (s) {
-                            s.template._calculatedValue = "null";
-                            s.field.onResponse(); //includes score update
-                        });
-                    }
-                }
+            if (injector.allSolutions == undefined) {
+                throw new Error("allSolutions not found on template");
+            }
+            var thisSolution = injector.allSolutions.filter(function (s) { return s.template == injector; });
+            if (thisSolution.length != 1) {
+                throw new Error("number of mathcing solutions != 1");
+            }
+            thisSolution[0].triggerCalculateFromLateFunction = false;
+            if (thisSolution[0].field.elementValue) {
+                //store variable in template.customfunctions
+                injector.customFunctions[JSName] = safeStringify(thisSolution[0].field.elementValue); //needs to be in JSON before going in to template
+                //if the value is not null, then update any dependent calculatedvalues using
+                injector.allSolutions.filter(function (s) { return s.triggerCalculateFromLateFunction; }).forEach(function (s) {
+                    s.template._calculatedValue = "null";
+                    s.field.onResponse(); //includes score update
+                });
             }
             return "null";
         }

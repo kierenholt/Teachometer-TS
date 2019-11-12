@@ -700,12 +700,10 @@ class CheckBoxCup extends FieldCup {
   }
   
   set elementValue(value:any) {
-    //if (value == "✓" || value == true) { BEFORE TSC AUTO CORRECTION
-    if (value == "✓") {
+    if ((value == "✓") || (value == true)) { 
         this._image = "tick"; 
     }
-    //if (value == "✗" || value == false) { BEFORE TSC AUTO CORRECTION
-    if (value == "✗") {
+    if ((value == "✗") || (value == false)) { 
         this._image = "cross"; 
     }
     if (value == "!") {
@@ -719,7 +717,8 @@ class CheckBoxCup extends FieldCup {
   get elementValue() {
     if (this._image == "tick") { return "✓"; }
     if (this._image == "cross") { return "✗"; } 
-    if (this._image == "error") { return "!"; } 
+    if (this._image == "error") { return "!"; }  
+    if (this._image == "hourglass") { return "⌛"; } 
     return "";
   }
 

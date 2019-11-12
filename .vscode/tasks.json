@@ -22,9 +22,10 @@
         {
             "label": "python_server",
             "type": "shell",
-            "command": "python3 -m http.server",
+            "command": "cd out\npython3 -m http.server 8000",
             "args": [],
-            "group": "build"
+            "group": "build",
+            "problemMatcher": []
         },
         {
             "type": "typescript",
