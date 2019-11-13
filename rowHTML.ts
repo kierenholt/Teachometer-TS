@@ -10,6 +10,7 @@ class RowHTML {
     marginDiv: HTMLDivElement;
     dynamicDiv: HTMLDivElement;
     titleDiv: HTMLDivElement;
+    cupsWithGridlines: DivCup[];
     _cellCups: any;
     solutions: any[];
     _softErrors: any;
@@ -55,6 +56,7 @@ class RowHTML {
             duplicateButton.src = imageData.duplicate;
             this.marginDiv.appendChild(duplicateButton);        
         }
+
     }
 
     get outerDiv() { //called after constructor because parsing cellcups must happen first
@@ -176,8 +178,8 @@ class RowHTML {
 
 
 
-                    //GRIDLINES
-                    if (this.settings.showGridlines) {
+                    //turn on gridlines button if relative containers found inside cellcup
+                    if (this.settings.allowGridlines) {
                         let relCounter = function() {
                             var foundRelativeContainer = false;
 
@@ -191,7 +193,23 @@ class RowHTML {
                         cellCup.onThisAndChildren(relCounter);
                         var relativeCupFound = relCounter();
                         if (relativeCupFound) {
-                            cellCup.containsRelativeCup = true;
+                            //add gridlines button
+                            if (!this.cupsWithGridlines) { 
+                                this.cupsWithGridlines = [cellCup];
+                                if (true) {
+                                    let toggleGridlinesButton =  document.createElement("img");
+                                    toggleGridlinesButton.className = "toggleGridlinesButton hideOnPrint";
+                                    toggleGridlinesButton.onclick = (function(ref) {
+                                            var r = ref; 
+                                            return function() {r.forEach(c => c.toggleGridlines())} 
+                                        })(this.cupsWithGridlines);
+                                    toggleGridlinesButton.src = imageData.grid;
+                                    this.marginDiv.appendChild(toggleGridlinesButton);     
+                                }
+                            }
+                            else {
+                                this.cupsWithGridlines.push(cellCup);
+                            }
                         };
                     }
 
@@ -257,29 +275,31 @@ class QuestionHTML extends RowHTML {
         //question number
         this.questionNumberDiv = document.createElement("p");
         this.questionNumberDiv.className = "questionNumber";
+        //margin contains icon buttons 
         this.marginDiv.insertBefore(this.questionNumberDiv,this.marginDiv.childNodes[0]);
         //question number is set later
     }
 
     delete() {
         super.delete();
+        //remove solutions
         if (this._solutionDiv) {
             this._solutionDiv.parentNode.removeChild(this._solutionDiv);
         }
+        //remove jumbled solutions
         if (this._jumbleDivs) {
             this._jumbleDivs.forEach(j => j.parentNode.removeChild(j));
         }
     }
 
-    //    get outerDiv() {
-    //    } SAME AS SUPER
-    
+    //injects solutions into dollars and input elements
     getInjectorInstance() {
             this.solutions = [];
             return this.injector(this.replacedTemplates(), this.solutions, this.settings);
             //for sudoku this also instantiates replaceSudokuDollar
     }   
     
+    //jumbled solutions getter
     get jumbleDivs() {
         if (!this._jumbleDivs) {
             this._jumbleDivs = [];
@@ -293,6 +313,7 @@ class QuestionHTML extends RowHTML {
         return this._jumbleDivs;
     }
 
+    //solution div getter
     get solutionDiv() {
         if (!this._solutionDiv) {
             this._solutionDiv = document.createElement("div");
@@ -326,7 +347,7 @@ class QuestionHTML extends RowHTML {
         return ret;
     }
 
-    //gets overridden by template
+    //list of questiontemplate instances which are generated from comments
     replacedTemplates() {
         let comments = this.row.comment.split('\n');
         return comments.map(c => new questionTemplate(c));
@@ -339,7 +360,7 @@ class QuestionHTML extends RowHTML {
         return this.refreshsolutionDiv();
     }
     
-    //INJECT SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
+    //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     injector(paramTemplates, paramSolutions, paramSettings)  {
             
             var firstRadioCup = null;
@@ -385,6 +406,7 @@ class QuestionHTML extends RowHTML {
                 //if dollar is found, do not add a solution but do remove a template and replace the dollar
                 if (fieldCup.textReplace != null) {
                     fieldCup.textReplace(/\${2}/g, getTemplateValue);
+                    //jumbled solutions getterplace(/\${2}/g, getTemplateValue);
                     //do not add to solutions since the dollar solution is removed during textreplace
                 }
             };
@@ -518,7 +540,7 @@ class TemplateHTML extends QuestionHTML{
         //refresh button
         if (this.settings.allowRefresh) {       
             let refreshButton =  document.createElement("img");
-            refreshButton.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAI/SURBVDjLjZPbS9NhHMYH+zNidtCSQrqwQtY5y2QtT2QGrTZf13TkoYFlzsWa/tzcoR3cSc2xYUlGJfzAaIRltY0N12H5I+jaOxG8De+evhtdOP1hu3hv3sPzPO/z4SsBIPnfuvG8cbBlWiEVO5OUItA0VS8oxi9EdhXo+6yV3V3UGHRvVXHNfNv6zRfNuBZVoiFcB/3LdnQ8U+Gk+bhPVKB3qUOuf6/muaQR/qwDkZ9BRFdCmMr5EPz6BN7lMYylLGgNNaKqt3K0SKDnQ7us690t3rNsxeyvaUz+8OJpzo/QNzd8WTtcaQ7WlBmPvxhx1V2Pg7oDziIBimwwf3qAGWESkVwQ7owNujk1ztvk+cg4NnAUTT4FrrjqUKHdF9jxBfXr1rgjaSk4OlMcLrnOrJ7latxbL1V2lgvlbG9MtMTrMw1r1PImtfyn1n5q47TlBLf90n5NmalMtUdKZoyQMkLKlIGLjMyYhFpmlz3nGEVmFJlRZNaf7pIaEndM24XIjCOzjX9mm2S2JsqdkMYIqbB1j5C6yWzVk7YRFTsGFu7l+4nveExIA9aMCcOJh6DIoMigyOh+o4UryRWQOtIjaJtoziM1FD0mpE4uZcTc72gBaUyYKEI6khgqINXO3saR7kM8IZUVCRDS0Ucf+xFbCReQhr97MZ51wpWxYnhpCD3zOrT4lTisr+AJqVx0Fiiyr4/vhP4VyyMFIUWNqRrV96vWKXKckBoIqWzXYcoPDrUslDJoopuEVEpIB0sR+AuErIiZ6OqMKAAAAABJRU5ErkJggg==";
+            refreshButton.src = imageData.refresh;
             refreshButton.className = "refreshButton hideOnPrint";
             refreshButton.onclick = (function(ref) {var r = ref; return function() {r.refresh()};})(this);
             this.marginDiv.appendChild(refreshButton);

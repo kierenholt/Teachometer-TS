@@ -146,7 +146,7 @@ p.questionNumber {
 }
 
 /* DELETE REFRESH DUPLICATE BUTTON */
-img.deleteButton, img.duplicateButton,img.refreshButton {
+img.deleteButton, img.duplicateButton,img.refreshButton,img.toggleGridlinesButton {
   cursor: pointer;
 }
 
