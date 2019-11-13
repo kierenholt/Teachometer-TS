@@ -3,12 +3,26 @@
 
 class Cup {
   str: any;
+  UID: string;
+  document: any;
   constructor(str) {
     this.str = str;
+    this.UID = helpers.createUID();
+    window[this.UID] = this;
+    this.document = window.document;
   }
 
   onThisAndChildren(action) {
     action(this);
+  }
+
+  _element: any;
+  get element() {
+      if (this._element == undefined) {
+        let found = this.document.getElementsByName(this.UID);
+        if (found.length > 0) { this._element = found[0]; }
+      }
+      return this._element;
   }
 }
 
@@ -319,7 +333,7 @@ class ParagraphCup extends CupContainer {
 
 class DivCup extends CupContainer {
   class: any;
-  containsRelativeCup: any;
+  _gridLinesDiv: HTMLDivElement;
   constructor(str) {
     super(str);
     this.children = [new ChunkCup(this.str)];
@@ -327,37 +341,43 @@ class DivCup extends CupContainer {
 
   get HTML() {
     let classStr = this.class ? `class="${this.class}"` : "";
-    return `<div ${classStr}>${this.childrenHTML}
-    ${this.containsRelativeCup ? this.gridlines : ""}
-    </div>`;
+    return `<div name='${this.UID}' ${classStr}>${this.childrenHTML}</div>`;
   }
 
-  get gridlines() {
-return `
-<div class="gridlinecontainer">
-    <div class="hgridline"><p>10%</p></div>
-    <div class="hgridline"><p>20%</p></div>
-    <div class="hgridline"><p>30%</p></div>
-    <div class="hgridline"><p>40%</p></div>
-    <div class="hgridline"><p>50%</p></div>
-    <div class="hgridline"><p>60%</p></div>
-    <div class="hgridline"><p>70%</p></div>
-    <div class="hgridline"><p>80%</p></div>
-    <div class="hgridline"><p>90%</p></div>
-    <div class="hgridline"><p>100%</p></div>
-    
-    <div class="vgridline"><p>10%</p></div>
-    <div class="vgridline"><p>20%</p></div>
-    <div class="vgridline"><p>30%</p></div>
-    <div class="vgridline"><p>40%</p></div>
-    <div class="vgridline"><p>50%</p></div>
-    <div class="vgridline"><p>60%</p></div>
-    <div class="vgridline"><p>70%</p></div>
-    <div class="vgridline"><p>80%</p></div>
-    <div class="vgridline"><p>90%</p></div>
-    <div class="vgridline"><p>100%</p></div>
-</div>
-`
+  toggleGridlines() {
+    this.gridLinesDiv.style.display = (this.gridLinesDiv.style.display == "block") ? "none" : "block";
+  }
+
+  get gridLinesDiv() {
+    if (this._gridLinesDiv) { return this._gridLinesDiv; }
+    var ret = document.createElement("div");
+    ret.className = "gridlinecontainer";
+    ret.innerHTML = `
+      <div class="hgridline"><p>10%</p></div>
+      <div class="hgridline"><p>20%</p></div>
+      <div class="hgridline"><p>30%</p></div>
+      <div class="hgridline"><p>40%</p></div>
+      <div class="hgridline"><p>50%</p></div>
+      <div class="hgridline"><p>60%</p></div>
+      <div class="hgridline"><p>70%</p></div>
+      <div class="hgridline"><p>80%</p></div>
+      <div class="hgridline"><p>90%</p></div>
+      <div class="hgridline"><p>100%</p></div>
+      
+      <div class="vgridline"><p>10%</p></div>
+      <div class="vgridline"><p>20%</p></div>
+      <div class="vgridline"><p>30%</p></div>
+      <div class="vgridline"><p>40%</p></div>
+      <div class="vgridline"><p>50%</p></div>
+      <div class="vgridline"><p>60%</p></div>
+      <div class="vgridline"><p>70%</p></div>
+      <div class="vgridline"><p>80%</p></div>
+      <div class="vgridline"><p>90%</p></div>
+      <div class="vgridline"><p>100%</p></div>
+  `;
+    this._gridLinesDiv = ret;
+    this.element.appendChild(ret);
+    return ret;
   }
 }
 
@@ -407,29 +427,23 @@ class CellCup extends CupContainer {
     let borderStyle = this.hasBorder ? "" : " border: none;";
     let colspanStyle = this.colSpan == null ? "" : " colspan=" + this.colSpan;
     let isRelativeStyle = this.isRelative ? " position:relative;" : "";
-    return `<td style=\"${borderStyle} ${isRelativeStyle}\" ${colspanStyle}>
+    return `<td name='${this.UID}' style=\"${borderStyle} ${isRelativeStyle}\" ${colspanStyle}>
     ${this.childrenHTML}</td>`;
   }
 }
 
 //FIELD PRESENTATION LAYER
 class FieldCup extends Cup {
-  UID: string;
   onResponse: () => void;
   defaultText: string;
   imageHTML: string;
   disabledText: string;
-  document: any;
-  _element: any;
   constructor(str, window) {
     super(str);
-    this.UID = helpers.createUID();
-    window[this.UID] = this;
     this.onResponse = function() {  }; //can be overwritten by solution 
     this.defaultText = "";
     this.imageHTML = "";
     this.disabledText = "";
-    this.document = window.document;
   }
 
   get formName() {
@@ -455,13 +469,6 @@ class FieldCup extends Cup {
     }
   }
 
-  get element() {
-      if (this._element == undefined) {
-        let found = this.document.getElementsByName(this.UID);
-        if (found.length > 0) { this._element = found[0]; }
-      }
-      return this._element;
-  }
 
   set disabled(value) {
     if (this.element) {

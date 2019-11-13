@@ -154,8 +154,8 @@ var RowHTML = /** @class */ (function () {
                         //replace bolds and underlines
                         cellCup.replace(/(\*[^*]+\*)/, function (s) { return new BoldCup(s); }, null);
                         cellCup.replace(/(_[^_]+_)/, function (s) { return new UnderlineCup(s); }, null);
-                        //GRIDLINES
-                        if (this.settings.showGridlines) {
+                        //turn on gridlines button if relative containers found inside cellcup
+                        if (this.settings.allowGridlines) {
                             var relCounter = function () {
                                 var foundRelativeContainer = false;
                                 return function (cup) {
@@ -168,7 +168,23 @@ var RowHTML = /** @class */ (function () {
                             cellCup.onThisAndChildren(relCounter);
                             var relativeCupFound = relCounter();
                             if (relativeCupFound) {
-                                cellCup.containsRelativeCup = true;
+                                //add gridlines button
+                                if (!this.cupsWithGridlines) {
+                                    this.cupsWithGridlines = [cellCup];
+                                    if (true) {
+                                        var toggleGridlinesButton = document.createElement("img");
+                                        toggleGridlinesButton.className = "toggleGridlinesButton hideOnPrint";
+                                        toggleGridlinesButton.onclick = (function (ref) {
+                                            var r = ref;
+                                            return function () { r.forEach(function (c) { return c.toggleGridlines(); }); };
+                                        })(this.cupsWithGridlines);
+                                        toggleGridlinesButton.src = imageData.grid;
+                                        this.marginDiv.appendChild(toggleGridlinesButton);
+                                    }
+                                }
+                                else {
+                                    this.cupsWithGridlines.push(cellCup);
+                                }
                             }
                             ;
                         }
@@ -223,27 +239,30 @@ var QuestionHTML = /** @class */ (function (_super) {
         //question number
         _this.questionNumberDiv = document.createElement("p");
         _this.questionNumberDiv.className = "questionNumber";
+        //margin contains icon buttons 
         _this.marginDiv.insertBefore(_this.questionNumberDiv, _this.marginDiv.childNodes[0]);
         return _this;
         //question number is set later
     }
     QuestionHTML.prototype.delete = function () {
         _super.prototype.delete.call(this);
+        //remove solutions
         if (this._solutionDiv) {
             this._solutionDiv.parentNode.removeChild(this._solutionDiv);
         }
+        //remove jumbled solutions
         if (this._jumbleDivs) {
             this._jumbleDivs.forEach(function (j) { return j.parentNode.removeChild(j); });
         }
     };
-    //    get outerDiv() {
-    //    } SAME AS SUPER
+    //injects solutions into dollars and input elements
     QuestionHTML.prototype.getInjectorInstance = function () {
         this.solutions = [];
         return this.injector(this.replacedTemplates(), this.solutions, this.settings);
         //for sudoku this also instantiates replaceSudokuDollar
     };
     Object.defineProperty(QuestionHTML.prototype, "jumbleDivs", {
+        //jumbled solutions getter
         get: function () {
             if (!this._jumbleDivs) {
                 this._jumbleDivs = [];
@@ -260,6 +279,7 @@ var QuestionHTML = /** @class */ (function (_super) {
         configurable: true
     });
     Object.defineProperty(QuestionHTML.prototype, "solutionDiv", {
+        //solution div getter
         get: function () {
             if (!this._solutionDiv) {
                 this._solutionDiv = document.createElement("div");
@@ -294,7 +314,7 @@ var QuestionHTML = /** @class */ (function (_super) {
         }
         return ret;
     };
-    //gets overridden by template
+    //list of questiontemplate instances which are generated from comments
     QuestionHTML.prototype.replacedTemplates = function () {
         var comments = this.row.comment.split('\n');
         return comments.map(function (c) { return new questionTemplate(c); });
@@ -305,7 +325,7 @@ var QuestionHTML = /** @class */ (function (_super) {
         this.questionNumberDiv.innerText = "Q" + this.questionNum + ".";
         return this.refreshsolutionDiv();
     };
-    //INJECT SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
+    //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
         var firstRadioCup = null;
         var templates = paramTemplates.slice().reverse();
@@ -347,6 +367,7 @@ var QuestionHTML = /** @class */ (function (_super) {
             //if dollar is found, do not add a solution but do remove a template and replace the dollar
             if (fieldCup.textReplace != null) {
                 fieldCup.textReplace(/\${2}/g, getTemplateValue);
+                //jumbled solutions getterplace(/\${2}/g, getTemplateValue);
                 //do not add to solutions since the dollar solution is removed during textreplace
             }
         };
@@ -466,7 +487,7 @@ var TemplateHTML = /** @class */ (function (_super) {
         //refresh button
         if (_this.settings.allowRefresh) {
             var refreshButton = document.createElement("img");
-            refreshButton.src = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAI/SURBVDjLjZPbS9NhHMYH+zNidtCSQrqwQtY5y2QtT2QGrTZf13TkoYFlzsWa/tzcoR3cSc2xYUlGJfzAaIRltY0N12H5I+jaOxG8De+evhtdOP1hu3hv3sPzPO/z4SsBIPnfuvG8cbBlWiEVO5OUItA0VS8oxi9EdhXo+6yV3V3UGHRvVXHNfNv6zRfNuBZVoiFcB/3LdnQ8U+Gk+bhPVKB3qUOuf6/muaQR/qwDkZ9BRFdCmMr5EPz6BN7lMYylLGgNNaKqt3K0SKDnQ7us690t3rNsxeyvaUz+8OJpzo/QNzd8WTtcaQ7WlBmPvxhx1V2Pg7oDziIBimwwf3qAGWESkVwQ7owNujk1ztvk+cg4NnAUTT4FrrjqUKHdF9jxBfXr1rgjaSk4OlMcLrnOrJ7latxbL1V2lgvlbG9MtMTrMw1r1PImtfyn1n5q47TlBLf90n5NmalMtUdKZoyQMkLKlIGLjMyYhFpmlz3nGEVmFJlRZNaf7pIaEndM24XIjCOzjX9mm2S2JsqdkMYIqbB1j5C6yWzVk7YRFTsGFu7l+4nveExIA9aMCcOJh6DIoMigyOh+o4UryRWQOtIjaJtoziM1FD0mpE4uZcTc72gBaUyYKEI6khgqINXO3saR7kM8IZUVCRDS0Ucf+xFbCReQhr97MZ51wpWxYnhpCD3zOrT4lTisr+AJqVx0Fiiyr4/vhP4VyyMFIUWNqRrV96vWKXKckBoIqWzXYcoPDrUslDJoopuEVEpIB0sR+AuErIiZ6OqMKAAAAABJRU5ErkJggg==";
+            refreshButton.src = imageData.refresh;
             refreshButton.className = "refreshButton hideOnPrint";
             refreshButton.onclick = (function (ref) { var r = ref; return function () { r.refresh(); }; })(_this);
             _this.marginDiv.appendChild(refreshButton);

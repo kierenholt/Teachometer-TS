@@ -848,7 +848,6 @@ class FunctionExpression implements IExpression {
                 });
             }
                 
-            
             return "null";
         }
         

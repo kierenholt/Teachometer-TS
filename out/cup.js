@@ -14,10 +14,26 @@ var __extends = (this && this.__extends) || (function () {
 var Cup = /** @class */ (function () {
     function Cup(str) {
         this.str = str;
+        this.UID = helpers.createUID();
+        window[this.UID] = this;
+        this.document = window.document;
     }
     Cup.prototype.onThisAndChildren = function (action) {
         action(this);
     };
+    Object.defineProperty(Cup.prototype, "element", {
+        get: function () {
+            if (this._element == undefined) {
+                var found = this.document.getElementsByName(this.UID);
+                if (found.length > 0) {
+                    this._element = found[0];
+                }
+            }
+            return this._element;
+        },
+        enumerable: true,
+        configurable: true
+    });
     return Cup;
 }());
 var ImageCup = /** @class */ (function (_super) {
@@ -391,14 +407,25 @@ var DivCup = /** @class */ (function (_super) {
     Object.defineProperty(DivCup.prototype, "HTML", {
         get: function () {
             var classStr = this.class ? "class=\"" + this.class + "\"" : "";
-            return "<div " + classStr + ">" + this.childrenHTML + "\n    " + (this.containsRelativeCup ? this.gridlines : "") + "\n    </div>";
+            return "<div name='" + this.UID + "' " + classStr + ">" + this.childrenHTML + "</div>";
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(DivCup.prototype, "gridlines", {
+    DivCup.prototype.toggleGridlines = function () {
+        this.gridLinesDiv.style.display = (this.gridLinesDiv.style.display == "block") ? "none" : "block";
+    };
+    Object.defineProperty(DivCup.prototype, "gridLinesDiv", {
         get: function () {
-            return "\n<div class=\"gridlinecontainer\">\n    <div class=\"hgridline\"><p>10%</p></div>\n    <div class=\"hgridline\"><p>20%</p></div>\n    <div class=\"hgridline\"><p>30%</p></div>\n    <div class=\"hgridline\"><p>40%</p></div>\n    <div class=\"hgridline\"><p>50%</p></div>\n    <div class=\"hgridline\"><p>60%</p></div>\n    <div class=\"hgridline\"><p>70%</p></div>\n    <div class=\"hgridline\"><p>80%</p></div>\n    <div class=\"hgridline\"><p>90%</p></div>\n    <div class=\"hgridline\"><p>100%</p></div>\n    \n    <div class=\"vgridline\"><p>10%</p></div>\n    <div class=\"vgridline\"><p>20%</p></div>\n    <div class=\"vgridline\"><p>30%</p></div>\n    <div class=\"vgridline\"><p>40%</p></div>\n    <div class=\"vgridline\"><p>50%</p></div>\n    <div class=\"vgridline\"><p>60%</p></div>\n    <div class=\"vgridline\"><p>70%</p></div>\n    <div class=\"vgridline\"><p>80%</p></div>\n    <div class=\"vgridline\"><p>90%</p></div>\n    <div class=\"vgridline\"><p>100%</p></div>\n</div>\n";
+            if (this._gridLinesDiv) {
+                return this._gridLinesDiv;
+            }
+            var ret = document.createElement("div");
+            ret.className = "gridlinecontainer";
+            ret.innerHTML = "\n      <div class=\"hgridline\"><p>10%</p></div>\n      <div class=\"hgridline\"><p>20%</p></div>\n      <div class=\"hgridline\"><p>30%</p></div>\n      <div class=\"hgridline\"><p>40%</p></div>\n      <div class=\"hgridline\"><p>50%</p></div>\n      <div class=\"hgridline\"><p>60%</p></div>\n      <div class=\"hgridline\"><p>70%</p></div>\n      <div class=\"hgridline\"><p>80%</p></div>\n      <div class=\"hgridline\"><p>90%</p></div>\n      <div class=\"hgridline\"><p>100%</p></div>\n      \n      <div class=\"vgridline\"><p>10%</p></div>\n      <div class=\"vgridline\"><p>20%</p></div>\n      <div class=\"vgridline\"><p>30%</p></div>\n      <div class=\"vgridline\"><p>40%</p></div>\n      <div class=\"vgridline\"><p>50%</p></div>\n      <div class=\"vgridline\"><p>60%</p></div>\n      <div class=\"vgridline\"><p>70%</p></div>\n      <div class=\"vgridline\"><p>80%</p></div>\n      <div class=\"vgridline\"><p>90%</p></div>\n      <div class=\"vgridline\"><p>100%</p></div>\n  ";
+            this._gridLinesDiv = ret;
+            this.element.appendChild(ret);
+            return ret;
         },
         enumerable: true,
         configurable: true
@@ -456,7 +483,7 @@ var CellCup = /** @class */ (function (_super) {
             var borderStyle = this.hasBorder ? "" : " border: none;";
             var colspanStyle = this.colSpan == null ? "" : " colspan=" + this.colSpan;
             var isRelativeStyle = this.isRelative ? " position:relative;" : "";
-            return "<td style=\"" + borderStyle + " " + isRelativeStyle + "\" " + colspanStyle + ">\n    " + this.childrenHTML + "</td>";
+            return "<td name='" + this.UID + "' style=\"" + borderStyle + " " + isRelativeStyle + "\" " + colspanStyle + ">\n    " + this.childrenHTML + "</td>";
         },
         enumerable: true,
         configurable: true
@@ -468,13 +495,10 @@ var FieldCup = /** @class */ (function (_super) {
     __extends(FieldCup, _super);
     function FieldCup(str, window) {
         var _this = _super.call(this, str) || this;
-        _this.UID = helpers.createUID();
-        window[_this.UID] = _this;
         _this.onResponse = function () { }; //can be overwritten by solution 
         _this.defaultText = "";
         _this.imageHTML = "";
         _this.disabledText = "";
-        _this.document = window.document;
         return _this;
     }
     Object.defineProperty(FieldCup.prototype, "formName", {
@@ -501,19 +525,6 @@ var FieldCup = /** @class */ (function (_super) {
             else {
                 this.defaultText = value;
             }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(FieldCup.prototype, "element", {
-        get: function () {
-            if (this._element == undefined) {
-                var found = this.document.getElementsByName(this.UID);
-                if (found.length > 0) {
-                    this._element = found[0];
-                }
-            }
-            return this._element;
         },
         enumerable: true,
         configurable: true
