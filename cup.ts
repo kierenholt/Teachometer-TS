@@ -3,35 +3,17 @@
 
 class Cup {
   str: any;
-  instanceNum: number;
-  static cupInstances: Cup[] = [];
   attributes = [];
   tagName = "";
-
+  
   constructor(str) {
     this.str = str;
-    this.instanceNum = Cup.cupInstances.length;
-    Cup.cupInstances.push(this);
   }
 
   onThisAndChildren(action) {
     action(this);
   }
 
-  _element: any;
-  initElement(value) {
-    this._element = value;
-  }
-
-  get element() {
-    return this._element;
-    /*
-      if (this._element == undefined) {
-        let found = this.document.getElementsByName(this.UID);
-        if (found.length > 0) { this._element = found[0]; }
-      }
-      return this._element; */
-  }
 
   get innerHTML() {
     return "";
@@ -407,12 +389,18 @@ class CellCup extends CupContainer {
 
 //FIELD PRESENTATION LAYER
 class FieldCup extends Cup {
-  defaultText: string;
-  imageHTML: string;
-  constructor(str, window) {
+  instanceNum: number;
+  static instances: Cup[] = [];
+  _element: any;
+  hasRealElement: boolean;
+
+  constructor(str) {
     super(str);
-    this.defaultText = "";
-    this.imageHTML = "";
+    this.instanceNum = FieldCup.instances.length;
+    FieldCup.instances.push(this);
+    this._element = {value: "", "disabled": false};
+    this.attributes.push(`id=cup${this.instanceNum}`);
+    this.hasRealElement = false;
   }
   
   set elementValue(value) {
@@ -424,13 +412,16 @@ class FieldCup extends Cup {
       return this.element.value;
   }
 
-  set disabled(value) {
-      this.element.disabled = value;
+  set element(newElement: any) {
+    //replaces the dummy element with a real HTML input element
+    newElement.value = this._element.value;
+    newElement.disabled = this._element.disabled;
+    this._element = newElement;
+    this.hasRealElement = true;
   }
 
-  get disabled() {
-      return this.element.disabled;
-  }
+  set disabled(value) { this._element.disabled = value;  }
+  get disabled() { return this._element.disabled; }
 
   src(image) {
     if (image == "star") { return imageData.star; }
@@ -464,11 +455,11 @@ class FieldCup extends Cup {
   }
 
   showDecisionImage(image) {
-    if (this.element) {
+    if (this.hasRealElement) {
       this.prependImage(this.src(image), this.element);
     }
     else {
-      this.imageHTML = `<img src="${this.src(image)}" id="${this.UID}">`;
+      //this.imageHTML = `<img src="${this.src(image)}">`;
     }
   }
 }
@@ -477,8 +468,8 @@ class RadioCup extends FieldCup {
   letter: any;
   radioCups: this[];
   _elements: any;
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
     this.letter = str[0];
     this.radioCups = [this];
   }
@@ -491,8 +482,7 @@ class RadioCup extends FieldCup {
 
   //called by different cups which exist in the expression tree
   get HTML() {
-    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" 
-    ">`;
+    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" >`;
   }
   //onclick="Cup.getCup(${this.instanceNum}).onResponse();
   //${this.imageHTML}
@@ -564,8 +554,8 @@ class RadioCup extends FieldCup {
 }
 
 class TextAreaCup extends FieldCup {
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
   }
 
   get HTML() {
@@ -576,8 +566,8 @@ class TextAreaCup extends FieldCup {
 }
 
 class InputCup extends FieldCup {
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
   }
 
   get HTML() {
@@ -593,8 +583,8 @@ class InputCup extends FieldCup {
 
 class ComboCup extends FieldCup {
   options: string[];
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
     this.options = [" "].concat(this.str.substring(1, this.str.length - 1).split("/"));
   }
 
@@ -632,8 +622,8 @@ class ComboCup extends FieldCup {
 
 class CheckBoxCup extends FieldCup {
   _image: string;
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
     this._image = "hourglass";
     this.defaultText = imageData.hourglass;
   }
@@ -702,8 +692,8 @@ class CheckBoxCup extends FieldCup {
 
 
 class PoundCup extends FieldCup {
-  constructor(str, window) {
-    super(str, window);
+  constructor(str) {
+    super(str);
   }
 
   get HTML() {
