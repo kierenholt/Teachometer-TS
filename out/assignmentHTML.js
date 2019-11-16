@@ -217,11 +217,12 @@ var AssignmentHTML = /** @class */ (function () {
         configurable: true
     });
     AssignmentHTML.prototype.previewInNewWindow = function (settings) {
+        var oldWindow = window;
         var myWindow = window.open("", "AME", "");
-        myWindow.document.write("\n<head>\n<style>\n" + document.getElementById("style").innerText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
+        myWindow.document.write("\n<head>\n<style>\n" + oldWindow.document.getElementById("style").innerText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
         settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
         settings.window = myWindow;
-        myWindow["helpers"] = helpersMaker();
+        myWindow["helpers"] = oldWindow.helpersMaker();
         myWindow.assignment = new AssignmentHTML(settings, null);
         myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
     };

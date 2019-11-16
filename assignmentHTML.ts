@@ -257,11 +257,13 @@ class AssignmentHTML {
     }
 
     previewInNewWindow(settings) {
+        let oldWindow = window;
               let myWindow = window.open("", "AME", "");
+
               myWindow.document.write(`
 <head>
 <style>
-${document.getElementById("style").innerText}
+${oldWindow.document.getElementById("style").innerText}
 </style>
 </head>
 <body>
@@ -271,7 +273,7 @@ ${document.getElementById("style").innerText}
 settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
 settings.window =  myWindow;
 
-myWindow["helpers"] = helpersMaker();			
+myWindow["helpers"] = oldWindow.helpersMaker();			
 myWindow.assignment = new AssignmentHTML(settings,null);
 myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
 

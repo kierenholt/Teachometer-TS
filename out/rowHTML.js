@@ -56,6 +56,7 @@ var RowHTML = /** @class */ (function () {
         get: function () {
             if (!this._cellCups) {
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
+                var elems = helpers.descendants(this.dynamicDiv);
             }
             return this._outerDiv;
         },

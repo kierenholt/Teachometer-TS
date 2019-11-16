@@ -62,6 +62,11 @@ class RowHTML {
     get outerDiv() { //called after constructor because parsing cellcups must happen first
         if (!this._cellCups) {
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
+            let elems = helpers.descendants(this.dynamicDiv);
+            for (let el of elems) {
+                
+                let cupFound = Cup.cupInstances
+            }
         }
         return this._outerDiv;
     }

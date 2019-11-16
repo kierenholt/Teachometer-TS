@@ -3,13 +3,15 @@
 
 class Cup {
   str: any;
-  UID: string;
-  document: any;
+  instanceNum: number;
+  static cupInstances: Cup[] = [];
+  attributes = [];
+  tagName = "";
+
   constructor(str) {
     this.str = str;
-    this.UID = helpers.createUID();
-    window[this.UID] = this;
-    this.document = window.document;
+    this.instanceNum = Cup.cupInstances.length;
+    Cup.cupInstances.push(this);
   }
 
   onThisAndChildren(action) {
@@ -17,12 +19,26 @@ class Cup {
   }
 
   _element: any;
+  initElement(value) {
+    this._element = value;
+  }
+
   get element() {
+    return this._element;
+    /*
       if (this._element == undefined) {
         let found = this.document.getElementsByName(this.UID);
         if (found.length > 0) { this._element = found[0]; }
       }
-      return this._element;
+      return this._element; */
+  }
+
+  get innerHTML() {
+    return "";
+  }
+
+  get HTML() {
+    return `<${this.tagName} ${this.attributes.join("  ")}>${this.innerHTML}</${this.tagName}>`;
   }
 }
 
@@ -39,12 +55,12 @@ class ImageCup extends Cup {
       this.width = Number(this.comment.substr(commaIndex + 1));
     if (this.width == null || isNaN(this.width))
       this.width = 100;
+      this.tagName = "img";
+      this.attributes.push(`style="position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%"`);
+      this.attributes.push(`src="${this.source}"`);
+      this.attributes.push(`alt="${this.comment}"`);
   }
 
-  get HTML() {
-    return `<img style=\"position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%\" 
-      src=\"${this.source}\" alt=\"${this.comment}\" />`;
-  }
   
   //does not do replace (i.e. cups), but does do textreplace (dollars)
   
@@ -70,10 +86,13 @@ class AnchorCup extends Cup {
     [, this.text, this.url,] = str.split(/\[([^\]]*)]\(([^\)]*)\)/);
     if (!(this.url.startsWith("http://") || this.url.startsWith("https://")))
       this.url = "https://" + this.url;
+    this.tagName = "a";
+    this.attributes.push(`href="${this.url}"`);
+    this.attributes.push(`target="_blank">`);
   }
 
-  get HTML() {
-      return `<a href=\"${this.url}\" target=\"_blank\">${this.text}</a>`;
+  get innerHTML() {
+    return this.text;
   }
 
   //does not do replace (i.e. cups), but does do textreplace (dollars)
@@ -126,27 +145,13 @@ class FractionCup extends Cup {
   }
 }
 
-///does not replace chunks or dollars
-class CodeCup extends Cup {
-  children: ChunkCup[];
-  childrenHTML: any;
-  constructor(str) {
-    str = helpers.trimChar(str,"`");
-    str = helpers.trimChar(str,"\n");
-    super(str);
-    this.children = [new ChunkCup(str)];
-  }
-
-  get HTML() {
-    return `<div class="codeblock">${this.childrenHTML}</div>`;
-  }
-}
 
 
 class ChunkCup extends Cup {
 
   constructor(str) {
     super(str);
+    this.tagName = "span";
   }
 
   get thisConstructor() { return (s) => new ChunkCup(s); }
@@ -179,8 +184,7 @@ class ChunkCup extends Cup {
     this.str = this.str.replace(patternMakeItGlobal, replacer);
   }
 
-
-  get HTML() {
+  get innerHTML() {
     return this.str;
   }
 }
@@ -188,65 +192,48 @@ class ChunkCup extends Cup {
 class UnderlineCup extends ChunkCup {
   constructor(str) {
     super(str.substring(1,str.length-1));
+    this.tagName = "u";
   }
-
   get thisConstructor() { return (s) => new UnderlineCup(s); };
-
-  get HTML() {
-    return `<u>${this.str}</u>`;
-  }
 }
 
 class BoldCup extends ChunkCup {
   constructor(str) {
     super(str.replace("*", ""));
+    this.tagName = "b";
   }
   get thisConstructor() { return (s) => new BoldCup(s); };
-
-  get HTML() {
-    return `<b>${this.str}</b>`;
-  }
 }
 
 class SuperScriptCup extends ChunkCup {
   constructor(str) {
     super(str.replace("^", ""));
+    this.tagName = "sup";
   }
   get thisConstructor() { return (s) => new SuperScriptCup(s); };
-
-  get HTML() {
-    return `<sup>${this.str}</sup>`;
-  }
 }
 
 class SubScriptCup extends ChunkCup {
   constructor(str) {
     super(str.replace("~", ""));
+    this.tagName = "sub";
   }
   get thisConstructor() { return (s) => new SubScriptCup(s); };
-
-  get HTML() {
-    return `<sub>${this.str}</sub>`;
-  }
 }
 
 class TitleCup extends ChunkCup {
   constructor(str) {
     super(str.replace("#", ""));
+    this.tagName = "h1";
   }
   get thisConstructor() { return (s) => new TitleCup(s); };
-
-  get HTML() {
-    return `<h1>${this.str}</h1>`;
-  }
 }
-
-
 
 class CupContainer extends Cup {
   children: any;
   constructor(str) { 
     super(str); 
+    this.tagName = "div";
   }
 
   onThisAndChildren(action) {
@@ -278,8 +265,22 @@ class CupContainer extends Cup {
     return [this]; //needs to return an array since chunkcup does it
   }
 
-  get childrenHTML() {
+  get innerHTML() {
     return this.children.map(c => c.HTML).join("");
+  }
+}
+
+
+///does not replace chunks or dollars
+class CodeCup extends CupContainer {
+  children: ChunkCup[];
+  constructor(str) {
+    str = helpers.trimChar(str,"`");
+    str = helpers.trimChar(str,"\n");
+    super(str);
+    this.children = [new ChunkCup(str)];
+    this.attributes.push(`class="codeblock"`);
+    this.tagName = "div";
   }
 }
 
@@ -300,10 +301,7 @@ class RelativePositionCup extends CupContainer {
     this.xPos = Number(xPosAsString).toString() + (inPixels ? "px" : "%");
     this.yPos = Number(yPosAsString).toString() + (inPixels ? "px" : "%");
     this.children = [new ChunkCup(childrenAsString)];
-  }
-
-  get HTML() {
-    return `<div style=\"position:absolute;left:${this.xPos};top:${this.yPos}\">${this.childrenHTML}</div>`;
+    this.attributes.push(`style=\"position:absolute;left:${this.xPos};top:${this.yPos}\"`);
   }
 }
 
@@ -311,10 +309,6 @@ class InnerFractionCup extends CupContainer {
   constructor(str) {
     super(str);
     this.children = [new ChunkCup(str)];
-  }
-
-  get HTML() {
-    return this.childrenHTML;
   }
 }
 
@@ -325,23 +319,19 @@ class ParagraphCup extends CupContainer {
   }
 
   get HTML() {
-    return `<br>${this.childrenHTML}`;
+    return `<br>${this.innerHTML}`;
   }
 }
 
-
-
 class DivCup extends CupContainer {
-  class: any;
   _gridLinesDiv: HTMLDivElement;
   constructor(str) {
     super(str);
     this.children = [new ChunkCup(this.str)];
   }
 
-  get HTML() {
-    let classStr = this.class ? `class="${this.class}"` : "";
-    return `<div name='${this.UID}' ${classStr}>${this.childrenHTML}</div>`;
+  set class(value) {
+    this.attributes.push(`class="${value}"`)
   }
 
   toggleGridlines() {
@@ -389,14 +379,11 @@ class TableCup extends CupContainer {
   constructor(str) {
     super(str);
     this.hasBorder = str.startsWith("|");
-
+    this.tagName = "table";
     this.children = str.split("\n").filter(s => s.length > 0).map(s => new RowCup(s));
+    this.attributes.push(`class="markdowntable"`); 
+    this.attributes.push(`style="${this.hasBorder ? "" : "border: none;"}"`);
     //this.numCols = rows[0].children.Length;
-  }
-
-  get HTML() {
-    let borderStyle = this.hasBorder ? "" : "border: none;";
-    return `<table class="markdowntable" style="${borderStyle}" >${this.childrenHTML}</table>`;
   }
 }
 
@@ -404,88 +391,45 @@ class RowCup extends CupContainer {
   constructor(str) {
     super(str);
     this.children = str.split(/(\|[^\|]*)/).filter(s => s.length > 0).map(s => new CellCup(s));
-  }
-
-  get HTML() {
-    return "<tr>" + this.childrenHTML + "</tr>";
+    this.tagName = "tr";
   }
 }
 
 class CellCup extends CupContainer {
-  hasBorder: any;
-  isRelative: boolean;
   colSpan: any;
   constructor(str) {
     super(str);
-    this.hasBorder = str.startsWith("|");
     this.str = this.str.substring(1);
     this.children = [new ChunkCup(this.str)];
-    this.isRelative = false; //used only for markdown cells which need it in case of relativepositioncups   
-  }
-
-  get HTML() {
-    let borderStyle = this.hasBorder ? "" : " border: none;";
-    let colspanStyle = this.colSpan == null ? "" : " colspan=" + this.colSpan;
-    let isRelativeStyle = this.isRelative ? " position:relative;" : "";
-    return `<td name='${this.UID}' style=\"${borderStyle} ${isRelativeStyle}\" ${colspanStyle}>
-    ${this.childrenHTML}</td>`;
+    this.tagName = "td";
   }
 }
 
 //FIELD PRESENTATION LAYER
 class FieldCup extends Cup {
-  onResponse: () => void;
   defaultText: string;
   imageHTML: string;
-  disabledText: string;
   constructor(str, window) {
     super(str);
-    this.onResponse = function() {  }; //can be overwritten by solution 
     this.defaultText = "";
     this.imageHTML = "";
-    this.disabledText = "";
-  }
-
-  get formName() {
-    return ` name='${this.UID}' ${this.disabledText}`;
   }
   
   set elementValue(value) {
-    if (this.element) {
       this.element.value = value;
-    }
-    else {
-      this.defaultText = value;
-    }
   }
 
   get elementValue() {
-    if (this.element) {
       this.element.value = helpers.replaceAll(this.element.value,"x10^","e");
       return this.element.value;
-    }
-    else {
-      return this.defaultText;
-    }
   }
 
-
   set disabled(value) {
-    if (this.element) {
       this.element.disabled = value;
-    }
-    else {
-      this.disabledText =  value ? " disabled " : "";
-    }
   }
 
   get disabled() {
-    if (this.element) {
       return this.element.disabled;
-    }
-    else {
-      return this.disabledText == " disabled ";
-    }
   }
 
   src(image) {
@@ -516,7 +460,7 @@ class FieldCup extends Cup {
               sourceImage.id = id;
               element.parentElement.insertBefore(sourceImage,element.nextSibling);
           };
-      }(src,this.UID,element), 0);
+      }(src,this.instanceNum,element), 0);
   }
 
   showDecisionImage(image) {
@@ -547,21 +491,12 @@ class RadioCup extends FieldCup {
 
   //called by different cups which exist in the expression tree
   get HTML() {
-    return this.letter + `.<input type="radio" ${this.formName} value="${this.letter}" 
-    onclick="window['${this.UID}'].onResponse();" ${this.defaultText}>${this.imageHTML}`;
+    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" 
+    ">`;
   }
+  //onclick="Cup.getCup(${this.instanceNum}).onResponse();
+  //${this.imageHTML}
 
-  get elements() {
-      if (this._elements == undefined) {
-          var found = this.document.getElementsByName(this.UID);
-          this._elements = [];
-          for (var i = 0; i < found.length; i++) {
-            this._elements.push(found[i]);
-          }
-          if (this._elements.length < 1) { this._elements = undefined; }
-      }
-      return this._elements;
-  }
 
   get elementValue() {
       if (this.elements) { 
@@ -634,10 +569,10 @@ class TextAreaCup extends FieldCup {
   }
 
   get HTML() {
-    return `<br><textarea rows="10" ${this.formName} 
-     onblur="window['${this.UID}'].onResponse();">${this.defaultText}</textarea>${this.imageHTML}`;
+    return `<br><textarea ${this.attributes.join("  ")} rows="10"></textarea>`;
   }
-
+  //${this.imageHTML}
+//onblur="Cup.getCup(${this.instanceNum}).onResponse();">
 }
 
 class InputCup extends FieldCup {
@@ -646,9 +581,12 @@ class InputCup extends FieldCup {
   }
 
   get HTML() {
-    return `<input size="${this.str.length}" type="text" ${this.formName}  
-      onblur="window['${this.UID}'].onResponse();" value="${this.defaultText}">${this.imageHTML}`;
+    return `<input size="${this.str.length}" type="text" ${this.attributes.join("  ")}    
+       >`;
   }
+  //value="${this.defaultText}"
+  //${this.imageHTML}
+  //onblur="Cup.getCup(${this.instanceNum}).onResponse();"
 }
 
 
@@ -671,8 +609,10 @@ class ComboCup extends FieldCup {
       };
     }
     let optionHTML = this.options.map(optionFunc(this.defaultText)).join("");
-    return `<select ${this.formName}  onchange="window['${this.UID}'].onResponse();" >${optionHTML} </select>${this.imageHTML}`;
+    return `<select ${this.attributes.join("  ")} >${optionHTML} </select>`;
   }
+  //${this.imageHTML}
+  //onchange="window['${this.UID}'].onResponse();"
 
   //for replacing dollars with numbers etc.
   textReplace(pattern, getTemplateValue) //https://stackoverflow.com/questions/6605640/javascript-by-reference-vs-by-value
@@ -699,8 +639,9 @@ class CheckBoxCup extends FieldCup {
   }
 
   get HTML() {
-    return `<img src="${this.defaultText}" ${this.formName}  onclick="window['${this.UID}'].onResponse();">`;
+    return `<img ${this.attributes.join("  ")} src="${this.defaultText}" ${this.attributes.join("  ")} ">`;
   }
+  // onclick="window['${this.UID}'].onResponse();
 
   set hoverText(value) {
       this.element.title = value;
@@ -766,7 +707,7 @@ class PoundCup extends FieldCup {
   }
 
   get HTML() {
-    return `<span ${this.formName} >${this.defaultText}</span>`;
+    return `<span ${this.attributes.join("  ")} >${this.defaultText}</span>`;
   }
   
   //DOES NOT GET MARKED. NO DECISION IMAGE

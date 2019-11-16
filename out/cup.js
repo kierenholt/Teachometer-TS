@@ -14,26 +14,32 @@ var __extends = (this && this.__extends) || (function () {
 var Cup = /** @class */ (function () {
     function Cup(str) {
         this.str = str;
-        this.UID = helpers.createUID();
-        window[this.UID] = this;
-        this.document = window.document;
+        this.instanceNum = Cup.cupInstances.length;
+        Cup.cupInstances.push(this);
     }
+    Cup.elementCallingCup = function (instanceNum, element) {
+        Cup.cupInstances[instanceNum];
+    };
     Cup.prototype.onThisAndChildren = function (action) {
         action(this);
     };
     Object.defineProperty(Cup.prototype, "element", {
         get: function () {
-            if (this._element == undefined) {
-                var found = this.document.getElementsByName(this.UID);
-                if (found.length > 0) {
-                    this._element = found[0];
-                }
-            }
             return this._element;
+            /*
+              if (this._element == undefined) {
+                let found = this.document.getElementsByName(this.UID);
+                if (found.length > 0) { this._element = found[0]; }
+              }
+              return this._element; */
+        },
+        set: function (value) {
+            this._element = value;
         },
         enumerable: true,
         configurable: true
     });
+    Cup.cupInstances = [];
     return Cup;
 }());
 var ImageCup = /** @class */ (function (_super) {
@@ -609,7 +615,7 @@ var RadioCup = /** @class */ (function (_super) {
     Object.defineProperty(RadioCup.prototype, "HTML", {
         //called by different cups which exist in the expression tree
         get: function () {
-            return this.letter + (".<input type=\"radio\" " + this.formName + " value=\"" + this.letter + "\" \n    onclick=\"window['" + this.UID + "'].onResponse();\" " + this.defaultText + ">" + this.imageHTML);
+            return this.letter + (".<input type=\"radio\" " + this.formName + " value=\"" + this.letter + "\" \n    onclick=\"Cup.getCup(" + this.instanceNum + ").onResponse();\" " + this.defaultText + ">" + this.imageHTML);
         },
         enumerable: true,
         configurable: true
@@ -706,7 +712,7 @@ var TextAreaCup = /** @class */ (function (_super) {
     }
     Object.defineProperty(TextAreaCup.prototype, "HTML", {
         get: function () {
-            return "<br><textarea rows=\"10\" " + this.formName + " \n     onblur=\"window['" + this.UID + "'].onResponse();\">" + this.defaultText + "</textarea>" + this.imageHTML;
+            return "<br><textarea rows=\"10\" " + this.formName + " \n     onblur=\"Cup.getCup(" + this.instanceNum + ").onResponse();\">" + this.defaultText + "</textarea>" + this.imageHTML;
         },
         enumerable: true,
         configurable: true
@@ -720,7 +726,7 @@ var InputCup = /** @class */ (function (_super) {
     }
     Object.defineProperty(InputCup.prototype, "HTML", {
         get: function () {
-            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.formName + "  \n      onblur=\"window['" + this.UID + "'].onResponse();\" value=\"" + this.defaultText + "\">" + this.imageHTML;
+            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.formName + "  \n      onblur=\"Cup.getCup(" + this.instanceNum + ").onResponse();\" value=\"" + this.defaultText + "\">" + this.imageHTML;
         },
         enumerable: true,
         configurable: true
