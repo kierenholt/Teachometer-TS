@@ -1,6 +1,12 @@
 
 
 
+//dollars in template markdown need replacing with calculated templates BEFORE cups are rendered (e.g. ![]($$))
+//so templates need to be calculated BEFORE cups are rendered
+//so templates may request elementvalue BEFORE an element EXISTS!
+//so cups need values etc. BEFORE element exists!
+
+
 //RowHTML -> QuestionHTML -> TemplateHTML 
 class RowHTML {
     
@@ -15,7 +21,7 @@ class RowHTML {
     solutions: any[];
     _softErrors: any;
     
-    constructor(row, showTitle, settings) { //pass in a row object, sent from server side script
+    constructor(row, showTitle, settings) {
         this.row = row;
         this.settings = settings;
 
@@ -57,15 +63,34 @@ class RowHTML {
             this.marginDiv.appendChild(duplicateButton);        
         }
 
+
     }
 
     get outerDiv() { //called after constructor because parsing cellcups must happen first
         if (!this._cellCups) {
+
+            //parse markdown and attach cups to solutions
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
+            
+            //this also peforms calculation of solution values & templates
+            //and assigns decision images to stored responses
+            
+
+            //in case of grid, set element for both cellcups
+            this.cellCups[0].element = this.dynamicDiv.children[0];
+            if (this.cellCups[1]) {
+                this.cellCups[1].element = this.dynamicDiv.children[1];
+            }
+            
+            //match up newly made HTMLelements to existing cups, onresponse events
             let elems = helpers.descendants(this.dynamicDiv);
             for (let el of elems) {
-                
-                let cupFound = Cup.cupInstances
+                if (el.id && el.id.substr(0,3) == "cup") {
+                    let cupFound:FieldCup = FieldCup.instances[Number(el.id.substr(3,99))];
+                    if (cupFound) {
+                        cupFound.setElement(el);
+                    }
+                }
             }
         }
         return this._outerDiv;
@@ -77,6 +102,7 @@ class RowHTML {
     delete() {
         this._outerDiv.parentNode.removeChild(this._outerDiv);
     }
+
     getInjectorInstance() { return null; }
     
     replaceSudokuDollar(arg0: RegExp, arg1: (s: any) => InputCup, replaceSudokuDollar: any) {
@@ -129,14 +155,14 @@ class RowHTML {
 
                     //MUST GO AFTER THE IMAGES AND STUFF
 
-                    cellCup.replace(/(_{10,})/, (s) => { return new TextAreaCup(s,this.settings.window); }, null);
+                    cellCup.replace(/(_{10,})/, (s) => { return new TextAreaCup(s); }, null);
 
                     //replace inputs
-                    cellCup.replace(/(_{2,9})/, (s) => { return new InputCup(s,this.settings.window); }, null);
+                    cellCup.replace(/(_{2,9})/, (s) => { return new InputCup(s); }, null);
                     //replace checkboxes
-                    cellCup.replace(/(?:[^\!]|^)(\[\])/, (s) => { return new CheckBoxCup("",this.settings.window); }, null);
+                    cellCup.replace(/(?:[^\!]|^)(\[\])/, (s) => { return new CheckBoxCup(""); }, null);
                     //replace pound signs
-                    cellCup.replace(/(££)/, (s) => { return new PoundCup("",this.settings.window); }, null);
+                    cellCup.replace(/(££)/, (s) => { return new PoundCup(""); }, null);
 
                     //decides whether to replace radio given A. B. C. letter order. ;
                     let replaceRadioInjector = function() {
@@ -152,15 +178,17 @@ class RowHTML {
                       }
 
                     //replace radio buttons
-                    cellCup.replace(/(?:^|\s)([A-Z]\.)/, (s) => { return new RadioCup(s,this.settings.window) }, replaceRadioInjector());
+                    cellCup.replace(/(?:^|\s)([A-Z]\.)/, (s) => { return new RadioCup(s) }, replaceRadioInjector());
 
                     //replace combos
-                    cellCup.replace(/({[^}]+\/[^}]+})/, (s) => { return new ComboCup(s,this.settings.window) }, null);
+                    cellCup.replace(/({[^}]+\/[^}]+})/, (s) => { return new ComboCup(s) }, null);
                     
                     //sudoku needs some dollars hiding!
                     if (this.row.purpose == "sudoku") {                          
-                        cellCup.replace(/(\$\$)/, (s) => { return new InputCup("___",this.settings.window); }, this.replaceSudokuDollar);
+                        cellCup.replace(/(\$\$)/, (s) => { return new InputCup("___"); }, this.replaceSudokuDollar);
                     }
+                
+                //REPLACE DOLLARS
 
                     //replace dollars and create solutions array in questions and templates
                     if (injectorInstance) {
@@ -240,27 +268,11 @@ class RowHTML {
         return this._cellCups;
     }
 
-
-    get softErrors() { //errors that can be rendered by pdf
-        if (this._softErrors == null) {
-            this._softErrors = [];
-        }
-        return this._softErrors;
-    }
-
-
     get revealSection() {
         return `<section><section>
             <h1>${this.row.title}</h1>
             <div class="dynamic">${this.dynamicDiv.innerHTML}</div>
         </section></section>`;
-
-        /*
-<table style="border-collapse: collapse; table-layout: fixed; width: 100%">
-        <tr><td colspan="2"><h3>${this.row.title}</h1></td></tr>
-        <tr>${this.cellCups.map(c => c.HTML).join("")}</tr>
-        </table>
-        */
     }
 
 }
@@ -368,7 +380,7 @@ class QuestionHTML extends RowHTML {
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     injector(paramTemplates, paramSolutions, paramSettings)  {
             
-            var firstRadioCup = null;
+            var currentRadioSet = null;
             var templates = paramTemplates.slice().reverse();
             var solutions = paramSolutions;
             var settings =  paramSettings;
@@ -396,12 +408,13 @@ class QuestionHTML extends RowHTML {
             return function(fieldCup) {
                 if (fieldCup != null && fieldCup instanceof FieldCup) {
                     if (fieldCup instanceof RadioCup) {
-                        if (fieldCup.letter == 'A' || firstRadioCup == null) {
-                            addSolution(fieldCup);
-                            firstRadioCup = fieldCup;
+                        if (fieldCup.letter == 'A' || currentRadioSet == null) {
+                            currentRadioSet = new RadioSet();
+                            currentRadioSet.add(fieldCup);
+                            addSolution(currentRadioSet);
                         }
                         else { //do not increment with next radios
-                            firstRadioCup.add(fieldCup);
+                            currentRadioSet.add(fieldCup);
                         }
                     }
                     else { //input or select or textarea etc.

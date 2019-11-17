@@ -6,22 +6,12 @@ class Cup {
   attributes = [];
   tagName = "";
   
-  constructor(str) {
-    this.str = str;
-  }
+  constructor(str) { this.str = str; }
 
-  onThisAndChildren(action) {
-    action(this);
-  }
+  onThisAndChildren(action) { action(this); }
 
-
-  get innerHTML() {
-    return "";
-  }
-
-  get HTML() {
-    return `<${this.tagName} ${this.attributes.join("  ")}>${this.innerHTML}</${this.tagName}>`;
-  }
+  get innerHTML() { return ""; }
+  get HTML() { return `<${this.tagName} ${this.attributes.join("  ")}>${this.innerHTML}</${this.tagName}>` }
 }
 
 class ImageCup extends Cup {
@@ -78,7 +68,6 @@ class AnchorCup extends Cup {
   }
 
   //does not do replace (i.e. cups), but does do textreplace (dollars)
-
   //for replacing dollars with numbers etc.
   textReplace(patternMakeItGlobal, getTemplateValue) //https://stackoverflow.com/questions/6605640/javascript-by-reference-vs-by-value
   {
@@ -307,6 +296,8 @@ class ParagraphCup extends CupContainer {
 
 class DivCup extends CupContainer {
   _gridLinesDiv: HTMLDivElement;
+  element: HTMLDivElement;
+
   constructor(str) {
     super(str);
     this.children = [new ChunkCup(this.str)];
@@ -387,12 +378,30 @@ class CellCup extends CupContainer {
   }
 }
 
+enum decisionImageEnum {
+  None,
+  Star,
+  Cross,
+  Tick,
+  Hourglass,
+  Error
+}
+
+interface Field {
+  onResponse();
+  elementValue: any;
+  disabled: boolean;
+  decisionImage: decisionImageEnum;
+
+}
+
 //FIELD PRESENTATION LAYER
-class FieldCup extends Cup {
+class FieldCup extends Cup implements Field {
   instanceNum: number;
-  static instances: Cup[] = [];
+  static instances: FieldCup[] = [];
   _element: any;
-  hasRealElement: boolean;
+  _decisionImage: decisionImageEnum;
+  _decisionElement: HTMLImageElement;
 
   constructor(str) {
     super(str);
@@ -400,157 +409,140 @@ class FieldCup extends Cup {
     FieldCup.instances.push(this);
     this._element = {value: "", "disabled": false};
     this.attributes.push(`id=cup${this.instanceNum}`);
-    this.hasRealElement = false;
+    this._decisionImage = decisionImageEnum.None;
   }
   
   set elementValue(value) {
-      this.element.value = value;
+      this._element.value = value;
   }
 
   get elementValue() {
-      this.element.value = helpers.replaceAll(this.element.value,"x10^","e");
-      return this.element.value;
+      this._element.value = helpers.replaceAll(this._element.value,"x10^","e");
+      return this._element.value;
   }
 
-  set element(newElement: any) {
+  setElement(newElement: any) {
     //replaces the dummy element with a real HTML input element
     newElement.value = this._element.value;
     newElement.disabled = this._element.disabled;
     this._element = newElement;
-    this.hasRealElement = true;
+
+    //get decision image, update
+    this._decisionElement = newElement.nextSibling;
+    this.decisionImage = this._decisionImage;
   }
 
-  set disabled(value) { this._element.disabled = value;  }
+  get decisionImageHTML() { return `<img style:"z-index:100;display:none" hidden />`}
+
+  set disabled(value) { 
+    this._element.disabled = value;
+    this._decisionElement.hidden = value;  
+  }
   get disabled() { return this._element.disabled; }
 
-  src(image) {
-    if (image == "star") { return imageData.star; }
-    else if (image == "tick") { return imageData.tick; }
-    else if  (image == "cross") { return imageData.cross; }
+  set decisionImage(value:decisionImageEnum) {
+    this._decisionImage = value;
+    if (this._decisionElement) 
+    {
+      if (this._decisionImage == decisionImageEnum.None) {
+        this._decisionElement.hidden = true;
+      } 
+      else {
+        this._decisionElement.hidden = false;
+        this._decisionElement.src = this.decisionToDataURL(value);
+      } 
+    }
   }
 
-  prependImage(src,element) {
-      setTimeout(function(paramsrc, paramid, paramelement) {
-          var src = paramsrc;
-          var id = paramid;
-          var element = paramelement;
-
-          return function() {
-              //clear old image away
-              let images = this.document.getElementsByTagName("IMG");
-              for (var i=0, image; image = images[i]; i++) {
-                 if (image.id == id) { image.parentElement.removeChild(image); } 
-              }
-
-              //create new image
-              let sourceImage = this.document.createElement('img');
-              sourceImage.src = src;
-
-              //16x16 png
-              sourceImage.style.zIndex = "100";
-              sourceImage.id = id;
-              element.parentElement.insertBefore(sourceImage,element.nextSibling);
-          };
-      }(src,this.instanceNum,element), 0);
-  }
-
-  showDecisionImage(image) {
-    if (this.hasRealElement) {
-      this.prependImage(this.src(image), this.element);
-    }
-    else {
-      //this.imageHTML = `<img src="${this.src(image)}">`;
-    }
+  onResponse() { } //to be overridden;
+  
+  decisionToDataURL(decision:decisionImageEnum) {
+    if (decision == decisionImageEnum.Cross) { return imageData.cross; }
+    if (decision == decisionImageEnum.Error) { return imageData.error; }
+    if (decision == decisionImageEnum.Hourglass) { return imageData.hourglass; }
+    if (decision == decisionImageEnum.Star) { return imageData.star; }
+    if (decision == decisionImageEnum.Tick) { return imageData.tick; }
+    return "";
   }
 }
 
-class RadioCup extends FieldCup {
+class RadioSet implements Field {
+  disabled: boolean; //needs to extend fieldcup so it works with solution
+  radioCups: RadioCup[];
+  _element: any;
+  static numInstances = 0;
+  instanceNum: any;
+  _decisionImage: decisionImageEnum;
+  _cachedOnResponse: any;
+
+  constructor() {
+    this.radioCups = [];
+    this.instanceNum = RadioSet.numInstances++;
+    this._element = {value: "", "disabled": false};
+    this._decisionImage = decisionImageEnum.None;
+  }
+  
+  set decisionImage(value:decisionImageEnum) {
+    //remove all decisions first
+    this.radioCups.forEach(r => r.decisionImage = decisionImageEnum.None);
+    //apply image to checked radio only
+    let found = this.radioCups.filter(r => r.elementValue == true);
+    if (found) {
+      found[0].decisionImage = value;
+    }
+  }
+
+  //called by rowHTML injector
+  add(radioCup:RadioCup) {
+    this.radioCups.push(radioCup);
+    radioCup.onResponse = this._cachedOnResponse;
+    //add formname to all radiocups so only one can be selected at a time
+    radioCup.attributes.push(`name=radioSet${this.instanceNum}`); 
+  }
+  
+  set onResponse(value) {
+    this._cachedOnResponse = value;
+    this.radioCups.forEach(r => r.onResponse = value);
+  }
+
+  get elementValue() { 
+    let found = this.radioCups.filter(r => r.elementValue);
+    if (found) {return found[0].letter; }
+    return "";
+  }
+  set elementValue(value) {
+    this.radioCups.forEach(r => r.elementValue = (r.letter == value));
+  }
+}
+
+class RadioCup extends FieldCup { //needs to extend fieldcup for the instancenum stuff
   letter: any;
   radioCups: this[];
   _elements: any;
+
   constructor(str) {
     super(str);
     this.letter = str[0];
     this.radioCups = [this];
-  }
-
-  //called by rowHTML injector
-  add(radioCup) {
-    radioCup.UID = this.UID;
-    this.radioCups.push(radioCup);
+    this._element = {checked: false, "disabled": false};
   }
 
   //called by different cups which exist in the expression tree
   get HTML() {
-    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" >`;
+    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" >${this.decisionImageHTML}`;
   }
-  //onclick="Cup.getCup(${this.instanceNum}).onResponse();
-  //${this.imageHTML}
-
-
-  get elementValue() {
-      if (this.elements) { 
-        let found = this.elements.filter(r => r.checked);
-        if (found.length > 0) {
-          return found[0].value;
-        }
-        return null;
-      }
-      else {
-        let found = this.radioCups.filter(r => r.defaultText == " checked ");
-        if (found.length > 0) {
-          return found[0].letter;
-        }
-        return null;
-      }
+  
+  setElement(newElement) {
+    super.setElement(newElement);
+    //attach onresponse function to click event 
+    newElement.onclick = function(paramCup) {
+      let cup = paramCup; 
+      return function() { cup.onResponse(); }
+    }(this);
   }
 
-  showDecisionImage(image) {
-    if (this.elements) {
-      let found = this.elements.filter(r => r.checked);
-      if (found.length > 0) {
-        this.prependImage(this.src(image), found[0]);
-      }
-    }
-    else {
-      this.radioCups.forEach(function(r) {
-        if (r.defaultText == " checked ") {
-          r.imageHTML = `<img src="${r.src(image)}" id="${r.UID}">`;
-        }
-        else {
-          r.imageHTML = "";          
-        }
-      });
-    }
-  }
-
-  set elementValue(value) {
-    if (this.elements) {
-      this.elements.forEach(r => r.checked = (r.letter == value));
-    }
-    else {
-      this.radioCups.forEach(r => r.defaultText = (value == r.letter) ? " checked " : "");
-    }
-  }
-
-  set disabled(value) {
-    if (this.elements) {
-      this.elements.forEach(e => e.disabled = value);
-    }
-    else {
-      this.radioCups.forEach(r => r.disabledText = value ? " disabled " : "");
-    }
-  }
-
-  get disabled() {
-    if (this.elements) {
-      return this.elements[0].disabled;
-    }
-    else {
-      return this.disabledText == " disabled ";
-    }
-  }
-
+  get elementValue() { return this._element.checked; } //true or false
+  set elementValue(value) { this._element.checked = (value == true); } //true or false
 }
 
 class TextAreaCup extends FieldCup {
@@ -561,8 +553,15 @@ class TextAreaCup extends FieldCup {
   get HTML() {
     return `<br><textarea ${this.attributes.join("  ")} rows="10"></textarea>`;
   }
-  //${this.imageHTML}
-//onblur="Cup.getCup(${this.instanceNum}).onResponse();">
+
+  setElement(newElement) {
+    super.setElement(newElement);
+    //attach onresponse function to blur event 
+    newElement.onblur= function(paramCup) {
+      let cup = paramCup; 
+      return function() { cup.onResponse(); }
+    }(this);
+  }
 }
 
 class InputCup extends FieldCup {
@@ -571,15 +570,18 @@ class InputCup extends FieldCup {
   }
 
   get HTML() {
-    return `<input size="${this.str.length}" type="text" ${this.attributes.join("  ")}    
-       >`;
+    return `<input size="${this.str.length}" type="text" ${this.attributes.join("  ")} >${this.decisionImageHTML}`;
   }
-  //value="${this.defaultText}"
-  //${this.imageHTML}
-  //onblur="Cup.getCup(${this.instanceNum}).onResponse();"
+  
+  setElement(newElement) {
+    super.setElement(newElement);
+    //attach onresponse function to blur event 
+    newElement.onblur= function(paramCup) {
+      let cup = paramCup; 
+      return function() { cup.onResponse(); }
+    }(this);
+  }
 }
-
-
 
 class ComboCup extends FieldCup {
   options: string[];
@@ -589,20 +591,18 @@ class ComboCup extends FieldCup {
   }
 
   get HTML() {
-    let optionFunc = function(paramDefaultText) {
-      let defaultText = paramDefaultText; 
-      return function(o) { 
-        if (o == defaultText) {
-          return `<option value='${o}' selected>${o}</option>`      
-        }
-        return `<option value='${o}' >${o}</option>`
-      };
-    }
-    let optionHTML = this.options.map(optionFunc(this.defaultText)).join("");
-    return `<select ${this.attributes.join("  ")} >${optionHTML} </select>`;
+    let optionHTML = this.options.map(o => `<option value='${o}'>${o}</option>`).join("");
+    return `<select ${this.attributes.join("  ")} >${optionHTML} </select>${this.decisionImageHTML}`;
   }
-  //${this.imageHTML}
-  //onchange="window['${this.UID}'].onResponse();"
+  
+  setElement(newElement) {
+    super.setElement(newElement);
+    //attach onresponse function to blur event 
+    newElement.onchange= function(paramCup) {
+      let cup = paramCup; 
+      return function() { cup.onResponse(); }
+    }(this);
+  }
 
   //for replacing dollars with numbers etc.
   textReplace(pattern, getTemplateValue) //https://stackoverflow.com/questions/6605640/javascript-by-reference-vs-by-value
@@ -621,73 +621,39 @@ class ComboCup extends FieldCup {
 
 
 class CheckBoxCup extends FieldCup {
-  _image: string;
   constructor(str) {
     super(str);
-    this._image = "hourglass";
-    this.defaultText = imageData.hourglass;
+    this._decisionImage = decisionImageEnum.Hourglass;
   }
 
-  get HTML() {
-    return `<img ${this.attributes.join("  ")} src="${this.defaultText}" ${this.attributes.join("  ")} ">`;
+  get HTML() { //empty element
+    return `<span ${this.attributes.join("  ")} ></span>${this.decisionImageHTML}`;
   }
-  // onclick="window['${this.UID}'].onResponse();
+  
+  setElement(newElement) {
+    super.setElement(newElement);
+    this._element =  {value:"",disabled:false}; //no element
+  }
 
   set hoverText(value) {
-      this.element.title = value;
+      this._element.title = value;
   }
   
   set elementValue(value:any) {
     if ((value == "✓") || (value == true)) { 
-        this._image = "tick"; 
+      this._element.value = "tick";  //just stored for markbook
     }
     if ((value == "✗") || (value == false)) { 
-        this._image = "cross"; 
+      this._element.value = "cross"; 
     }
     if (value == "!") {
-      this._image = "error"; 
-    }
-    if (this.element) {
-      this.element.src = imageData[this._image];
+      this._element.value = "error"; 
     }
   }
 
   get elementValue() {
-    if (this._image == "tick") { return "✓"; }
-    if (this._image == "cross") { return "✗"; } 
-    if (this._image == "error") { return "!"; }  
-    if (this._image == "hourglass") { return "⌛"; } 
-    return "";
+    return this._element.value;
   }
-
-  showDecisionImage(image) {
-    this._image = image;
-    if (this.element) {
-      this.element.src = imageData[image];
-    }
-    else {
-      this.defaultText = imageData[this._image];
-    }
-  }
-
-  set disabled(value) {
-    if (this.element) {
-      this.element.hidden = value;
-    }
-    else {
-      this.disabledText = " hidden ";
-    }
-  }
-
-  get disabled() {
-    if (this.element) {
-      return this.element.hidden;
-    }
-    else {
-      return this.disabledText == " hidden ";
-    }
-  }
-
 }
 
 
@@ -697,26 +663,22 @@ class PoundCup extends FieldCup {
   }
 
   get HTML() {
-    return `<span ${this.attributes.join("  ")} >${this.defaultText}</span>`;
+    return `<span ${this.attributes.join("  ")} ></span>`; //no decision image
   }
   
+  setElement(newElement) {
+    super.setElement(newElement);
+    //no change event etc. `
+    //no decision element
+  }
+
   //DOES NOT GET MARKED. NO DECISION IMAGE
   set elementValue(value) {
-    if (this.element) {
-      this.element.innerText = value;
-    }
-    else {
-      this.defaultText = value;
-    }
+    this._element.innerText = value;
   }
 
   get elementValue() {
-    if (this.element) {
-      return this.element.innerText;
-    }
-    else {
-      return this.defaultText;
-    }
+    return this._element.innerText;
   }
 
   showDecisionImage(image) {
@@ -724,30 +686,7 @@ class PoundCup extends FieldCup {
   }
 
   set isRed(value) {
-    if (this.element) {
-      this.element.style.color = value ? "red" : "" ;
-    }
-    else {
-      this.disabledText = " hidden ";
-    }
-  }
-
-  set disabled(value) {
-    if (this.element) {
-      this.element.hidden = value;
-    }
-    else {
-      this.disabledText = " hidden ";
-    }
-  }
-
-  get disabled() {
-    if (this.element) {
-      return this.element.hidden;
-    }
-    else {
-      return this.disabledText == " hidden ";
-    }
+    this._element.style.color = value ? "red" : "" ;
   }
 }
 

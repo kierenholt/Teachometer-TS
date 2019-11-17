@@ -83,8 +83,8 @@
 					{
 						"purpose" : row.cells[0].innerHTML, 
 						"leftRight" : [row.cells[1].innerHTML,row.cells[2].innerHTML], 
-						"title" : "title", 
-						"comment" : row.cells[3].innerHTML
+						"title" :  row.cells[3].innerHTML,
+						"comment" : row.cells[4].innerHTML
 					}
 				);
 		}
@@ -136,20 +136,36 @@
 
 	<table id="tests" hidden>
 
-		<tr><td>template</td>
-			<td>$$ + $$ = ___</td><td></td><td>2..5
-2..5
-a+b</td></tr>
+		<tr><td>notes</td>
+			<td>left</td>
+			<td>right</td>
+			<td>title</td>
+			<td>comment</td>
+</tr>
 
-			</table>
-			<!------------------------END OF TABLE-->
-
-			<tr><td>template</td>
+			<tr><td>notes</td>
 				<td>![](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png)
-@[10,20](RELATIVE)</td><td>__</td><td>some stuff</td></tr>
-					
+@[10,20](RELATIVE)</td>
+<td>__</td>
+<td>relative container</td>
+<td></td>
+</tr>
+				
+		<tr>
+			<td>question</td>
+			<td>
+			what colour is the sky ? A. red B. blue C. something else
+			what colour is the sky? ____
+			what colour is the sky? {red/green/blue}
+			</td>
+			<td><td>question types - check correct columns are updated in markbook</td>
+			<td>B
+blue
+blue
+</td>
+		</tr>	
 
-<tr><td>template</td><td>
+<tr><td>notes</td><td>
 ```
 code
 goes here
@@ -157,46 +173,39 @@ goes here
         indent
         ___ shouldnt be input box ?
 ```
-</td><td></td><td></td></tr>
-
-<tr><td>template</td><td>what is the remainder of $$ when it is divided by $$? ____</td><td></td><td>1e9..1e10
-3,4,5,6,9
-a%b</td></tr>
-
-		<tr>
-			<td>template</td>
-			<td>late template 
-dayName(__,__,___) => ££
-			</td>
-			<td></td>
-			<td>variable("A")
-variable("B")
-variable("C")
-dayName(A,B,C)
 </td>
-		</tr>
+<td></td>
+<td>code needs to respect white space</td>
+<td></td></tr>
+
+<tr>
+	<td>template</td>
+	<td>what is the remainder of $$ when it is divided by $$? ____</td><td></td>
+	<td>simple template</td>
+	<td>1e9..1e10
+3,4,5,6,9
+a%b</td>
+</tr>
 
 		<tr>
 			<td>template</td>
-			<td>late template 
-dayOfYear(__,__,___) => ££
-~[top](bottom)
-			</td>
+			<td>__ + __ = ££</td>
 			<td></td>
+			<td>late evaluation</td>
 			<td>variable("A")
 variable("B")
-variable("C")
-dayOfYear(A,B,C)
+A + B
 </td>
 		</tr>
 
 		<tr>
 			<td>template</td>
 			<td>normal template
-			$$ + $$ = __
-			$$ includes $$ = $$
+			$$ + $$ => __
+			$$ includes $$ => $$
 			</td>
 			<td></td>
+			<td>normal template, includes character</td>
 			<td>22..44
 22..44//
 a+b
@@ -218,181 +227,69 @@ _enter custom parameters here_
 isTheWeekend(__) => ££
 isTheWeekend([2,3]) => ££
 isTheWeekend([2,3]) == 1 []</td><td>
-</td><td>code("isTheWeekend")
+</td>
+<td>code</td>
+<td>code("isTheWeekend")
 variable("B")
 isTheWeekend(B)
 isTheWeekend([2,3])
 isTheWeekend([2,3]) == 1
 </td></tr>
 
-		<tr>
-			<td>question</td>
-			<td>normal question: 
-			what colour is the sky ? A. red B. blue C. something else
-			what colour is the sky? ____
-			what colour is the sky? {red/green/blue}
-			</td>
-			<td>![](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png)</td>
-			<td>B
-blue
-blue
-</td>
-		</tr>
 	
-		<tr>
-			<td>question</td>
-			<td>link with underscores: [link](www.google__.com) 			
-			</td><td><td></td>
-		</tr>
-        
-        
+	
         <tr>
 			<td>template</td>
-			<td>varying link: [google]($$) 			
-			</td><td><td>"www.google.com"</td>
+			<td>varying link: [google]($$) 			</td>
+			<td></td>
+			<td>templated link</td>
+			<td>"www.google.com"</td>
 		</tr>
 		
         <tr>
 			<td>template</td>
-			<td>varying image: ![google]($$) 			
-			</td><td><td>"https://i.imgur.com/K5bKuxQ.jpg"</td>
+			<td>![google]($$)</td><td></td>
+		<td>templated image</td>
+		<td>"https://i.imgur.com/K5bKuxQ.jpg"</td>
 		</tr>
 
-<tr><td>template</td><td>$$ = {odd/even}</td><td></td><td>1..9
+<tr><td>template</td>
+	<td>$$ = {odd/even}</td>
+	<td></td>
+	<td>template with if</td>
+	<td>1..9
 if((a%2==0),"even","odd")</td></tr>
 
-<tr><td>template</td><td>$$ $$ $$</td><td></td><td>padrightzeroes(b,4)
-1</td></tr>
 
-<tr><td>template</td><td>The number $$ is half way between $$ and ___ </td><td></td><td>b+d
-(-5)..(-1)
-a+d
-2..9</td></tr>
-
-<tr><td>template</td><td>A ball is dropped from a height of $$ cm. Each bounce is  ~[$$]($$) of the height of the bounce before it.
-
-What is the height reached between bounce number $$ and bounce number $$? ___ cm
-What is the total distance travelled by the ball before bounce number $$? ___ cm</td><td></td><td>pow(c,5)
-coprime(c)
-2..3
-2..4
-d+1
-a*pow(b,d)/pow(c,d)
-1..4
-a+if(g>1,2*a*b/c,0)+if(g>2,2*a*b*b/(c*c),0)+if(g>3,2*a*b*b*b/(c*c*c),0)</td></tr>
-
-<tr><td>template</td><td>Kev attempted four free dives. Freediving is when you try to go as deep as you can underwater in a single breath. 
+<tr><td>template</td>
+	<td>Kev attempted four free dives. Freediving is when you try to go as deep as you can underwater in a single breath. 
 The depths he achieved were: $$, $$, $$, and $$m
 
-What was his average depth? ___ m</td><td></td><td>e+(-50..50)*0.01
+What was his average depth? ___ m</td>
+<td></td>
+<td>too many dps</td>
+<td>e+(-50..50)*0.01
 e+(-50..50)*0.01
 e+(-50..50)*0.01
 4*e-a-b-c
 (3000..5000)*0.01</td></tr>
 
-<tr><td>template</td><td>$$, $$, $$, $$, $$, ___</td><td></td><td>(2..5)
-(a+(1..3)),(4*a),(8*a)
-(a+b),(9*a),(27*a)
-(b+c),(16*a),(64*a)
-(c+d),(25*a),(125*a)
-(d+e),(36*a),(216*a)</td></tr>
-
-
-
 		<tr>
 			<td>template</td>
-			<td>late template 
-__ + __ = ££
-			</td>
-			<td></td>
-			<td>variable("A")
-variable("B")
-A + B
-</td>
-		</tr>
-
-	
-
-		<tr>
-			<td>template</td>
-			<td>FAULTY TEMPLATE $$ + $$^$$ = ___
-			</td>
-			<td></td>
-			<td>2..9
-2..5
-2
-d</td>
-		</tr>
-
-
-		<tr>
-			<td>template</td>
-			<td>$$ is $$   [link](www.google.com)</td>
-			<td></td>
-			<td>2..9
-if(a%2==0,"even","odd")</td>
-		</tr>
-
-		<tr>
-			<td>template</td>
-			<td>___ [] includes "w"</td>
-			<td></td>
-			<td>variable("A")
-includes(A,"w")</td>
-		</tr>
-		
-		<tr>
-			<td>template</td>
-			<td>think of an even number ___ 
-			is it even? []</td>
-			<td></td>
-			<td>variable("A")
-A%2 == 0			</td>
-		</tr>
-
-
-		<tr>
-			<td>template</td>
-			<td>code goes here: _____________________
-</td>
-			<td>|test|result|pass or fail
-|add5(__,__)|££|
-|add5(5) == 10|££|[] 
-|add5(1) == 6|££|[] 
-|hidden| |[]</td>
-			<td>code("add5")
-variable("B")
-variable("C")
-add5(B,C)
-add5(5)
-add5(5) == 10
-add5(1)
-add5(1) == 6
-add5(50) == 55
-</td>
-		</tr>
-		
-
-
-
-
-		<tr>
-			<td>template</td>
-			<td>_console_ __________________________ 
+			<td>__________________________ 
 _result_
 ££</td>
-			<td></td>
-			<td>code("console")
+<td></td>
+<td>console</td>
+<td>code("console")
 console()</td>
 		</tr>
-
-
-
 
 	<tr>
 			<td>sudoku</td>
 			<td>$$ $$ $$ $$</td>
 			<td></td>
+			<td>sudoku</td>
 			<td>2..9
 a + 2
 b + 2
@@ -400,53 +297,6 @@ c + 2
     </td>
 		</tr>
 		
-<tr>
-
-			<td>notes</td>
-			<td>
-***QUESTION ROW***
-no template. 
-check for numeric. 
-simple comparison.
-
-***TEMPLATE ROW***
-*without variable function (first time only)
-turn comment into simpleexpression
-evaluate expression tree
-compare result with input
-
-*with variable function (late evalu) 
-turn comment into simpleexpression
-evaluate expression tree
-compare result with input
-
-***FUNCTION EXPRESSIONS***
-parameters are always JSON stringified input
-therefore must always output a JSON stringified object
-also can take result of "variable" formula (another template comment -> calculatedvalue) 
-therefore template calculatedvalue must always output a JSON stringified object
-
-
-***TO DO***
-include show errors option which adds error text after solution/field 
-
-***TESTING***
-=BUILDER=
-add row
-print
-publish to site
-present
-=SITES=
-settings are applied from markbook
-responses are stored in markbook
-responses are added on second view
-score is updated after each response</td>
-			<td></td>
-			<td>4
-			</td>
-
-</tr>
-
 	</table>
 <div id="buttons" class="hideOnPrint">
 	<button id=button type="button" onclick="doStuff()">output</button> 
