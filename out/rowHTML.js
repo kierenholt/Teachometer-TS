@@ -1,3 +1,7 @@
+//dollars in template markdown need replacing with calculated templates BEFORE cups are rendered (e.g. ![]($$))
+//so templates need to be calculated BEFORE cups are rendered
+//so templates may request elementvalue BEFORE an element EXISTS!
+//so cups need values etc. BEFORE element exists!
 var __extends = (this && this.__extends) || (function () {
     var extendStatics = function (d, b) {
         extendStatics = Object.setPrototypeOf ||
@@ -55,7 +59,26 @@ var RowHTML = /** @class */ (function () {
     Object.defineProperty(RowHTML.prototype, "outerDiv", {
         get: function () {
             if (!this._cellCups) {
+                //parse markdown and attach cups to solutions
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
+                //this also peforms calculation of solution values & templates
+                //and assigns decision images to stored responses
+                //in case of grid, set element for both cellcups
+                this.cellCups[0].element = this.dynamicDiv.children[0];
+                if (this.cellCups[1]) {
+                    this.cellCups[1].element = this.dynamicDiv.children[1];
+                }
+                //match up newly made HTMLelements to existing cups, onresponse events
+                var elems = helpers.descendants(this.dynamicDiv);
+                for (var _i = 0, elems_1 = elems; _i < elems_1.length; _i++) {
+                    var el = elems_1[_i];
+                    if (el.id && el.id.substr(0, 3) == "cup") {
+                        var cupFound = FieldCup.instances[Number(el.id.substr(3, 99))];
+                        if (cupFound) {
+                            cupFound.setElement(el);
+                        }
+                    }
+                }
             }
             return this._outerDiv;
         },
@@ -81,7 +104,6 @@ var RowHTML = /** @class */ (function () {
     };
     Object.defineProperty(RowHTML.prototype, "cellCups", {
         get: function () {
-            var _this = this;
             if (this._cellCups == null) {
                 this._cellCups = [];
                 //for questionHTML this persists the dollar replacer etc.
@@ -114,13 +136,13 @@ var RowHTML = /** @class */ (function () {
                         cellCup.replace(/(!\[[^\]]*]\([^\)]*\))/, function (s) { return new ImageCup(s); }, null);
                         //INPUTS 
                         //MUST GO AFTER THE IMAGES AND STUFF
-                        cellCup.replace(/(_{10,})/, function (s) { return new TextAreaCup(s, _this.settings.window); }, null);
+                        cellCup.replace(/(_{10,})/, function (s) { return new TextAreaCup(s); }, null);
                         //replace inputs
-                        cellCup.replace(/(_{2,9})/, function (s) { return new InputCup(s, _this.settings.window); }, null);
+                        cellCup.replace(/(_{2,9})/, function (s) { return new InputCup(s); }, null);
                         //replace checkboxes
-                        cellCup.replace(/(?:[^\!]|^)(\[\])/, function (s) { return new CheckBoxCup("", _this.settings.window); }, null);
+                        cellCup.replace(/(?:[^\!]|^)(\[\])/, function (s) { return new CheckBoxCup(""); }, null);
                         //replace pound signs
-                        cellCup.replace(/(££)/, function (s) { return new PoundCup("", _this.settings.window); }, null);
+                        cellCup.replace(/(££)/, function (s) { return new PoundCup(""); }, null);
                         //decides whether to replace radio given A. B. C. letter order. ;
                         var replaceRadioInjector = function () {
                             var nextLetter = 'A';
@@ -133,13 +155,14 @@ var RowHTML = /** @class */ (function () {
                             };
                         };
                         //replace radio buttons
-                        cellCup.replace(/(?:^|\s)([A-Z]\.)/, function (s) { return new RadioCup(s, _this.settings.window); }, replaceRadioInjector());
+                        cellCup.replace(/(?:^|\s)([A-Z]\.)/, function (s) { return new RadioCup(s); }, replaceRadioInjector());
                         //replace combos
-                        cellCup.replace(/({[^}]+\/[^}]+})/, function (s) { return new ComboCup(s, _this.settings.window); }, null);
+                        cellCup.replace(/({[^}]+\/[^}]+})/, function (s) { return new ComboCup(s); }, null);
                         //sudoku needs some dollars hiding!
                         if (this.row.purpose == "sudoku") {
-                            cellCup.replace(/(\$\$)/, function (s) { return new InputCup("___", _this.settings.window); }, this.replaceSudokuDollar);
+                            cellCup.replace(/(\$\$)/, function (s) { return new InputCup("___"); }, this.replaceSudokuDollar);
                         }
+                        //REPLACE DOLLARS
                         //replace dollars and create solutions array in questions and templates
                         if (injectorInstance) {
                             cellCup.onThisAndChildren(injectorInstance);
@@ -206,25 +229,9 @@ var RowHTML = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(RowHTML.prototype, "softErrors", {
-        get: function () {
-            if (this._softErrors == null) {
-                this._softErrors = [];
-            }
-            return this._softErrors;
-        },
-        enumerable: true,
-        configurable: true
-    });
     Object.defineProperty(RowHTML.prototype, "revealSection", {
         get: function () {
             return "<section><section>\n            <h1>" + this.row.title + "</h1>\n            <div class=\"dynamic\">" + this.dynamicDiv.innerHTML + "</div>\n        </section></section>";
-            /*
-    <table style="border-collapse: collapse; table-layout: fixed; width: 100%">
-            <tr><td colspan="2"><h3>${this.row.title}</h1></td></tr>
-            <tr>${this.cellCups.map(c => c.HTML).join("")}</tr>
-            </table>
-            */
         },
         enumerable: true,
         configurable: true
@@ -327,7 +334,7 @@ var QuestionHTML = /** @class */ (function (_super) {
     };
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
-        var firstRadioCup = null;
+        var currentRadioSet = null;
         var templates = paramTemplates.slice().reverse();
         var solutions = paramSolutions;
         var settings = paramSettings;
@@ -352,12 +359,13 @@ var QuestionHTML = /** @class */ (function (_super) {
         return function (fieldCup) {
             if (fieldCup != null && fieldCup instanceof FieldCup) {
                 if (fieldCup instanceof RadioCup) {
-                    if (fieldCup.letter == 'A' || firstRadioCup == null) {
-                        addSolution(fieldCup);
-                        firstRadioCup = fieldCup;
+                    if (fieldCup.letter == 'A' || currentRadioSet == null) {
+                        currentRadioSet = new RadioSet();
+                        currentRadioSet.add(fieldCup);
+                        addSolution(currentRadioSet);
                     }
                     else { //do not increment with next radios
-                        firstRadioCup.add(fieldCup);
+                        currentRadioSet.add(fieldCup);
                     }
                 }
                 else { //input or select or textarea etc.

@@ -114,6 +114,14 @@ var helpersMaker = function() {
       return !isNaN(parseFloat(str)) && isFinite(str);
     }
 
+    var descendants = function(div) {
+      let ret = [div];
+      let list: any = div.children;
+      for (let child of list) {
+        ret = ret.concat(descendants(child));
+      }
+      return ret;
+    }
 
     return {
         CombineHashCodes: CombineHashCodes,
@@ -125,7 +133,8 @@ var helpersMaker = function() {
         startsWith: startsWith,
         stripQuotes: stripQuotes,
         trimChar: trimChar,
-        isNumeric: isNumeric
+        isNumeric: isNumeric,
+        descendants: descendants
       };
 
 };

@@ -13,24 +13,18 @@ var __extends = (this && this.__extends) || (function () {
 })();
 var Cup = /** @class */ (function () {
     function Cup(str) {
+        this.attributes = [];
+        this.tagName = "";
         this.str = str;
-        this.UID = helpers.createUID();
-        window[this.UID] = this;
-        this.document = window.document;
     }
-    Cup.prototype.onThisAndChildren = function (action) {
-        action(this);
-    };
-    Object.defineProperty(Cup.prototype, "element", {
-        get: function () {
-            if (this._element == undefined) {
-                var found = this.document.getElementsByName(this.UID);
-                if (found.length > 0) {
-                    this._element = found[0];
-                }
-            }
-            return this._element;
-        },
+    Cup.prototype.onThisAndChildren = function (action) { action(this); };
+    Object.defineProperty(Cup.prototype, "innerHTML", {
+        get: function () { return ""; },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Cup.prototype, "HTML", {
+        get: function () { return "<" + this.tagName + " " + this.attributes.join("  ") + ">" + this.innerHTML + "</" + this.tagName + ">"; },
         enumerable: true,
         configurable: true
     });
@@ -47,15 +41,12 @@ var ImageCup = /** @class */ (function (_super) {
             _this.width = Number(_this.comment.substr(commaIndex + 1));
         if (_this.width == null || isNaN(_this.width))
             _this.width = 100;
+        _this.tagName = "img";
+        _this.attributes.push("style=\"position: relative; left:" + (50 - _this.width / 2) + "%; width:" + _this.width + "%\"");
+        _this.attributes.push("src=\"" + _this.source + "\"");
+        _this.attributes.push("alt=\"" + _this.comment + "\"");
         return _this;
     }
-    Object.defineProperty(ImageCup.prototype, "HTML", {
-        get: function () {
-            return "<img style=\"position: relative; left:" + (50 - this.width / 2) + "%; width:" + this.width + "%\" \n      src=\"" + this.source + "\" alt=\"" + this.comment + "\" />";
-        },
-        enumerable: true,
-        configurable: true
-    });
     //does not do replace (i.e. cups), but does do textreplace (dollars)
     //for replacing dollars with numbers etc.
     ImageCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
@@ -76,11 +67,14 @@ var AnchorCup = /** @class */ (function (_super) {
         _a = str.split(/\[([^\]]*)]\(([^\)]*)\)/), _this.text = _a[1], _this.url = _a[2];
         if (!(_this.url.startsWith("http://") || _this.url.startsWith("https://")))
             _this.url = "https://" + _this.url;
+        _this.tagName = "a";
+        _this.attributes.push("href=\"" + _this.url + "\"");
+        _this.attributes.push("target=\"_blank\">");
         return _this;
     }
-    Object.defineProperty(AnchorCup.prototype, "HTML", {
+    Object.defineProperty(AnchorCup.prototype, "innerHTML", {
         get: function () {
-            return "<a href=\"" + this.url + "\" target=\"_blank\">" + this.text + "</a>";
+            return this.text;
         },
         enumerable: true,
         configurable: true
@@ -131,30 +125,12 @@ var FractionCup = /** @class */ (function (_super) {
     });
     return FractionCup;
 }(Cup));
-///does not replace chunks or dollars
-var CodeCup = /** @class */ (function (_super) {
-    __extends(CodeCup, _super);
-    function CodeCup(str) {
-        var _this = this;
-        str = helpers.trimChar(str, "`");
-        str = helpers.trimChar(str, "\n");
-        _this = _super.call(this, str) || this;
-        _this.children = [new ChunkCup(str)];
-        return _this;
-    }
-    Object.defineProperty(CodeCup.prototype, "HTML", {
-        get: function () {
-            return "<div class=\"codeblock\">" + this.childrenHTML + "</div>";
-        },
-        enumerable: true,
-        configurable: true
-    });
-    return CodeCup;
-}(Cup));
 var ChunkCup = /** @class */ (function (_super) {
     __extends(ChunkCup, _super);
     function ChunkCup(str) {
-        return _super.call(this, str) || this;
+        var _this = _super.call(this, str) || this;
+        _this.tagName = "span";
+        return _this;
     }
     Object.defineProperty(ChunkCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new ChunkCup(s); }; },
@@ -185,7 +161,7 @@ var ChunkCup = /** @class */ (function (_super) {
         }
         this.str = this.str.replace(patternMakeItGlobal, replacer);
     };
-    Object.defineProperty(ChunkCup.prototype, "HTML", {
+    Object.defineProperty(ChunkCup.prototype, "innerHTML", {
         get: function () {
             return this.str;
         },
@@ -197,7 +173,9 @@ var ChunkCup = /** @class */ (function (_super) {
 var UnderlineCup = /** @class */ (function (_super) {
     __extends(UnderlineCup, _super);
     function UnderlineCup(str) {
-        return _super.call(this, str.substring(1, str.length - 1)) || this;
+        var _this = _super.call(this, str.substring(1, str.length - 1)) || this;
+        _this.tagName = "u";
+        return _this;
     }
     Object.defineProperty(UnderlineCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new UnderlineCup(s); }; },
@@ -205,19 +183,14 @@ var UnderlineCup = /** @class */ (function (_super) {
         configurable: true
     });
     ;
-    Object.defineProperty(UnderlineCup.prototype, "HTML", {
-        get: function () {
-            return "<u>" + this.str + "</u>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return UnderlineCup;
 }(ChunkCup));
 var BoldCup = /** @class */ (function (_super) {
     __extends(BoldCup, _super);
     function BoldCup(str) {
-        return _super.call(this, str.replace("*", "")) || this;
+        var _this = _super.call(this, str.replace("*", "")) || this;
+        _this.tagName = "b";
+        return _this;
     }
     Object.defineProperty(BoldCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new BoldCup(s); }; },
@@ -225,19 +198,14 @@ var BoldCup = /** @class */ (function (_super) {
         configurable: true
     });
     ;
-    Object.defineProperty(BoldCup.prototype, "HTML", {
-        get: function () {
-            return "<b>" + this.str + "</b>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return BoldCup;
 }(ChunkCup));
 var SuperScriptCup = /** @class */ (function (_super) {
     __extends(SuperScriptCup, _super);
     function SuperScriptCup(str) {
-        return _super.call(this, str.replace("^", "")) || this;
+        var _this = _super.call(this, str.replace("^", "")) || this;
+        _this.tagName = "sup";
+        return _this;
     }
     Object.defineProperty(SuperScriptCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new SuperScriptCup(s); }; },
@@ -245,19 +213,14 @@ var SuperScriptCup = /** @class */ (function (_super) {
         configurable: true
     });
     ;
-    Object.defineProperty(SuperScriptCup.prototype, "HTML", {
-        get: function () {
-            return "<sup>" + this.str + "</sup>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return SuperScriptCup;
 }(ChunkCup));
 var SubScriptCup = /** @class */ (function (_super) {
     __extends(SubScriptCup, _super);
     function SubScriptCup(str) {
-        return _super.call(this, str.replace("~", "")) || this;
+        var _this = _super.call(this, str.replace("~", "")) || this;
+        _this.tagName = "sub";
+        return _this;
     }
     Object.defineProperty(SubScriptCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new SubScriptCup(s); }; },
@@ -265,19 +228,14 @@ var SubScriptCup = /** @class */ (function (_super) {
         configurable: true
     });
     ;
-    Object.defineProperty(SubScriptCup.prototype, "HTML", {
-        get: function () {
-            return "<sub>" + this.str + "</sub>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return SubScriptCup;
 }(ChunkCup));
 var TitleCup = /** @class */ (function (_super) {
     __extends(TitleCup, _super);
     function TitleCup(str) {
-        return _super.call(this, str.replace("#", "")) || this;
+        var _this = _super.call(this, str.replace("#", "")) || this;
+        _this.tagName = "h1";
+        return _this;
     }
     Object.defineProperty(TitleCup.prototype, "thisConstructor", {
         get: function () { return function (s) { return new TitleCup(s); }; },
@@ -285,19 +243,14 @@ var TitleCup = /** @class */ (function (_super) {
         configurable: true
     });
     ;
-    Object.defineProperty(TitleCup.prototype, "HTML", {
-        get: function () {
-            return "<h1>" + this.str + "</h1>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return TitleCup;
 }(ChunkCup));
 var CupContainer = /** @class */ (function (_super) {
     __extends(CupContainer, _super);
     function CupContainer(str) {
-        return _super.call(this, str) || this;
+        var _this = _super.call(this, str) || this;
+        _this.tagName = "div";
+        return _this;
     }
     CupContainer.prototype.onThisAndChildren = function (action) {
         action(this);
@@ -326,7 +279,7 @@ var CupContainer = /** @class */ (function (_super) {
         }
         return [this]; //needs to return an array since chunkcup does it
     };
-    Object.defineProperty(CupContainer.prototype, "childrenHTML", {
+    Object.defineProperty(CupContainer.prototype, "innerHTML", {
         get: function () {
             return this.children.map(function (c) { return c.HTML; }).join("");
         },
@@ -335,6 +288,21 @@ var CupContainer = /** @class */ (function (_super) {
     });
     return CupContainer;
 }(Cup));
+///does not replace chunks or dollars
+var CodeCup = /** @class */ (function (_super) {
+    __extends(CodeCup, _super);
+    function CodeCup(str) {
+        var _this = this;
+        str = helpers.trimChar(str, "`");
+        str = helpers.trimChar(str, "\n");
+        _this = _super.call(this, str) || this;
+        _this.children = [new ChunkCup(str)];
+        _this.attributes.push("class=\"codeblock\"");
+        _this.tagName = "div";
+        return _this;
+    }
+    return CodeCup;
+}(CupContainer));
 var RelativePositionCup = /** @class */ (function (_super) {
     __extends(RelativePositionCup, _super);
     function RelativePositionCup(str, inPixels) {
@@ -354,15 +322,9 @@ var RelativePositionCup = /** @class */ (function (_super) {
         _this.xPos = Number(xPosAsString).toString() + (inPixels ? "px" : "%");
         _this.yPos = Number(yPosAsString).toString() + (inPixels ? "px" : "%");
         _this.children = [new ChunkCup(childrenAsString)];
+        _this.attributes.push("style=\"position:absolute;left:" + _this.xPos + ";top:" + _this.yPos + "\"");
         return _this;
     }
-    Object.defineProperty(RelativePositionCup.prototype, "HTML", {
-        get: function () {
-            return "<div style=\"position:absolute;left:" + this.xPos + ";top:" + this.yPos + "\">" + this.childrenHTML + "</div>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return RelativePositionCup;
 }(CupContainer));
 var InnerFractionCup = /** @class */ (function (_super) {
@@ -372,13 +334,6 @@ var InnerFractionCup = /** @class */ (function (_super) {
         _this.children = [new ChunkCup(str)];
         return _this;
     }
-    Object.defineProperty(InnerFractionCup.prototype, "HTML", {
-        get: function () {
-            return this.childrenHTML;
-        },
-        enumerable: true,
-        configurable: true
-    });
     return InnerFractionCup;
 }(CupContainer));
 var ParagraphCup = /** @class */ (function (_super) {
@@ -390,7 +345,7 @@ var ParagraphCup = /** @class */ (function (_super) {
     }
     Object.defineProperty(ParagraphCup.prototype, "HTML", {
         get: function () {
-            return "<br>" + this.childrenHTML;
+            return "<br>" + this.innerHTML;
         },
         enumerable: true,
         configurable: true
@@ -404,10 +359,9 @@ var DivCup = /** @class */ (function (_super) {
         _this.children = [new ChunkCup(_this.str)];
         return _this;
     }
-    Object.defineProperty(DivCup.prototype, "HTML", {
-        get: function () {
-            var classStr = this.class ? "class=\"" + this.class + "\"" : "";
-            return "<div name='" + this.UID + "' " + classStr + ">" + this.childrenHTML + "</div>";
+    Object.defineProperty(DivCup.prototype, "class", {
+        set: function (value) {
+            this.attributes.push("class=\"" + value + "\"");
         },
         enumerable: true,
         configurable: true
@@ -438,18 +392,13 @@ var TableCup = /** @class */ (function (_super) {
     function TableCup(str) {
         var _this = _super.call(this, str) || this;
         _this.hasBorder = str.startsWith("|");
+        _this.tagName = "table";
         _this.children = str.split("\n").filter(function (s) { return s.length > 0; }).map(function (s) { return new RowCup(s); });
+        _this.attributes.push("class=\"markdowntable\"");
+        _this.attributes.push("style=\"" + (_this.hasBorder ? "" : "border: none;") + "\"");
         return _this;
         //this.numCols = rows[0].children.Length;
     }
-    Object.defineProperty(TableCup.prototype, "HTML", {
-        get: function () {
-            var borderStyle = this.hasBorder ? "" : "border: none;";
-            return "<table class=\"markdowntable\" style=\"" + borderStyle + "\" >" + this.childrenHTML + "</table>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return TableCup;
 }(CupContainer));
 var RowCup = /** @class */ (function (_super) {
@@ -457,243 +406,197 @@ var RowCup = /** @class */ (function (_super) {
     function RowCup(str) {
         var _this = _super.call(this, str) || this;
         _this.children = str.split(/(\|[^\|]*)/).filter(function (s) { return s.length > 0; }).map(function (s) { return new CellCup(s); });
+        _this.tagName = "tr";
         return _this;
     }
-    Object.defineProperty(RowCup.prototype, "HTML", {
-        get: function () {
-            return "<tr>" + this.childrenHTML + "</tr>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return RowCup;
 }(CupContainer));
 var CellCup = /** @class */ (function (_super) {
     __extends(CellCup, _super);
     function CellCup(str) {
         var _this = _super.call(this, str) || this;
-        _this.hasBorder = str.startsWith("|");
         _this.str = _this.str.substring(1);
         _this.children = [new ChunkCup(_this.str)];
-        _this.isRelative = false; //used only for markdown cells which need it in case of relativepositioncups   
+        _this.tagName = "td";
         return _this;
     }
-    Object.defineProperty(CellCup.prototype, "HTML", {
-        get: function () {
-            var borderStyle = this.hasBorder ? "" : " border: none;";
-            var colspanStyle = this.colSpan == null ? "" : " colspan=" + this.colSpan;
-            var isRelativeStyle = this.isRelative ? " position:relative;" : "";
-            return "<td name='" + this.UID + "' style=\"" + borderStyle + " " + isRelativeStyle + "\" " + colspanStyle + ">\n    " + this.childrenHTML + "</td>";
-        },
-        enumerable: true,
-        configurable: true
-    });
     return CellCup;
 }(CupContainer));
+var decisionImageEnum;
+(function (decisionImageEnum) {
+    decisionImageEnum[decisionImageEnum["None"] = 0] = "None";
+    decisionImageEnum[decisionImageEnum["Star"] = 1] = "Star";
+    decisionImageEnum[decisionImageEnum["Cross"] = 2] = "Cross";
+    decisionImageEnum[decisionImageEnum["Tick"] = 3] = "Tick";
+    decisionImageEnum[decisionImageEnum["Hourglass"] = 4] = "Hourglass";
+    decisionImageEnum[decisionImageEnum["Error"] = 5] = "Error";
+})(decisionImageEnum || (decisionImageEnum = {}));
 //FIELD PRESENTATION LAYER
 var FieldCup = /** @class */ (function (_super) {
     __extends(FieldCup, _super);
-    function FieldCup(str, window) {
+    function FieldCup(str) {
         var _this = _super.call(this, str) || this;
-        _this.onResponse = function () { }; //can be overwritten by solution 
-        _this.defaultText = "";
-        _this.imageHTML = "";
-        _this.disabledText = "";
+        _this.instanceNum = FieldCup.instances.length;
+        FieldCup.instances.push(_this);
+        _this._element = { value: "", "disabled": false };
+        _this.attributes.push("id=cup" + _this.instanceNum);
+        _this._decisionImage = decisionImageEnum.None;
         return _this;
     }
-    Object.defineProperty(FieldCup.prototype, "formName", {
+    Object.defineProperty(FieldCup.prototype, "elementValue", {
         get: function () {
-            return " name='" + this.UID + "' " + this.disabledText;
+            this._element.value = helpers.replaceAll(this._element.value, "x10^", "e");
+            return this._element.value;
+        },
+        set: function (value) {
+            this._element.value = value;
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(FieldCup.prototype, "elementValue", {
-        get: function () {
-            if (this.element) {
-                this.element.value = helpers.replaceAll(this.element.value, "x10^", "e");
-                return this.element.value;
-            }
-            else {
-                return this.defaultText;
-            }
-        },
-        set: function (value) {
-            if (this.element) {
-                this.element.value = value;
-            }
-            else {
-                this.defaultText = value;
-            }
-        },
+    FieldCup.prototype.setElement = function (newElement) {
+        //replaces the dummy element with a real HTML input element
+        newElement.value = this._element.value;
+        newElement.disabled = this._element.disabled;
+        this._element = newElement;
+        //get decision image, update
+        this._decisionElement = newElement.nextSibling;
+        this.decisionImage = this._decisionImage;
+    };
+    Object.defineProperty(FieldCup.prototype, "decisionImageHTML", {
+        get: function () { return "<img style:\"z-index:100;display:none\" hidden />"; },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(FieldCup.prototype, "disabled", {
-        get: function () {
-            if (this.element) {
-                return this.element.disabled;
-            }
-            else {
-                return this.disabledText == " disabled ";
-            }
-        },
+        get: function () { return this._element.disabled; },
         set: function (value) {
-            if (this.element) {
-                this.element.disabled = value;
-            }
-            else {
-                this.disabledText = value ? " disabled " : "";
+            this._element.disabled = value;
+            this._decisionElement.hidden = value;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(FieldCup.prototype, "decisionImage", {
+        set: function (value) {
+            this._decisionImage = value;
+            if (this._decisionElement) {
+                if (this._decisionImage == decisionImageEnum.None) {
+                    this._decisionElement.hidden = true;
+                }
+                else {
+                    this._decisionElement.hidden = false;
+                    this._decisionElement.src = this.decisionToDataURL(value);
+                }
             }
         },
         enumerable: true,
         configurable: true
     });
-    FieldCup.prototype.src = function (image) {
-        if (image == "star") {
-            return imageData.star;
-        }
-        else if (image == "tick") {
-            return imageData.tick;
-        }
-        else if (image == "cross") {
+    FieldCup.prototype.onResponse = function () { }; //to be overridden;
+    FieldCup.prototype.decisionToDataURL = function (decision) {
+        if (decision == decisionImageEnum.Cross) {
             return imageData.cross;
         }
-    };
-    FieldCup.prototype.prependImage = function (src, element) {
-        setTimeout(function (paramsrc, paramid, paramelement) {
-            var src = paramsrc;
-            var id = paramid;
-            var element = paramelement;
-            return function () {
-                //clear old image away
-                var images = this.document.getElementsByTagName("IMG");
-                for (var i = 0, image; image = images[i]; i++) {
-                    if (image.id == id) {
-                        image.parentElement.removeChild(image);
-                    }
-                }
-                //create new image
-                var sourceImage = this.document.createElement('img');
-                sourceImage.src = src;
-                //16x16 png
-                sourceImage.style.zIndex = "100";
-                sourceImage.id = id;
-                element.parentElement.insertBefore(sourceImage, element.nextSibling);
-            };
-        }(src, this.UID, element), 0);
-    };
-    FieldCup.prototype.showDecisionImage = function (image) {
-        if (this.element) {
-            this.prependImage(this.src(image), this.element);
+        if (decision == decisionImageEnum.Error) {
+            return imageData.error;
         }
-        else {
-            this.imageHTML = "<img src=\"" + this.src(image) + "\" id=\"" + this.UID + "\">";
+        if (decision == decisionImageEnum.Hourglass) {
+            return imageData.hourglass;
         }
+        if (decision == decisionImageEnum.Star) {
+            return imageData.star;
+        }
+        if (decision == decisionImageEnum.Tick) {
+            return imageData.tick;
+        }
+        return "";
     };
+    FieldCup.instances = [];
     return FieldCup;
 }(Cup));
+var RadioSet = /** @class */ (function () {
+    function RadioSet() {
+        this.radioCups = [];
+        this.instanceNum = RadioSet.numInstances++;
+        this._element = { value: "", "disabled": false };
+        this._decisionImage = decisionImageEnum.None;
+    }
+    Object.defineProperty(RadioSet.prototype, "decisionImage", {
+        set: function (value) {
+            //remove all decisions first
+            this.radioCups.forEach(function (r) { return r.decisionImage = decisionImageEnum.None; });
+            //apply image to checked radio only
+            var found = this.radioCups.filter(function (r) { return r.elementValue == true; });
+            if (found) {
+                found[0].decisionImage = value;
+            }
+        },
+        enumerable: true,
+        configurable: true
+    });
+    //called by rowHTML injector
+    RadioSet.prototype.add = function (radioCup) {
+        this.radioCups.push(radioCup);
+        radioCup.onResponse = this._cachedOnResponse;
+        //add formname to all radiocups so only one can be selected at a time
+        radioCup.attributes.push("name=radioSet" + this.instanceNum);
+    };
+    Object.defineProperty(RadioSet.prototype, "onResponse", {
+        set: function (value) {
+            this._cachedOnResponse = value;
+            this.radioCups.forEach(function (r) { return r.onResponse = value; });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(RadioSet.prototype, "elementValue", {
+        get: function () {
+            var found = this.radioCups.filter(function (r) { return r.elementValue; });
+            if (found) {
+                return found[0].letter;
+            }
+            return "";
+        },
+        set: function (value) {
+            this.radioCups.forEach(function (r) { return r.elementValue = (r.letter == value); });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    RadioSet.numInstances = 0;
+    return RadioSet;
+}());
 var RadioCup = /** @class */ (function (_super) {
     __extends(RadioCup, _super);
-    function RadioCup(str, window) {
-        var _this = _super.call(this, str, window) || this;
+    function RadioCup(str) {
+        var _this = _super.call(this, str) || this;
         _this.letter = str[0];
         _this.radioCups = [_this];
+        _this._element = { checked: false, "disabled": false };
         return _this;
     }
-    //called by rowHTML injector
-    RadioCup.prototype.add = function (radioCup) {
-        radioCup.UID = this.UID;
-        this.radioCups.push(radioCup);
-    };
     Object.defineProperty(RadioCup.prototype, "HTML", {
         //called by different cups which exist in the expression tree
         get: function () {
-            return this.letter + (".<input type=\"radio\" " + this.formName + " value=\"" + this.letter + "\" \n    onclick=\"window['" + this.UID + "'].onResponse();\" " + this.defaultText + ">" + this.imageHTML);
+            return this.letter + (".<input type=\"radio\" " + this.attributes.join("  ") + " value=\"" + this.letter + "\" >" + this.decisionImageHTML);
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(RadioCup.prototype, "elements", {
-        get: function () {
-            if (this._elements == undefined) {
-                var found = this.document.getElementsByName(this.UID);
-                this._elements = [];
-                for (var i = 0; i < found.length; i++) {
-                    this._elements.push(found[i]);
-                }
-                if (this._elements.length < 1) {
-                    this._elements = undefined;
-                }
-            }
-            return this._elements;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(RadioCup.prototype, "elementValue", {
-        get: function () {
-            if (this.elements) {
-                var found = this.elements.filter(function (r) { return r.checked; });
-                if (found.length > 0) {
-                    return found[0].value;
-                }
-                return null;
-            }
-            else {
-                var found = this.radioCups.filter(function (r) { return r.defaultText == " checked "; });
-                if (found.length > 0) {
-                    return found[0].letter;
-                }
-                return null;
-            }
-        },
-        set: function (value) {
-            if (this.elements) {
-                this.elements.forEach(function (r) { return r.checked = (r.letter == value); });
-            }
-            else {
-                this.radioCups.forEach(function (r) { return r.defaultText = (value == r.letter) ? " checked " : ""; });
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    RadioCup.prototype.showDecisionImage = function (image) {
-        if (this.elements) {
-            var found = this.elements.filter(function (r) { return r.checked; });
-            if (found.length > 0) {
-                this.prependImage(this.src(image), found[0]);
-            }
-        }
-        else {
-            this.radioCups.forEach(function (r) {
-                if (r.defaultText == " checked ") {
-                    r.imageHTML = "<img src=\"" + r.src(image) + "\" id=\"" + r.UID + "\">";
-                }
-                else {
-                    r.imageHTML = "";
-                }
-            });
-        }
+    RadioCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        //attach onresponse function to click event 
+        newElement.onclick = function (paramCup) {
+            var cup = paramCup;
+            return function () { cup.onResponse(); };
+        }(this);
     };
-    Object.defineProperty(RadioCup.prototype, "disabled", {
-        get: function () {
-            if (this.elements) {
-                return this.elements[0].disabled;
-            }
-            else {
-                return this.disabledText == " disabled ";
-            }
-        },
-        set: function (value) {
-            if (this.elements) {
-                this.elements.forEach(function (e) { return e.disabled = value; });
-            }
-            else {
-                this.radioCups.forEach(function (r) { return r.disabledText = value ? " disabled " : ""; });
-            }
-        },
+    Object.defineProperty(RadioCup.prototype, "elementValue", {
+        get: function () { return this._element.checked; } //true or false
+        ,
+        set: function (value) { this._element.checked = (value == true); } //true or false
+        ,
         enumerable: true,
         configurable: true
     });
@@ -701,56 +604,71 @@ var RadioCup = /** @class */ (function (_super) {
 }(FieldCup));
 var TextAreaCup = /** @class */ (function (_super) {
     __extends(TextAreaCup, _super);
-    function TextAreaCup(str, window) {
-        return _super.call(this, str, window) || this;
+    function TextAreaCup(str) {
+        return _super.call(this, str) || this;
     }
     Object.defineProperty(TextAreaCup.prototype, "HTML", {
         get: function () {
-            return "<br><textarea rows=\"10\" " + this.formName + " \n     onblur=\"window['" + this.UID + "'].onResponse();\">" + this.defaultText + "</textarea>" + this.imageHTML;
+            return "<br><textarea " + this.attributes.join("  ") + " rows=\"10\"></textarea>";
         },
         enumerable: true,
         configurable: true
     });
+    TextAreaCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        //attach onresponse function to blur event 
+        newElement.onblur = function (paramCup) {
+            var cup = paramCup;
+            return function () { cup.onResponse(); };
+        }(this);
+    };
     return TextAreaCup;
 }(FieldCup));
 var InputCup = /** @class */ (function (_super) {
     __extends(InputCup, _super);
-    function InputCup(str, window) {
-        return _super.call(this, str, window) || this;
+    function InputCup(str) {
+        return _super.call(this, str) || this;
     }
     Object.defineProperty(InputCup.prototype, "HTML", {
         get: function () {
-            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.formName + "  \n      onblur=\"window['" + this.UID + "'].onResponse();\" value=\"" + this.defaultText + "\">" + this.imageHTML;
+            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.attributes.join("  ") + " >" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
     });
+    InputCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        //attach onresponse function to blur event 
+        newElement.onblur = function (paramCup) {
+            var cup = paramCup;
+            return function () { cup.onResponse(); };
+        }(this);
+    };
     return InputCup;
 }(FieldCup));
 var ComboCup = /** @class */ (function (_super) {
     __extends(ComboCup, _super);
-    function ComboCup(str, window) {
-        var _this = _super.call(this, str, window) || this;
+    function ComboCup(str) {
+        var _this = _super.call(this, str) || this;
         _this.options = [" "].concat(_this.str.substring(1, _this.str.length - 1).split("/"));
         return _this;
     }
     Object.defineProperty(ComboCup.prototype, "HTML", {
         get: function () {
-            var optionFunc = function (paramDefaultText) {
-                var defaultText = paramDefaultText;
-                return function (o) {
-                    if (o == defaultText) {
-                        return "<option value='" + o + "' selected>" + o + "</option>";
-                    }
-                    return "<option value='" + o + "' >" + o + "</option>";
-                };
-            };
-            var optionHTML = this.options.map(optionFunc(this.defaultText)).join("");
-            return "<select " + this.formName + "  onchange=\"window['" + this.UID + "'].onResponse();\" >" + optionHTML + " </select>" + this.imageHTML;
+            var optionHTML = this.options.map(function (o) { return "<option value='" + o + "'>" + o + "</option>"; }).join("");
+            return "<select " + this.attributes.join("  ") + " >" + optionHTML + " </select>" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
     });
+    ComboCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        //attach onresponse function to blur event 
+        newElement.onchange = function (paramCup) {
+            var cup = paramCup;
+            return function () { cup.onResponse(); };
+        }(this);
+    };
     //for replacing dollars with numbers etc.
     ComboCup.prototype.textReplace = function (pattern, getTemplateValue) {
         //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
@@ -765,83 +683,42 @@ var ComboCup = /** @class */ (function (_super) {
 }(FieldCup));
 var CheckBoxCup = /** @class */ (function (_super) {
     __extends(CheckBoxCup, _super);
-    function CheckBoxCup(str, window) {
-        var _this = _super.call(this, str, window) || this;
-        _this._image = "hourglass";
-        _this.defaultText = imageData.hourglass;
+    function CheckBoxCup(str) {
+        var _this = _super.call(this, str) || this;
+        _this._decisionImage = decisionImageEnum.Hourglass;
         return _this;
     }
     Object.defineProperty(CheckBoxCup.prototype, "HTML", {
         get: function () {
-            return "<img src=\"" + this.defaultText + "\" " + this.formName + "  onclick=\"window['" + this.UID + "'].onResponse();\">";
+            return "<span " + this.attributes.join("  ") + " ></span>" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
     });
+    CheckBoxCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        this._element = { value: "", disabled: false }; //no element
+    };
     Object.defineProperty(CheckBoxCup.prototype, "hoverText", {
         set: function (value) {
-            this.element.title = value;
+            this._element.title = value;
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(CheckBoxCup.prototype, "elementValue", {
         get: function () {
-            if (this._image == "tick") {
-                return "✓";
-            }
-            if (this._image == "cross") {
-                return "✗";
-            }
-            if (this._image == "error") {
-                return "!";
-            }
-            if (this._image == "hourglass") {
-                return "⌛";
-            }
-            return "";
+            return this._element.value;
         },
         set: function (value) {
             if ((value == "✓") || (value == true)) {
-                this._image = "tick";
+                this._element.value = "tick"; //just stored for markbook
             }
             if ((value == "✗") || (value == false)) {
-                this._image = "cross";
+                this._element.value = "cross";
             }
             if (value == "!") {
-                this._image = "error";
-            }
-            if (this.element) {
-                this.element.src = imageData[this._image];
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    CheckBoxCup.prototype.showDecisionImage = function (image) {
-        this._image = image;
-        if (this.element) {
-            this.element.src = imageData[image];
-        }
-        else {
-            this.defaultText = imageData[this._image];
-        }
-    };
-    Object.defineProperty(CheckBoxCup.prototype, "disabled", {
-        get: function () {
-            if (this.element) {
-                return this.element.hidden;
-            }
-            else {
-                return this.disabledText == " hidden ";
-            }
-        },
-        set: function (value) {
-            if (this.element) {
-                this.element.hidden = value;
-            }
-            else {
-                this.disabledText = " hidden ";
+                this._element.value = "error";
             }
         },
         enumerable: true,
@@ -851,33 +728,28 @@ var CheckBoxCup = /** @class */ (function (_super) {
 }(FieldCup));
 var PoundCup = /** @class */ (function (_super) {
     __extends(PoundCup, _super);
-    function PoundCup(str, window) {
-        return _super.call(this, str, window) || this;
+    function PoundCup(str) {
+        return _super.call(this, str) || this;
     }
     Object.defineProperty(PoundCup.prototype, "HTML", {
         get: function () {
-            return "<span " + this.formName + " >" + this.defaultText + "</span>";
+            return "<span " + this.attributes.join("  ") + " ></span>"; //no decision image
         },
         enumerable: true,
         configurable: true
     });
+    PoundCup.prototype.setElement = function (newElement) {
+        _super.prototype.setElement.call(this, newElement);
+        //no change event etc. `
+        //no decision element
+    };
     Object.defineProperty(PoundCup.prototype, "elementValue", {
         get: function () {
-            if (this.element) {
-                return this.element.innerText;
-            }
-            else {
-                return this.defaultText;
-            }
+            return this._element.innerText;
         },
         //DOES NOT GET MARKED. NO DECISION IMAGE
         set: function (value) {
-            if (this.element) {
-                this.element.innerText = value;
-            }
-            else {
-                this.defaultText = value;
-            }
+            this._element.innerText = value;
         },
         enumerable: true,
         configurable: true
@@ -887,32 +759,7 @@ var PoundCup = /** @class */ (function (_super) {
     };
     Object.defineProperty(PoundCup.prototype, "isRed", {
         set: function (value) {
-            if (this.element) {
-                this.element.style.color = value ? "red" : "";
-            }
-            else {
-                this.disabledText = " hidden ";
-            }
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(PoundCup.prototype, "disabled", {
-        get: function () {
-            if (this.element) {
-                return this.element.hidden;
-            }
-            else {
-                return this.disabledText == " hidden ";
-            }
-        },
-        set: function (value) {
-            if (this.element) {
-                this.element.hidden = value;
-            }
-            else {
-                this.disabledText = " hidden ";
-            }
+            this._element.style.color = value ? "red" : "";
         },
         enumerable: true,
         configurable: true

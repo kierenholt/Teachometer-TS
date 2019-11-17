@@ -97,6 +97,15 @@ var helpersMaker = function () {
     var isNumeric = function (str) {
         return !isNaN(parseFloat(str)) && isFinite(str);
     };
+    var descendants = function (div) {
+        var ret = [div];
+        var list = div.children;
+        for (var _i = 0, list_1 = list; _i < list_1.length; _i++) {
+            var child = list_1[_i];
+            ret = ret.concat(descendants(child));
+        }
+        return ret;
+    };
     return {
         CombineHashCodes: CombineHashCodes,
         IsNullOrEmpty: IsNullOrEmpty,
@@ -107,7 +116,8 @@ var helpersMaker = function () {
         startsWith: startsWith,
         stripQuotes: stripQuotes,
         trimChar: trimChar,
-        isNumeric: isNumeric
+        isNumeric: isNumeric,
+        descendants: descendants
     };
 };
 var helpers = helpersMaker();

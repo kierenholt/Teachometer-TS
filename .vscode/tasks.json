@@ -14,7 +14,7 @@
         {
             "label": "chrome_debug_session",
             "type": "shell",
-            "command": "google-chrome --incognito --remote-debugging-port=9222 http://0.0.0.0:8000/index.html",
+            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/index.html",
             "args": [],
             "group": "build",
             "problemMatcher": []

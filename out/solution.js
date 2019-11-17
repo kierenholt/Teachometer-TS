@@ -33,7 +33,7 @@ var Solution = /** @class */ (function () {
         else {
             if (this.template) {
                 try {
-                    this.template.forceCalculate();
+                    //this.template.forceCalculate();
                 }
                 catch (e) {
                     console.log("error calculating template " + e);
@@ -59,10 +59,10 @@ var Solution = /** @class */ (function () {
                 else {
                     try { //this will remove too many dps etc.
                         if (this.template instanceof Template) {
-                            return calculatedJSONtoViewable(this.template.calculatedValue);
+                            //return calculatedJSONtoViewable(this.template.calculatedValue); 
                         }
                         else {
-                            return this.template.calculatedValue;
+                            //return this.template.calculatedValue; 
                         }
                     }
                     catch (e) {
@@ -96,7 +96,7 @@ var Solution = /** @class */ (function () {
     });
     Solution.prototype.showDecisionImage = function () {
         if (this.affectsScore && this.elementHasChangedSinceLastChecked) {
-            this.field.showDecisionImage(this.image);
+            this.field.decisionImage = this.image;
         }
         this.elementHasChangedSinceLastChecked = false;
         this.notYetChecked = false;
@@ -105,7 +105,7 @@ var Solution = /** @class */ (function () {
     Solution.prototype.onResponseInjector = function (solution) {
         var s = solution;
         return function () {
-            if (this.element != null && this.elementValue != null) {
+            if (this.elementValue != null) {
                 s.updateScoreAndImage();
                 if (s.settings.markbookUpdate && isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(s.markbookIndex, this.elementValue, //field.elementValue
@@ -136,15 +136,16 @@ var Solution = /** @class */ (function () {
             }
             //pound
             else if (this.field instanceof PoundCup) {
+                var poundCoerced = this.field;
                 try {
                     var val = this.template.calculatedValue;
                     val = JSON.parse(val);
-                    this.field.elementValue = val.toString();
-                    this.field.isRed = false;
+                    poundCoerced.elementValue = val.toString();
+                    poundCoerced.isRed = false;
                 }
                 catch (e) {
-                    this.field.elementValue = e;
-                    this.field.isRed = true;
+                    poundCoerced.elementValue = e;
+                    poundCoerced.isRed = true;
                 }
             }
             //input, combo, radio but only if scoring
@@ -164,19 +165,19 @@ var Solution = /** @class */ (function () {
         }
         if (this.affectsScore) {
             if (this.score == 1) {
-                if (this.notYetChecked || this.image == "star") {
-                    this.image = "star";
+                if (this.notYetChecked || this.image == decisionImageEnum.Star) {
+                    this.image = decisionImageEnum.Star;
                 }
                 else {
-                    this.image = "tick";
+                    this.image = decisionImageEnum.Tick;
                 }
             }
             else {
-                this.image = "cross";
+                this.image = decisionImageEnum.Cross;
             }
-            this.color = this.image == "star" ? "LimeGreen" :
-                this.image == "tick" ? "LightGreen" :
-                    this.image == "cross" ? "LightSalmon" : "Salmon";
+            this.color = this.image == decisionImageEnum.Star ? "LimeGreen" :
+                this.image == decisionImageEnum.Tick ? "LightGreen" :
+                    this.image == decisionImageEnum.Cross ? "LightSalmon" : "Salmon";
         }
     };
     return Solution;
