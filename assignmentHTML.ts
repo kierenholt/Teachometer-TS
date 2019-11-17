@@ -18,7 +18,6 @@ class AssignmentHTML {
 
         this.settings = internalSettings;
         this.settings.random = new Random();
-        if (this.settings.window == undefined) {this.settings.window = window;}
 
         //markbookSettings values are true or false
         if (markbookSettings) {
@@ -257,13 +256,16 @@ class AssignmentHTML {
     }
 
     previewInNewWindow(settings) {
-        let oldWindow = window;
-              let myWindow = window.open("", "AME", "");
+        let styleText = "";
+        var css:any = document.styleSheets[0];
+        if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
-              myWindow.document.write(`
+        let oldWindow = window;
+            let myWindow = window.open("", "AME", "");
+            myWindow.document.write(`
 <head>
 <style>
-${oldWindow.document.getElementById("style").innerText}
+${styleText}
 </style>
 </head>
 <body>
@@ -271,7 +273,6 @@ ${oldWindow.document.getElementById("style").innerText}
 </body>
 `);
 settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
-settings.window =  myWindow;
 
 myWindow["helpers"] = oldWindow.helpersMaker();			
 myWindow.assignment = new AssignmentHTML(settings,null);
@@ -330,10 +331,10 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
             this.submitButton.id = "submitButton";
 
             this.submitButton.onclick = 
-            function(paramWindow) {
-                var window = paramWindow; 
-                return function() {window.assignment.showAllDecisionImages(true)};
-            }(this.settings.window);
+            function(paramAssignment) {
+                var asn = paramAssignment; 
+                return function() {asn.showAllDecisionImages(true)};
+            }(this);
 
             var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
                 this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :

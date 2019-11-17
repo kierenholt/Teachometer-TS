@@ -5,9 +5,6 @@ var AssignmentHTML = /** @class */ (function () {
         this.rowHTMLs = [];
         this.settings = internalSettings;
         this.settings.random = new Random();
-        if (this.settings.window == undefined) {
-            this.settings.window = window;
-        }
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
@@ -217,11 +214,17 @@ var AssignmentHTML = /** @class */ (function () {
         configurable: true
     });
     AssignmentHTML.prototype.previewInNewWindow = function (settings) {
+        var styleText = "";
+        var css = document.styleSheets[0];
+        if (css)
+            for (var _i = 0, _a = css.cssRules; _i < _a.length; _i++) {
+                var rule = _a[_i];
+                styleText += rule.cssText;
+            }
         var oldWindow = window;
         var myWindow = window.open("", "AME", "");
-        myWindow.document.write("\n<head>\n<style>\n" + oldWindow.document.getElementById("style").innerText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
+        myWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
         settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
-        settings.window = myWindow;
         myWindow["helpers"] = oldWindow.helpersMaker();
         myWindow.assignment = new AssignmentHTML(settings, null);
         myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
@@ -280,10 +283,10 @@ var AssignmentHTML = /** @class */ (function () {
             this.submitButton = document.createElement("button");
             this.submitButton.id = "submitButton";
             this.submitButton.onclick =
-                function (paramWindow) {
-                    var window = paramWindow;
-                    return function () { window.assignment.showAllDecisionImages(true); };
-                }(this.settings.window);
+                function (paramAssignment) {
+                    var asn = paramAssignment;
+                    return function () { asn.showAllDecisionImages(true); };
+                }(this);
             var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
                 this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
                     " (" + this.settings.numChecksLeft + " checks remaining)";
