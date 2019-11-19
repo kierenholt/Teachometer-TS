@@ -28,7 +28,8 @@ class Solution {
         this.field = field;
         this.score = 0;
 
-        this.triggerCalculateFromLateFunction = true; //set false by code() and variable() template functions
+        this.triggerCalculateFromLateFunction = true; 
+        //set false by code() and variable() template functions to avoid infinite loop
 
         this.elementHasChangedSinceLastChecked = false;
         this.notYetChecked = true; //used to assign star or tick
@@ -42,7 +43,7 @@ class Solution {
     importResponses() {
         if (this.settings.responses && this.settings.responses[this.markbookIndex]) {     
             this.field.elementValue = this.settings.responses[this.markbookIndex]; //this = field
-            try {this.updateScoreAndImage();}
+            try { this.updateScoreAndImage(); }
             catch (e) {}
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
@@ -75,10 +76,10 @@ class Solution {
             else {
                 try { //this will remove too many dps etc.
                     if (this.template instanceof Template) {
-                        //return calculatedJSONtoViewable(this.template.calculatedValue); 
+                        return calculatedJSONtoViewable(this.template.calculatedValue); 
                     }
-                    else {
-                        //return this.template.calculatedValue; 
+                    else { //for questiontemplate
+                        return this.template.calculatedValue; 
                     }
                 }
                 catch (e) {
@@ -118,13 +119,21 @@ class Solution {
                 
                 s.updateScoreAndImage();
                 
-                if (s.settings.markbookUpdate && isNumeric(s.markbookIndex)) {
+                //do not append if not yet checked, student might be trying stuff out
+                //do not append if its a late calculation
+
+                let doAppend = !s.notYetChecked && 
+                    s.triggerCalculateFromLateFunction &&
+                    s.settings.appendToMarkbook;
+                let scoreOutOf = s.settings.reportScoreAsPercentage ? window.assignment.scorePercentage : window.assignment.scoreOutOf;
+
+                if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(
                         s.markbookIndex, 
-                        this.elementValue, //field.elementValue
+                        s.field.elementValue, //field.elementValue
                         s.color, //solution.color
-                        !s.notYetChecked && this.triggerCalculateFromLateFunction, //append
-                        s.settings.reportScoreAsPercentage ? window.assignment.scorePercentage : window.assignment.scoreOutOf);
+                        doAppend,
+                        scoreOutOf)
                     //markbookColumn, response, color, append, scoreOutOf
                 }
             }
