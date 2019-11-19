@@ -487,7 +487,7 @@ class RadioSet implements Field {
     this.radioCups.forEach(r => r.decisionImage = decisionImageEnum.None);
     //apply image to checked radio only
     let found = this.radioCups.filter(r => r.elementValue == true);
-    if (found) {
+    if (found.length) {
       found[0].decisionImage = value;
     }
   }
@@ -507,7 +507,7 @@ class RadioSet implements Field {
 
   get elementValue() { 
     let found = this.radioCups.filter(r => r.elementValue);
-    if (found) {return found[0].letter; }
+    if (found.length) {return found[0].letter; }
     return "";
   }
   set elementValue(value) {

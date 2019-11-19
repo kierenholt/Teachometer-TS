@@ -3,13 +3,7 @@
 	<meta charset="UTF-8"> 
 <link id="style" rel="stylesheet" type="text/css" href="style.css">
 	
-	<script src=assignmentHTML.js></script>
-	<script src=cup.js></script>
-	<script src=helpers.js></script>
-	<script src=rowHTML.js></script>
-	<script src=solution.js></script>
-	<script src=template.js></script>
-	<script src=expression.js></script>
+	<script src=assignment.js></script>
   <script async src="acorn_interpreter.js"></script>
 
 <style>
@@ -62,7 +56,6 @@
 			"jumbledSolutionsDiv": jumbledSolutionsDiv,
 			"questionsDiv": questionsDiv,
 			"solutionsDiv": solutionsDiv,
-
             "allowRowDelete" : true,
 			"allowRefresh" : true,
 			"allowGridlines": true,
@@ -71,8 +64,8 @@
             "showRowTitles": true,
             "reportScoreAsPercentage": true,
             "markbookUpdate": false,
-            "outOfOnlyQuestionsAttempted": true,
-            "showGridlines" : false
+			"outOfOnlyQuestionsAttempted": true,
+			"appendToMarkbook": false
 			};
 			
 		window.assignment = new AssignmentHTML(internalSettings, null);
@@ -113,7 +106,7 @@
 	function preview() {
 
 
-    var settings = {
+    var previewSettings = {
         //"user":"user", inserted later on 
         "allowRowDelete" : false,
         "allowRefresh" : true,
@@ -126,7 +119,7 @@
         "allowGridlines" : true,
         "numChecksLeft": -1
         };
-		  window.assignment.previewInNewWindow(settings,null);
+		window.assignment.previewInNewWindow(previewSettings,null);
 	}
 </script>
 

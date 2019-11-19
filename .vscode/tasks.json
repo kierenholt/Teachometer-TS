@@ -12,9 +12,17 @@
             "group": "build"
         },
         {
-            "label": "chrome_debug_session",
+            "label": "chrome_debug_index",
             "type": "shell",
             "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/index.html",
+            "args": [],
+            "group": "build",
+            "problemMatcher": []
+        },
+        {
+            "label": "chrome_debug_sites",
+            "type": "shell",
+            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/sites.html",
             "args": [],
             "group": "build",
             "problemMatcher": []

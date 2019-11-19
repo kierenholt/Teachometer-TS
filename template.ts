@@ -79,9 +79,9 @@ class questionTemplate {
     isCorrect(value) {
         //do not turn into JSON
         if (value != null && value != undefined) {
-            if (isNumeric(this.calculatedValue) ) {
-                return isNumeric(value) && 
-                    Math.abs(value-this.calculatedValue) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*this.calculatedValue);
+            if (helpers.isNumeric(this.calculatedValue) ) {
+                return (helpers.isNumeric(value) && 
+                    Math.abs(value-this.calculatedValue) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*this.calculatedValue));
             }
             return value.toLowerCase().replace("'", "\'") == this.calculatedValue.toLowerCase();
         }
@@ -158,10 +158,10 @@ class Template extends questionTemplate {
     isCorrect(value) {
         //turn value into JSON
         if (this.calculatedValue != null) {
-            if (isNumeric(this.calculatedValue) ) {
+            if (helpers.isNumeric(this.calculatedValue)) {
                 let n = Number(this.calculatedValue);
-                return isNumeric(value) && 
-                    Math.abs(value-n) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*n);
+                return (helpers.isNumeric(value) && 
+                    Math.abs(value-n) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*n));
             }
             return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
         }

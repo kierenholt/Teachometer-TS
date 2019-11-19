@@ -2,12 +2,7 @@
 <head> 
 	<meta charset="UTF-8"> 
 	<link rel="stylesheet" type="text/css" href="style.css">
-<script src=assignmentHTML.js></script>
-<script src=cup.js></script>
-<script src=helpers.js></script>
-<script src=rowHTML.js></script>
-<script src=solution.js></script>
-<script src=template.js></script>
+  <script src=assignment.js></script>
   <script async src="acorn_interpreter.js"></script>
 
 
@@ -22,14 +17,13 @@
 		//settings = JSON.parse(settingsString);
         var internalSettings = {
         	"questionsDiv": document.getElementById("questionsDiv"),
-
             "allowRowDelete" : false,
-        	"allowRefresh" : false,
+        	  "allowRefresh" : false,
             "submitOnlyOnce" : false,
             "submitButtonText" : "check answers",
             "showRowTitles" : true,
             "reportScoreAsPercentage": true,
-            "showGridlines" : false
+            "allowGridlines" : false
         };
 
   		var markbookSettings = {
@@ -43,7 +37,8 @@
 			"truncate": -1,
 			"journal mode": "OFF",
 			"anticheat mode": "OFF",
-			"allow refresh": "ON"
+      "allow refresh": "ON",
+      "append stored responses": "ON"
 			
         };
         markbookSettings.user = "<?=user?>";
@@ -53,16 +48,14 @@
         //responses
         
         var responsesString = `[
-        	"1","2","","1","0"
+        	"1","2","2","-1","-1"
         	]`;
         if (responsesString) {
           markbookSettings.responses = JSON.parse(responsesString);
         }
         
         //rows
-        var rowsString = document.getElementById("rowsString").value;
-        //alert("rowsString: "+rowsString);
-		
+        var rowsString = `[{"purpose":"notes","leftRight":["left","right"],"title":"title","comment":"comment"},{"purpose":"notes","leftRight":["![](https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_272x92dp.png)\\n@[10,20](RELATIVE)","__"],"title":"relative container","comment":""},{"purpose":"question","leftRight":["\\n\\t\\t\\twhat colour is the sky ? A. red B. blue C. something else\\n\\t\\t\\twhat colour is the sky? ____\\n\\t\\t\\twhat colour is the sky? {red/green/blue}\\n\\t\\t\\t",""],"title":"question types - check correct columns are updated in markbook","comment":"B\\nblue\\nblue\\n"}]`;
         //markbookupdate
         var userRow = Number(2); //NO QUOTES!!!
         if (userRow > 0) {
@@ -100,15 +93,14 @@ markbookColumn:${markbookColumn} response:${response} append: ${append} score: $
 </script>
 
 </head>
-<body >
-	
-	<button id=button type="button" onclick="init()">init</button> 
-	<input type="text" value="" id="rowsString"/>
+<body onload="init()">
+	 
 	<br>
 	<textarea id="feedback"></textarea>
 
 
-	<div id="questionsDiv"></div>
+  <div id="questionsDiv">
+    </div>
 
 
 </body>

@@ -19,10 +19,6 @@ function isUpperAlpha(str) {
     return (code >= 65 && code <= 90);
 };
 
-function isNumeric(str) {
-    return !isNaN(parseFloat(str)) && isFinite(str);
-}
-
 function getDigits(n) {
     if (n < 10) {
         return [n];
@@ -123,7 +119,7 @@ function replaceVariables(s, injector) {
     let buffer = "";
     for (let i = 0; i < s.length; i++) {
         if (isLowerAlpha(s[i]) && 
-            (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !isNumeric(s[i - 1]))
+            (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !helpers.isNumeric(s[i - 1]))
             ) {//allow abcdfgh OR e if previous char was NOT numeric i.e. not 5e)
                 let index = alphaIndex(s[i]);
                 if (index < injector.allTemplateComments.length) {
@@ -430,7 +426,7 @@ class FunctionExpression implements IExpression {
         this.functionName = "";
         this.functionNamePreserveCase = "";
         while (i < s.length && 
-            (isAlpha(s[i]) || isNumeric(s[i]))
+            ( isAlpha(s[i]) || (helpers.isNumeric(s[i])) )
             ) {
             this.functionName += s[i].toLowerCase();
             this.functionNamePreserveCase += s[i];

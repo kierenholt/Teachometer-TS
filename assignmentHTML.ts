@@ -29,7 +29,7 @@ class AssignmentHTML {
             this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
             this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
-            
+            this.settings.appendToMarkbook =  (markbookSettings["append stored responses"] == "ON");
     
             //time limit
             this.settings.timeLimit = Number(markbookSettings["time limit"]);
@@ -442,7 +442,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
         /*** QUESTIONS
 
         let n  = prompt("enter number of questions you want left over","10")
-        if (this.isNumeric(n)) {
+        if ((helpers.isNumeric(n)) {
             this.deleteRows(this.rowHTMLs.slice(n));
         }*/
     }

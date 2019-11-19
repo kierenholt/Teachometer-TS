@@ -6,24 +6,28 @@
     "configurations": [
 
         {
+            "name": "Attach to index",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "url": "http://0.0.0.0:8000/index.html",
+            "webRoot": "${workspaceFolder}/out"
+        },
+        {
+            "name": "Attach to sites",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "url": "http://0.0.0.0:8000/sites.html",
+            "webRoot": "${workspaceFolder}/out"
+        }/*,
+        {
             "type": "chrome",
             "request": "launch",
             "name": "Launch Chrome against localhost",
             "url": "http://0.0.0.0:8000/index.html",
             "webRoot": "${workspaceFolder}/out",
             "preLaunchTask": "tsc: build - tsconfig.json" 
-            //INTO TERMINAL 
-            //cd ~/Documents/Teachometer/code/out 
-            //python3 -m http.server 
-        },
-        {
-            "name": "Attach to url with files served from ./out",
-            "type": "chrome",
-            "request": "attach",
-            "port": 9222,
-            "url": "http://0.0.0.0:8000/index.html",
-            "webRoot": "${workspaceFolder}/out",
-            //"preLaunchTask": "chrome_debug_session"// "tsc: build - tsconfig.json" 
-        }
+        }*/
     ]
 }
