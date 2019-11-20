@@ -22,7 +22,6 @@
             "submitOnlyOnce" : false,
             "submitButtonText" : "check answers",
             "showRowTitles" : true,
-            "reportScoreAsPercentage": true,
             "allowGridlines" : false
         };
 
@@ -32,7 +31,7 @@
 			"score attempted questions only":"ON",
 			"shuffle": "OFF",
 			"truncate": -1,
-			"check limit": -1,
+			"check limit": 1,
 			"time limit": -1,
 			"truncate": -1,
 			"journal mode": "OFF",
@@ -48,7 +47,7 @@
         //responses
         
         var responsesString = `[
-        	"1","2","2","-1","-1"
+        	"1","2","2","1"
         	]`;
         if (responsesString) {
           markbookSettings.responses = JSON.parse(responsesString);
@@ -86,7 +85,6 @@ markbookColumn:${markbookColumn} response:${response} append: ${append} score: $
 		/*** CALL CONSTRUCTOR ***/
 		window.assignment = new AssignmentHTML(internalSettings,markbookSettings);
 		window.assignment.consumeRowsString(rowsString);
-
 
     }
 

@@ -20,6 +20,8 @@ class RowHTML {
     _cellCups: any;
     solutions: any[];
     _softErrors: any;
+    deleteSelf: any;
+    duplicateSelf: any;
     
     constructor(row, showTitle, settings) {
         this.row = row;
@@ -46,9 +48,8 @@ class RowHTML {
         if (this.settings.allowRowDelete) {
             let deleteButton =  document.createElement("img");
             deleteButton.className = "deleteButton hideOnPrint";
-            deleteButton.onclick = (function(ref) { var r = ref; return function() 
-                {
-                    window.assignment.deleteRows([r]);
+            deleteButton.onclick = (function(ref) { var r = ref; return function() {
+                    if (r.deleteSelf) r.deleteSelf();
                 } })(this);
             deleteButton.src = imageData.trash;
             this.marginDiv.appendChild(deleteButton);        
@@ -58,7 +59,9 @@ class RowHTML {
         if (this.settings.allowRowDelete) {
             let duplicateButton =  document.createElement("img");
             duplicateButton.className = "duplicateButton hideOnPrint";
-            duplicateButton.onclick = (function(ref) { var r = ref; return function() {window.assignment.duplicateRow(r)} })(this);
+            duplicateButton.onclick = (function(ref) { var r = ref; return function() {
+                    if (r.duplicateSelf) r.duplicateSelf(); 
+                } })(this);
             duplicateButton.src = imageData.duplicate;
             this.marginDiv.appendChild(duplicateButton);        
         }

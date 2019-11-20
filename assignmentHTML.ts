@@ -1,8 +1,3 @@
-//tell typescript that the assignment property exists on the window interface
-
-interface Window { assignment: any; }
-
-window.assignment = window.assignment || {};
 
 class AssignmentHTML {
     rowHTMLs: any[];
@@ -19,6 +14,12 @@ class AssignmentHTML {
         this.settings = internalSettings;
         this.settings.random = new Random();
 
+        //add score getters to settings so that solution can call them 
+        this.settings.getAssignmentScore = function(paramAsn){
+            var asn = paramAsn; 
+            return function() { return asn.score; };
+        }(this);
+
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
@@ -30,7 +31,8 @@ class AssignmentHTML {
             this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
             this.settings.appendToMarkbook =  (markbookSettings["append stored responses"] == "ON");
-    
+            this.settings.reportScoreAsPercentage =  (markbookSettings["report score as percentage"] == "ON");
+
             //time limit
             this.settings.timeLimit = Number(markbookSettings["time limit"]);
             if (this.settings.timeLimit > -1) {
@@ -39,8 +41,9 @@ class AssignmentHTML {
                 this.timerDiv.className += " timer";
                 this.settings.questionsDiv.parentElement.appendChild(this.timerDiv);
                 
-                this.timerInterval = setInterval(function(timeLimit, paramDiv) {
+                this.timerInterval = setInterval(function(timeLimit, paramDiv, paramAsn) {
 
+                    var asn = paramAsn;
                       var countUp = timeLimit == 0;
                       var target = new Date().getTime() + 1000 * 60 * timeLimit;
                       var div = paramDiv;
@@ -59,13 +62,13 @@ class AssignmentHTML {
                           
                           // If the count down is over, write some text 
                           if (distance < 0) {
-                            clearInterval(window.assignment.timerInterval);
+                            clearInterval(asn.timerInterval);
                             div.innerHTML = "EXPIRED";
-                            window.assignment.settings.numChecksLeft = 1;
-                            window.assignment.showAllDecisionImages(false); //does not show warning
+                            asn.settings.numChecksLeft = 1;
+                            asn.showAllDecisionImages(false); //does not show warning
                           }
                       };
-                    }(this.settings.timeLimit, this.timerDiv), 900);
+                    }(this.settings.timeLimit, this.timerDiv, this), 900);
                 
             }
 
@@ -100,6 +103,7 @@ class AssignmentHTML {
                 }
             }
 
+            //create new row
             let newRowHTML = null;
             if (row.purpose == "question") {
                 newRowHTML  = new QuestionHTML(row, showTitle, this.settings);
@@ -110,6 +114,14 @@ class AssignmentHTML {
             else {
                 newRowHTML  = new RowHTML(row, showTitle, this.settings);
             }
+            newRowHTML.deleteSelf = function(paramAsn,paramRow) {
+                var asn = paramAsn; var row = paramRow; return function() {asn.deleteRows([row])};
+            }(this,newRowHTML);
+            newRowHTML.duplicateSelf = function(paramAsn,paramRow) {
+                var asn = paramAsn; var row = paramRow; return function() {asn.duplicateRow(row)};
+            }(this,newRowHTML);
+
+            //insert into rowHTMLs
             if (index != undefined && index < this.rowHTMLs.length) {
                 this.rowHTMLs.splice(index+1,0,newRowHTML);
             }
@@ -178,7 +190,7 @@ class AssignmentHTML {
         //update subsequent question numbers
         this._questionNumbers = [];
         
-        let qn = 0;
+        let qn = 1; //start numbering at 1
         for (let rowHTML of this.questionHTMLs) {
             this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++)); //triggers solutiondiv refresh
         }
@@ -242,7 +254,7 @@ class AssignmentHTML {
             
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.score} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
+            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawScore} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
             this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
                         
             this.submitButton.remove();
@@ -348,7 +360,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
             }
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.score} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
+            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawScore} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
             this.settings.questionsDiv.appendChild(scoreParagraph);
             this.disabled = true;
         }
@@ -386,17 +398,15 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
     }
 
     //called by solution 
-    get scoreOutOf() {
-        return `${this.score} / ${this.outOf}`;
-    }
-
-    //called by solution 
-    get scorePercentage() {
-        if (this.outOf == 0) { return 0; }
-        return Math.round(this.score * 100 / this.outOf);         
-    }
-
     get score() {
+        if (this.outOf == 0) { return 0; }
+        if (this.settings.reportScoreAsPercentage) {
+            return Math.round(this.rawScore * 100 / this.outOf);  
+        }
+        return `${this.rawScore} / ${this.outOf}`;
+    }
+
+    get rawScore() {
         return this.questionHTMLs.reduce((a, b) => a + b.score, 0); //all solutions count 1 mark
     }
 
