@@ -1342,13 +1342,13 @@ function replaceVariables(s, injector) {
     return buffer;
 }
 function toExpressionTree(s, i, commaIsTerminator) {
-    //PARSES s (the comment)
+    //PARSES s (the comment) into tree of expression objects
     var children = [];
     var buffer = "";
-    while (i < s.length && s[i] != ")"
+    while (i < s.length && s[i] != ")" //bracket ends expression
         && s[i] != "]"
-        && (commaIsTerminator != true || s[i] != ",")
-        && (i + 2 >= s.length || s[i + 1] != "/" || s[i + 2] != "/")) {
+        && (commaIsTerminator != true || s[i] != ",") //allows commas to terminate like a bracket
+        && (i + 1 >= s.length || !(s[i] == "/" && s[i + 1] == "/"))) {
         if (s[i] == '(') {
             if (buffer.length > 0) {
                 children.push(buffer);
@@ -1493,7 +1493,8 @@ var ListExpression = /** @class */ (function () {
         if (firstBuffer != null) {
             this.options.push(firstBuffer);
         }
-        while (i < s.length && s[i] != ')') {
+        while (i < s.length && s[i] != ')'
+            && (i + 1 >= s.length || !(s[i] == "/" && s[i + 1] == "/"))) {
             if (s[i] == "," || this.options.length == 0) {
                 if (s[i] == ",") {
                     i++;
@@ -1520,7 +1521,8 @@ var ListExpression = /** @class */ (function () {
 var ArrayExpression = /** @class */ (function () {
     function ArrayExpression(s, i) {
         this.options = [];
-        while (i < s.length && s[i] != ']') {
+        while (i < s.length && s[i] != ']'
+            && (i + 1 >= s.length || !(s[i] == "/" && s[i + 1] == "/"))) {
             if (s[i] == "," || this.options.length == 0) {
                 if (s[i] == ",") {
                     i++;

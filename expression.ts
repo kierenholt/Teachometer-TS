@@ -159,14 +159,16 @@ i: number;
 
 
 function toExpressionTree(s, i, commaIsTerminator?):IExpression {
-    //PARSES s (the comment)
+    //PARSES s (the comment) into tree of expression objects
     let children = [];
 
     let buffer = "";
-    while (i < s.length && s[i] != ")" 
+    while (
+        i < s.length && s[i] != ")" //bracket ends expression
         && s[i] != "]"
-        && (commaIsTerminator != true || s[i] != ",")
-        && (i+2 >= s.length || s[i+1] != "/" || s[i+2] != "/"))
+        && (commaIsTerminator != true || s[i] != ",") //allows commas to terminate like a bracket
+        && (i+1 >= s.length || !(s[i] == "/" && s[i+1] == "/"))
+        )
     {
         if (s[i] == '(') {
             if (buffer.length > 0) {children.push(buffer);}
@@ -327,7 +329,9 @@ class ListExpression implements IExpression {
             this.options.push(firstBuffer);
         }
 
-        while (i < s.length && s[i] != ')')
+        while (i < s.length && s[i] != ')' 
+            && (i+1 >= s.length || !(s[i] == "/" && s[i+1] == "/"))
+        )
         {
             if (s[i] == "," || this.options.length == 0) {
                 if (s[i] == ",") {i++;}
@@ -357,7 +361,9 @@ class ArrayExpression implements IExpression {
     constructor(s, i) {
         this.options = [];
 
-        while (i < s.length && s[i] != ']')
+        while (i < s.length && s[i] != ']'
+            && (i+1 >= s.length || !(s[i] == "/" && s[i+1] == "/"))
+            )
         {
             if (s[i] == "," || this.options.length == 0) {
                 if (s[i] == ",") {i++;}
