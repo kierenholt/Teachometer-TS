@@ -468,7 +468,6 @@ class FieldCup extends Cup implements Field {
 }
 
 class RadioSet implements Field {
-  disabled: boolean; //needs to extend fieldcup so it works with solution
   radioCups: RadioCup[];
   _element: any;
   static numInstances = 0;
@@ -479,7 +478,6 @@ class RadioSet implements Field {
   constructor() {
     this.radioCups = [];
     this.instanceNum = RadioSet.numInstances++;
-    this._element = {value: "", "disabled": false};
     this._decisionImage = decisionImageEnum.None;
   }
   
@@ -514,6 +512,8 @@ class RadioSet implements Field {
   set elementValue(value) {
     this.radioCups.forEach(r => r.elementValue = (r.letter == value));
   }
+  set disabled(value) {this.radioCups.forEach(r => r.disabled = value);} 
+  get disabled() {return this.radioCups ? this.radioCups[0].disabled : false }
 }
 
 class RadioCup extends FieldCup { //needs to extend fieldcup for the instancenum stuff

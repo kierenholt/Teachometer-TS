@@ -53,7 +53,7 @@ class Solution {
         else {
             if (this.template) {
                 try {
-                    //this.template.forceCalculate();
+                    this.template.forceCalculate();
                 }
                 catch (e) {
                     console.log("error calculating template "  + e);
@@ -125,7 +125,7 @@ class Solution {
                 let doAppend = !s.notYetChecked && 
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                let scoreOutOf = s.settings.reportScoreAsPercentage ? window.assignment.scorePercentage : window.assignment.scoreOutOf;
+                let scoreOutOf = s.settings.getAssignmentScore();
 
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(
