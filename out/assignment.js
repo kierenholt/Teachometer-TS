@@ -716,6 +716,7 @@ var CodeCup = /** @class */ (function (_super) {
         _this.children = [new ChunkCup(str)];
         _this.attributes.push("class=\"codeblock\"");
         _this.tagName = "pre";
+        _this.replace = null;
         return _this;
     }
     return CodeCup;
