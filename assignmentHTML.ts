@@ -178,7 +178,7 @@ class AssignmentHTML {
         //update subsequent question numbers
         this._questionNumbers = [];
         
-        let qn = 0;
+        let qn = 1; //start numbering at 1
         for (let rowHTML of this.questionHTMLs) {
             this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++)); //triggers solutiondiv refresh
         }

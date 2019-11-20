@@ -145,7 +145,7 @@ var AssignmentHTML = /** @class */ (function () {
         var _this = this;
         //update subsequent question numbers
         this._questionNumbers = [];
-        var qn = 0;
+        var qn = 1; //start numbering at 1
         for (var _i = 0, _a = this.questionHTMLs; _i < _a.length; _i++) {
             var rowHTML = _a[_i];
             this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++)); //triggers solutiondiv refresh
