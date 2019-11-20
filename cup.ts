@@ -251,7 +251,7 @@ class CodeCup extends CupContainer {
     super(str);
     this.children = [new ChunkCup(str)];
     this.attributes.push(`class="codeblock"`);
-    this.tagName = "div";
+    this.tagName = "pre";
   }
 }
 
