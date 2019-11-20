@@ -1848,7 +1848,28 @@ var FunctionExpression = /** @class */ (function () {
             return JSON.stringify(ret_22);
         }
         if (this.functionName == "atand") {
-            var ret_23 = (180 * Math.atan(evaluatedParameters[0]) / Math.PI);
+            var ret_23 = 0;
+            //if one parameter is specified, return normal arctan
+            if (evaluatedParameters.length == 1) {
+                ret_23 = (180 * Math.atan(evaluatedParameters[0]) / Math.PI);
+            }
+            //if two parameters x y are specified, return a bearing 0 - 360
+            if (evaluatedParameters.length == 2) {
+                ret_23 = (180 * Math.atan(evaluatedParameters[0] / evaluatedParameters[1]) / Math.PI); //-90 to 90
+                //x y
+                //+ + 0-90
+                //+ - 90-180
+                //- - 180-270
+                //- + 270-360
+                var xIsPos = evaluatedParameters[0] > 0;
+                var yIsPos = evaluatedParameters[1] > 0;
+                if (xIsPos) {
+                    ret_23 += yIsPos ? 0 : 180;
+                }
+                else {
+                    ret_23 += yIsPos ? 360 : 180;
+                }
+            }
             return JSON.stringify(ret_23);
         }
         if (this.functionName == "choose") {
