@@ -62,10 +62,12 @@
             "submitOnlyOnce" : false,
             "submitButtonText" : "check answers",
             "showRowTitles": true,
-            "reportScoreAsPercentage": true,
             "markbookUpdate": false,
 			"outOfOnlyQuestionsAttempted": true,
-			"appendToMarkbook": false
+			"appendToMarkbook": false,
+			"scoreHeader1": "attempted %",
+			"scoreHeader2": "correct %",
+			"scoreHeader3": "stars %"
 			};
 			
 		window.assignment = new AssignmentHTML(internalSettings, null);
@@ -129,7 +131,14 @@
 
 		<tr><td>notes</td>
 			<td>left</td>
-			<td>right</td>
+			<td>right
+*bullet1
+*bullet 2
+ not a bullet *
+
+*bullet 3
+
+			</td>
 			<td>title</td>
 			<td>comment</td>
 </tr>

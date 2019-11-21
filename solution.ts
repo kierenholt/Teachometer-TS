@@ -94,12 +94,19 @@ class Solution {
         this.field.disabled = value;
     }
 
+    get stars() {
+        if (this.image == decisionImageEnum.Star) return 1;
+        return 0
+    }
+
+    get attempted() {
+        if (this.notYetAnswered || !this.affectsScore) return 0;
+        return 1
+    }
+
     //depends on template + field
     get outOf() {
-        if ((this.settings.outOfOnlyQuestionsAttempted && this.notYetAnswered)
-            || !this.affectsScore) {
-            return 0;
-        }
+        if (!this.affectsScore) return 0;
         return 1;
     }
 
@@ -125,7 +132,7 @@ class Solution {
                 let doAppend = !s.notYetChecked && 
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                let scoreOutOf = s.settings.getAssignmentScore();
+                let scores = s.settings.scoreGetters.map(f => f());
 
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(
@@ -133,7 +140,7 @@ class Solution {
                         s.field.elementValue, //field.elementValue
                         s.color, //solution.color
                         doAppend,
-                        scoreOutOf)
+                        scores)
                     //markbookColumn, response, color, append, scoreOutOf
                 }
             }

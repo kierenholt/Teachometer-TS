@@ -134,6 +134,9 @@ class RowHTML {
                     //replace relative position containers 
                     cellCup.replace(/(?:^|\n)(@\[[0-9]+,[0-9]+\]\([^)]*\))/, (s) => { return new RelativePositionCup(s); }, null);
 
+                    //replace bullet points with li
+                    cellCup.replace(/(?:^|\n)(\*)/, (s) => { return new BulletCup(s); }, null);
+
                     //replace newlines with paragraph (br)
                     cellCup.replace(/(\n[^\n]*)/, (s) => { return new ParagraphCup(s); }, null);
 
@@ -459,12 +462,20 @@ class QuestionHTML extends RowHTML {
         this.solutions.filter(s => s.outOf > 0).forEach(s => s.showDecisionImage());
     }
 
-    get score() {
-        return this.solutions.filter(s => s.affectsScore).reduce((a, b) => a + b.score, 0);
+    get correct() {
+        return this.solutions.reduce((a, b) => a + b.score, 0);
     }
     
     get outOf() {
-        return this.solutions.filter(s => s.affectsScore).reduce((a, b) => a + b.outOf, 0);
+        return this.solutions.reduce((a, b) => a + b.outOf, 0);
+    }
+
+    get attempted() {
+        return this.solutions.reduce((a, b) => a + b.attempted, 0);
+    }
+
+    get stars() {
+        return this.solutions.reduce((a, b) => a + b.stars, 0);
     }
 
 }

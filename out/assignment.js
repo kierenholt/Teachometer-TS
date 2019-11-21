@@ -1,25 +1,65 @@
 var AssignmentHTML = /** @class */ (function () {
+    //anticheatDiv: HTMLDivElement;
     function AssignmentHTML(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
         this.settings = internalSettings;
         this.settings.random = new Random();
-        //add score getters to settings so that solution can call them 
-        this.settings.getAssignmentScore = function (paramAsn) {
-            var asn = paramAsn;
-            return function () { return asn.score; };
-        }(this);
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
             this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
             this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
             this.settings.truncateMarks = Number(markbookSettings["truncate"]);
-            this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
+            //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
             this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
+            //this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
             this.settings.appendToMarkbook = (markbookSettings["append stored responses"] == "ON");
             this.settings.reportScoreAsPercentage = (markbookSettings["report score as percentage"] == "ON");
+            var scoreHeaders = [markbookSettings["scoreHeader1"], markbookSettings["scoreHeader2"], markbookSettings["scoreHeader3"]];
+            var scores = [markbookSettings["score1"], markbookSettings["score2"], markbookSettings["score3"]];
+            var index1 = scoreHeaders.indexOf("checks remaining");
+            if (index1 > -1) {
+                this.settings.numChecksLeft = Number(scores[index1]);
+            }
+            var index2 = scoreHeaders.indexOf("clicks away");
+            if (index2 > -1) {
+                window.onblur = function (paramAsn) {
+                    var asn = paramAsn;
+                    return function () {
+                        asn.settings.clicksAway++;
+                    };
+                }(this);
+                this.settings.clicksAway = Number(scores[index2]);
+            }
+            //add score getters to settings so that solution can call them 
+            this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
+                var asn = paramAsn;
+                var ret = [];
+                for (var _i = 0, scoreHeaders_1 = scoreHeaders; _i < scoreHeaders_1.length; _i++) {
+                    var header = scoreHeaders_1[_i];
+                    switch (header) {
+                        case "attempted %":
+                            ret.push(function () { return asn.percentAttempted; });
+                            break;
+                        case "correct %":
+                            ret.push(function () { return asn.percentCorrect; });
+                            break;
+                        case "stars %":
+                            ret.push(function () { return asn.percentStars; });
+                            break;
+                        case "clicks away":
+                            ret.push(function () { return asn.settings.clicksAway; });
+                            break;
+                        case "checks remaining":
+                            ret.push(function () { return asn.settings.numChecksLeft; });
+                            break;
+                        default: //also case "none"
+                            ret.push(function () { return ""; });
+                    }
+                }
+                return ret;
+            }(this, scoreHeaders);
             //time limit
             this.settings.timeLimit = Number(markbookSettings["time limit"]);
             if (this.settings.timeLimit > -1) {
@@ -182,7 +222,7 @@ var AssignmentHTML = /** @class */ (function () {
     };
     Object.defineProperty(AssignmentHTML.prototype, "questionNumbers", {
         get: function () {
-            return this._questionNumbers.concat("checks left", "clicks away");
+            return this._questionNumbers;
         },
         enumerable: true,
         configurable: true
@@ -195,30 +235,34 @@ var AssignmentHTML = /** @class */ (function () {
             }
         }
         this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
-        this.settings.numChecksLeft--;
-        //submit button text
-        this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
-            " (" + this.settings.numChecksLeft + " checks remaining)";
-        var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+        if (this.settings.numChecksLeft != undefined) {
+            this.settings.numChecksLeft--;
+            //submit button text
             this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
                 " (" + this.settings.numChecksLeft + " checks remaining)";
-        if (this.submitButton) {
-            this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
+                    " (" + this.settings.numChecksLeft + " checks remaining)";
+            if (this.submitButton) {
+                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+            }
         }
-        if (this.settings.markbookUpdate) {
-            this.settings.markbookUpdate(this.settings.checksLeftIndex, //after all solutions have been set 
-            this.settings.numChecksLeft, //field.elementValue
-            "white", //solution.color
-            false, //append
-            null); //no score update
-        }
+        /*
+                if (this.settings.markbookUpdate) {
+                    this.settings.markbookUpdate(
+                        this.settings.checksLeftIndex, //after all solutions have been set
+                        this.settings.numChecksLeft, //field.elementValue
+                        "white", //solution.color
+                        false, //append
+                        null); //no score update
+                }*/
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
             if (this.settings.markbookUpdate) {
                 this.settings.markbookUpdate = undefined;
             }
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawScore + " out of " + this.outOf + " (" + this.scorePercentage + "%)</h1>";
+            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
             this.submitButton.parentElement.appendChild(scoreParagraph, this.submitButton);
             this.submitButton.remove();
             this.disabled = true;
@@ -286,18 +330,12 @@ var AssignmentHTML = /** @class */ (function () {
         if (this.settings.truncateMarks > 0) {
             this.truncate(this.settings.truncateMarks);
         }
-        //numChecksLeft - must come after markbookIndex stuff
-        this.settings.checksLeftIndex = this.settings.markbookIndex++;
-        var storedNumChecks = this.settings.responses ? this.settings.responses[this.settings.checksLeftIndex] : null;
-        if (helpers.isNumeric(storedNumChecks)) { //numchecksleft has already been set to default
-            this.settings.numChecksLeft = Number(storedNumChecks);
-        }
         //must be before disabled = true
         if (this.settings.numChecksLeft <= 0) { //show results
             this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
         }
         //SUBMIT BUTTON, if test not already taken and submitted
-        if (this.settings.numChecksLeft != 0) {
+        if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
             this.submitButton = document.createElement("button");
             this.submitButton.id = "submitButton";
             this.submitButton.onclick =
@@ -305,9 +343,12 @@ var AssignmentHTML = /** @class */ (function () {
                     var asn = paramAssignment;
                     return function () { asn.showAllDecisionImages(true); };
                 }(this);
-            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
-                this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
-                    " (" + this.settings.numChecksLeft + " checks remaining)";
+            var checksLeftText = "";
+            if (this.settings.numChecksLeft != undefined) {
+                checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                    this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
+                        " (" + this.settings.numChecksLeft + " checks remaining)";
+            }
             this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
             this.settings.questionsDiv.appendChild(this.submitButton);
         }
@@ -317,52 +358,59 @@ var AssignmentHTML = /** @class */ (function () {
             }
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawScore + " out of " + this.outOf + " (" + this.scorePercentage + "%)</h1>";
+            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
             this.settings.questionsDiv.appendChild(scoreParagraph);
             this.disabled = true;
         }
-        //anticheatCount - must come after markbookIndex stuff
-        if (this.settings.antiCheatMode) {
-            var storedCheatCount = this.settings.responses ? this.settings.responses[this.settings.markbookIndex++] : null;
-            var anticheatCount = helpers.isNumeric(storedCheatCount) ? Number(storedCheatCount) : 0;
-            this.anticheatDiv = document.createElement("div");
-            this.anticheatDiv.innerHTML = "<p>ANTI CHEAT MODE IS ACTIVE. <br> IF YOU CHANGE TAB OR LEAVE THIS PAGE, IT WILL BE LOGGED</p>";
-            this.anticheatDiv.className += " anticheat";
-            this.settings.questionsDiv.parentElement.insertBefore(this.anticheatDiv, this.settings.questionsDiv);
-            if (this.settings.markbookUpdate) {
-                window.onblur = function (paramMarkbookUpdate, paramMarkbookIndex, paramAnticheatCount) {
-                    var anticheatCount = paramAnticheatCount;
-                    var markbookUpdate = paramMarkbookUpdate;
-                    var markbookIndex = paramMarkbookIndex;
-                    return function () {
-                        anticheatCount++;
-                        markbookUpdate(markbookIndex, //after all solutions have been set 
-                        anticheatCount, //field.elementValue
-                        "white", //solution.color
-                        false, //append
-                        null); //no score update
-                    };
-                }(this.settings.markbookUpdate, this.settings.markbookIndex, anticheatCount);
-            }
-        } //end of anticheat 
     };
-    Object.defineProperty(AssignmentHTML.prototype, "score", {
+    Object.defineProperty(AssignmentHTML.prototype, "percentStars", {
         //called by solution 
         get: function () {
             if (this.outOf == 0) {
                 return 0;
             }
-            if (this.settings.reportScoreAsPercentage) {
-                return Math.round(this.rawScore * 100 / this.outOf);
-            }
-            return this.rawScore + " / " + this.outOf;
+            return Math.round(this.rawStars * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(AssignmentHTML.prototype, "rawScore", {
+    Object.defineProperty(AssignmentHTML.prototype, "percentAttempted", {
         get: function () {
-            return this.questionHTMLs.reduce(function (a, b) { return a + b.score; }, 0); //all solutions count 1 mark
+            if (this.outOf == 0) {
+                return 0;
+            }
+            return Math.round(this.rawAttempted * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "percentCorrect", {
+        get: function () {
+            if (this.outOf == 0) {
+                return 0;
+            }
+            return Math.round(this.rawCorrect * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "rawCorrect", {
+        get: function () {
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.correct; }, 0); //all solutions count 1 mark
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "rawAttempted", {
+        get: function () {
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.attempted; }, 0); //all solutions count 1 mark
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "rawStars", {
+        get: function () {
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.stars; }, 0); //all solutions count 1 mark
         },
         enumerable: true,
         configurable: true
@@ -459,6 +507,18 @@ var Cup = /** @class */ (function () {
     });
     return Cup;
 }());
+var BulletCup = /** @class */ (function (_super) {
+    __extends(BulletCup, _super);
+    function BulletCup(str) {
+        return _super.call(this, str) || this;
+    }
+    Object.defineProperty(BulletCup.prototype, "HTML", {
+        get: function () { return "<li>"; },
+        enumerable: true,
+        configurable: true
+    });
+    return BulletCup;
+}(Cup));
 var ImageCup = /** @class */ (function (_super) {
     __extends(ImageCup, _super);
     function ImageCup(str) {
@@ -2261,6 +2321,8 @@ var RowHTML = /** @class */ (function () {
                         cellCup.replace(/(?:^|\n)([\|¦](?:[^\n]|\n\|)*)/, function (s) { return new TableCup(s); }, null);
                         //replace relative position containers 
                         cellCup.replace(/(?:^|\n)(@\[[0-9]+,[0-9]+\]\([^)]*\))/, function (s) { return new RelativePositionCup(s); }, null);
+                        //replace bullet points with li
+                        cellCup.replace(/(?:^|\n)(\*)/, function (s) { return new BulletCup(s); }, null);
                         //replace newlines with paragraph (br)
                         cellCup.replace(/(\n[^\n]*)/, function (s) { return new ParagraphCup(s); }, null);
                         //replace fractions
@@ -2546,16 +2608,30 @@ var QuestionHTML = /** @class */ (function (_super) {
     QuestionHTML.prototype.showDecisionImage = function () {
         this.solutions.filter(function (s) { return s.outOf > 0; }).forEach(function (s) { return s.showDecisionImage(); });
     };
-    Object.defineProperty(QuestionHTML.prototype, "score", {
+    Object.defineProperty(QuestionHTML.prototype, "correct", {
         get: function () {
-            return this.solutions.filter(function (s) { return s.affectsScore; }).reduce(function (a, b) { return a + b.score; }, 0);
+            return this.solutions.reduce(function (a, b) { return a + b.score; }, 0);
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(QuestionHTML.prototype, "outOf", {
         get: function () {
-            return this.solutions.filter(function (s) { return s.affectsScore; }).reduce(function (a, b) { return a + b.outOf; }, 0);
+            return this.solutions.reduce(function (a, b) { return a + b.outOf; }, 0);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(QuestionHTML.prototype, "attempted", {
+        get: function () {
+            return this.solutions.reduce(function (a, b) { return a + b.attempted; }, 0);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(QuestionHTML.prototype, "stars", {
+        get: function () {
+            return this.solutions.reduce(function (a, b) { return a + b.stars; }, 0);
         },
         enumerable: true,
         configurable: true
@@ -2781,13 +2857,29 @@ var Solution = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(Solution.prototype, "stars", {
+        get: function () {
+            if (this.image == decisionImageEnum.Star)
+                return 1;
+            return 0;
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Solution.prototype, "attempted", {
+        get: function () {
+            if (this.notYetAnswered || !this.affectsScore)
+                return 0;
+            return 1;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Object.defineProperty(Solution.prototype, "outOf", {
         //depends on template + field
         get: function () {
-            if ((this.settings.outOfOnlyQuestionsAttempted && this.notYetAnswered)
-                || !this.affectsScore) {
+            if (!this.affectsScore)
                 return 0;
-            }
             return 1;
         },
         enumerable: true,
@@ -2811,11 +2903,11 @@ var Solution = /** @class */ (function () {
                 var doAppend = !s.notYetChecked &&
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                var scoreOutOf = s.settings.getAssignmentScore();
+                var scores = s.settings.scoreGetters.map(function (f) { return f(); });
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(s.markbookIndex, s.field.elementValue, //field.elementValue
                     s.color, //solution.color
-                    doAppend, scoreOutOf);
+                    doAppend, scores);
                     //markbookColumn, response, color, append, scoreOutOf
                 }
             }

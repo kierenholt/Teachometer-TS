@@ -6,7 +6,7 @@ class AssignmentHTML {
     timerInterval: number;
     _questionNumbers: any[];
     submitButton: any;
-    anticheatDiv: HTMLDivElement;
+    //anticheatDiv: HTMLDivElement;
     
     constructor(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
@@ -14,11 +14,6 @@ class AssignmentHTML {
         this.settings = internalSettings;
         this.settings.random = new Random();
 
-        //add score getters to settings so that solution can call them 
-        this.settings.getAssignmentScore = function(paramAsn){
-            var asn = paramAsn; 
-            return function() { return asn.score; };
-        }(this);
 
         //markbookSettings values are true or false
         if (markbookSettings) {
@@ -26,12 +21,60 @@ class AssignmentHTML {
             this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
             this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
             this.settings.truncateMarks = Number(markbookSettings["truncate"]);
-            this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
+            //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
             this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
+            //this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
             this.settings.appendToMarkbook =  (markbookSettings["append stored responses"] == "ON");
             this.settings.reportScoreAsPercentage =  (markbookSettings["report score as percentage"] == "ON");
+            
+            let scoreHeaders = [markbookSettings["scoreHeader1"],markbookSettings["scoreHeader2"],markbookSettings["scoreHeader3"]];
+            let scores = [markbookSettings["score1"],markbookSettings["score2"],markbookSettings["score3"]];
+            
+            var index1 = scoreHeaders.indexOf("checks remaining"); 
+            if (index1 > -1) {
+                this.settings.numChecksLeft = Number(scores[index1]);
+            } 
+            var index2 = scoreHeaders.indexOf("clicks away")
+            if (index2 > -1) {
+                window.onblur = function(paramAsn) { 
+                    var asn = paramAsn;
+                    return function() {
+                        asn.settings.clicksAway++;
+                    };
+                }(this); 
+            
+                this.settings.clicksAway = Number(scores[index2]);
+            } 
+
+            //add score getters to settings so that solution can call them 
+            this.settings.scoreGetters = function(paramAsn,scoreHeaders){
+                var asn = paramAsn; 
+                var ret = [];
+                for (let header of scoreHeaders) {
+                    switch (header) {
+                        case "attempted %":
+                        ret.push(function() {return asn.percentAttempted;})
+                        break;
+                        case "correct %":
+                        ret.push(function() {return asn.percentCorrect;})
+                        break;
+                        case "stars %":
+                        ret.push(function() {return asn.percentStars;})
+                        break;
+                        case "clicks away":
+                        ret.push(function() {return asn.settings.clicksAway;})
+                        break;
+                        case "checks remaining":
+                        ret.push(function() {return asn.settings.numChecksLeft;})
+                        break;
+                        default: //also case "none"
+                        ret.push(function() { return ""; });
+                    }
+                }
+                return ret;
+            }(this,scoreHeaders);
+            
 
             //time limit
             this.settings.timeLimit = Number(markbookSettings["time limit"]);
@@ -211,7 +254,7 @@ class AssignmentHTML {
     }
 
     get questionNumbers() { //to populate the marksheet
-        return this._questionNumbers.concat("checks left","clicks away") ;
+        return this._questionNumbers;
     }
     
 
@@ -225,19 +268,22 @@ class AssignmentHTML {
         }
 
         this.questionHTMLs.forEach(s => s.showDecisionImage());
-        this.settings.numChecksLeft--;
+        
+        if (this.settings.numChecksLeft != undefined) {
+            this.settings.numChecksLeft--;
 
 
-        //submit button text
-        this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
-            ` (${this.settings.numChecksLeft} checks remaining)`;
-        var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+            //submit button text
             this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
-            ` (${this.settings.numChecksLeft} checks remaining)`;
-        if (this.submitButton) {
-            this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+                ` (${this.settings.numChecksLeft} checks remaining)`;
+            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
+                ` (${this.settings.numChecksLeft} checks remaining)`;
+            if (this.submitButton) {
+                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+            }
         }
-
+/*
         if (this.settings.markbookUpdate) {
             this.settings.markbookUpdate(
                 this.settings.checksLeftIndex, //after all solutions have been set 
@@ -245,7 +291,7 @@ class AssignmentHTML {
                 "white", //solution.color
                 false, //append
                 null); //no score update
-        }
+        }*/
 
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
             if (this.settings.markbookUpdate) {
@@ -254,7 +300,7 @@ class AssignmentHTML {
             
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawScore} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
+            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf} (${this.percentCorrect}%)</h1>`;
             this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
                         
             this.submitButton.remove();
@@ -273,7 +319,7 @@ class AssignmentHTML {
         if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
         let oldWindow = window;
-            let myWindow = window.open("", "AME", "");
+            let myWindow:any = window.open("", "AME", "");
             myWindow.document.write(`
 <head>
 <style>
@@ -325,20 +371,13 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
         if (this.settings.truncateMarks > 0) {this.truncate(this.settings.truncateMarks)}
         
 
-        //numChecksLeft - must come after markbookIndex stuff
-        this.settings.checksLeftIndex = this.settings.markbookIndex++;
-        var storedNumChecks = this.settings.responses ? this.settings.responses[this.settings.checksLeftIndex] : null;
-        if (helpers.isNumeric(storedNumChecks)) { //numchecksleft has already been set to default
-            this.settings.numChecksLeft = Number(storedNumChecks);
-        }
-
         //must be before disabled = true
         if (this.settings.numChecksLeft <= 0) { //show results
             this.questionHTMLs.forEach(s => s.showDecisionImage());
         }
 
         //SUBMIT BUTTON, if test not already taken and submitted
-        if (this.settings.numChecksLeft != 0) {
+        if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
             this.submitButton = document.createElement("button");
             this.submitButton.id = "submitButton";
 
@@ -348,9 +387,12 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
                 return function() {asn.showAllDecisionImages(true)};
             }(this);
 
-            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
-                this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
-                ` (${this.settings.numChecksLeft} checks remaining)`;
+            var checksLeftText = "";
+            if (this.settings.numChecksLeft != undefined) {
+                checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                    this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
+                    ` (${this.settings.numChecksLeft} checks remaining)`;
+            }
             this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
             this.settings.questionsDiv.appendChild(this.submitButton);
         }
@@ -360,55 +402,40 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
             }
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawScore} out of ${this.outOf} (${this.scorePercentage}%)</h1>`;
+            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf} (${this.percentCorrect}%)</h1>`;
             this.settings.questionsDiv.appendChild(scoreParagraph);
             this.disabled = true;
         }
-
-
-        //anticheatCount - must come after markbookIndex stuff
-        if (this.settings.antiCheatMode) {
-            var storedCheatCount = this.settings.responses ? this.settings.responses[this.settings.markbookIndex++] : null;
-            var anticheatCount = helpers.isNumeric(storedCheatCount) ? Number(storedCheatCount) : 0;
-            
-            this.anticheatDiv = document.createElement("div");
-            this.anticheatDiv.innerHTML = "<p>ANTI CHEAT MODE IS ACTIVE. <br> IF YOU CHANGE TAB OR LEAVE THIS PAGE, IT WILL BE LOGGED</p>";
-            this.anticheatDiv.className += " anticheat";
-            this.settings.questionsDiv.parentElement.insertBefore(this.anticheatDiv, this.settings.questionsDiv);
-
-            if (this.settings.markbookUpdate) {
-                window.onblur = function(paramMarkbookUpdate, paramMarkbookIndex, paramAnticheatCount) { 
-                    var anticheatCount = paramAnticheatCount;
-                    var markbookUpdate = paramMarkbookUpdate;
-                    var markbookIndex = paramMarkbookIndex;
-
-                    return function() {
-                        anticheatCount++;
-                        markbookUpdate(
-                            markbookIndex, //after all solutions have been set 
-                            anticheatCount, //field.elementValue
-                            "white", //solution.color
-                            false, //append
-                            null); //no score update
-                    };
-                    }(this.settings.markbookUpdate, this.settings.markbookIndex, anticheatCount); 
-            }
-        } //end of anticheat 
-        
     }
 
     //called by solution 
-    get score() {
+    get percentStars() {
         if (this.outOf == 0) { return 0; }
-        if (this.settings.reportScoreAsPercentage) {
-            return Math.round(this.rawScore * 100 / this.outOf);  
-        }
-        return `${this.rawScore} / ${this.outOf}`;
+        return Math.round(this.rawStars * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));  
     }
 
-    get rawScore() {
-        return this.questionHTMLs.reduce((a, b) => a + b.score, 0); //all solutions count 1 mark
+    get percentAttempted () {
+        if (this.outOf == 0) { return 0; }
+        return Math.round(this.rawAttempted * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));  
     }
+
+    get percentCorrect() {
+        if (this.outOf == 0) { return 0; }
+        return Math.round(this.rawCorrect * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));  
+    }
+
+    get rawCorrect() {
+        return this.questionHTMLs.reduce((a, b) => a + b.correct, 0); //all solutions count 1 mark
+    }
+
+    get rawAttempted() {
+        return this.questionHTMLs.reduce((a, b) => a + b.attempted, 0); //all solutions count 1 mark
+    }
+
+    get rawStars() {
+        return this.questionHTMLs.reduce((a, b) => a + b.stars, 0); //all solutions count 1 mark
+    }
+
 
     //called by solution when updating markbook
     get outOf() {
