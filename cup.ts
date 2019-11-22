@@ -14,6 +14,11 @@ class Cup {
   get HTML() { return `<${this.tagName} ${this.attributes.join("  ")}>${this.innerHTML}</${this.tagName}>` }
 }
 
+class BulletCup extends Cup {
+  constructor(str) {super(str);}
+  get HTML() {return "<li>"}
+}
+
 class ImageCup extends Cup {
   comment: any;
   source: any;

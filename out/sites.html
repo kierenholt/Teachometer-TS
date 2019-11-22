@@ -35,9 +35,12 @@
 			"time limit": -1,
 			"truncate": -1,
 			"journal mode": "OFF",
-			"anticheat mode": "OFF",
       "allow refresh": "ON",
-      "append stored responses": "ON"
+      "append stored responses": "ON",
+			"scoreHeader1": "attempted %",
+			"scoreHeader2": "correct %",
+      "scoreHeader3": "stars %",
+      "score3": "0"
 			
         };
         markbookSettings.user = "<?=user?>";
@@ -46,9 +49,7 @@
         
         //responses
         
-        var responsesString = `[
-        	"1","2","2","1"
-        	]`;
+        var responsesString = null;//`["B","2","2","1"]`;
         if (responsesString) {
           markbookSettings.responses = JSON.parse(responsesString);
         }
