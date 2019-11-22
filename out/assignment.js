@@ -283,13 +283,19 @@ var AssignmentHTML = /** @class */ (function () {
                 var rule = _a[_i];
                 styleText += rule.cssText;
             }
-        var oldWindow = window;
-        var myWindow = window.open("", "AME", "");
-        myWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
-        settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
-        myWindow["helpers"] = oldWindow.helpersMaker();
-        myWindow.assignment = new AssignmentHTML(settings, null);
-        myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
+        if (!this.previewWindow) {
+            this.previewWindow = window.open("", "AME", "");
+            this.previewWindow["helpers"] = window.helpersMaker();
+        }
+        this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
+        this.previewWindow.stop();
+        var newSettings = {};
+        for (var index in this.settings) {
+            newSettings[index] = this.settings[index];
+        }
+        newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+        this.previewWindow["assignment"] = new AssignmentHTML(newSettings, null);
+        this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     };
     Object.defineProperty(AssignmentHTML.prototype, "rows", {
         get: function () {

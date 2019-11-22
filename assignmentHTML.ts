@@ -6,6 +6,7 @@ class AssignmentHTML {
     timerInterval: number;
     _questionNumbers: any[];
     submitButton: any;
+    previewWindow: Window;
     //anticheatDiv: HTMLDivElement;
     
     constructor(internalSettings, markbookSettings) {
@@ -318,9 +319,12 @@ class AssignmentHTML {
         var css:any = document.styleSheets[0];
         if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
-        let oldWindow = window;
-            let myWindow:any = window.open("", "AME", "");
-            myWindow.document.write(`
+        if (!this.previewWindow) {
+            this.previewWindow = window.open("", "AME", "");
+            this.previewWindow["helpers"] = window.helpersMaker();			
+        }
+
+            this.previewWindow.document.write(`
 <head>
 <style>
 ${styleText}
@@ -330,12 +334,13 @@ ${styleText}
 <div id="questionsDiv"></div>
 </body>
 `);
-settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
+this.previewWindow.stop();
+let newSettings = {};
+for (let index in this.settings) {newSettings[index] = this.settings[index];}
+newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
 
-myWindow["helpers"] = oldWindow.helpersMaker();			
-myWindow.assignment = new AssignmentHTML(settings,null);
-myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
-
+this.previewWindow["assignment"] = new AssignmentHTML(newSettings,null);
+this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     }
 
 
