@@ -320,7 +320,7 @@ class AssignmentHTML {
         if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
         if (!this.previewWindow) {
-            this.previewWindow = window.open("", "AME", "");
+            this.previewWindow = window.open("", "preview", "");
             this.previewWindow["helpers"] = window.helpersMaker();			
         }
 

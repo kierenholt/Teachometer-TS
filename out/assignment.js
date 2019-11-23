@@ -284,7 +284,7 @@ var AssignmentHTML = /** @class */ (function () {
                 styleText += rule.cssText;
             }
         if (!this.previewWindow) {
-            this.previewWindow = window.open("", "AME", "");
+            this.previewWindow = window.open("", "preview", "");
             this.previewWindow["helpers"] = window.helpersMaker();
         }
         this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
