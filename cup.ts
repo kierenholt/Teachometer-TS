@@ -65,7 +65,7 @@ class AnchorCup extends Cup {
       this.url = "https://" + this.url;
     this.tagName = "a";
     this.attributes.push(`href="${this.url}"`);
-    this.attributes.push(`target="_blank">`);
+    this.attributes.push(`target="_blank"`);
   }
 
   get innerHTML() {
@@ -442,7 +442,7 @@ class FieldCup extends Cup implements Field {
 
   set disabled(value) { 
     this._element.disabled = value;
-    this._decisionElement.hidden = value;  
+    if (this._decisionElement != null) this._decisionElement.hidden = value;  
   }
   get disabled() { return this._element.disabled; }
 

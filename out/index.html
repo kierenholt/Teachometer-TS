@@ -92,7 +92,12 @@
 	}
 
 	function doJSON() {
-		document.getElementById("markbookUpdates").value = JSON.stringify(window.assignment.rows);
+		ret = JSON.stringify(window.assignment.rows);
+		ret = window.helpers.replaceAll(ret,"`","");
+		ret = window.helpers.replaceAll(ret,"	","\\t");
+		ret = window.helpers.replaceAll(ret,"\\","\\\\");
+		
+		document.getElementById("markbookUpdates").value = ret;
 		}
 
 	function addNewRow() {

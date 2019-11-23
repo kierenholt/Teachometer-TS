@@ -3,26 +3,33 @@ var AssignmentHTML = /** @class */ (function () {
     function AssignmentHTML(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
         this.settings = internalSettings;
-        this.settings.random = new Random();
+        //this.settings.random = new Random();
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
-            this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
+            //this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
             this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
-            this.settings.truncateMarks = Number(markbookSettings["truncate"]);
+            this.settings.truncateMarks = Number(markbookSettings["total mark limit"]);
             //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
             this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            //this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
+            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
             this.settings.appendToMarkbook = (markbookSettings["append stored responses"] == "ON");
-            this.settings.reportScoreAsPercentage = (markbookSettings["report score as percentage"] == "ON");
-            var scoreHeaders = [markbookSettings["scoreHeader1"], markbookSettings["scoreHeader2"], markbookSettings["scoreHeader3"]];
-            var scores = [markbookSettings["score1"], markbookSettings["score2"], markbookSettings["score3"]];
-            var index1 = scoreHeaders.indexOf("checks remaining");
+            this.settings.markbookUpdate = markbookSettings.markbookUpdate;
+            this.settings.markbookIndex = 0; //incremented by solutions
+            this.settings.user = markbookSettings.user;
+            this.settings.workbookId = markbookSettings.workbookId;
+            this.settings.sheetName = markbookSettings.sheetName;
+            //SCORES i.e. time remaining, checks remaining etc
+            this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
+            this.settings.scores = markbookSettings["scores"];
+            //Number of checks remaining
+            var index1 = this.settings.scoreHeaders.indexOf("checks remaining");
             if (index1 > -1) {
-                this.settings.numChecksLeft = Number(scores[index1]);
+                this.settings.numChecksLeft = Number(this.settings.scores[index1]);
             }
-            var index2 = scoreHeaders.indexOf("clicks away");
+            //Number of clicks away
+            var index2 = this.settings.scoreHeaders.indexOf("clicks away");
             if (index2 > -1) {
                 window.onblur = function (paramAsn) {
                     var asn = paramAsn;
@@ -30,7 +37,7 @@ var AssignmentHTML = /** @class */ (function () {
                         asn.settings.clicksAway++;
                     };
                 }(this);
-                this.settings.clicksAway = Number(scores[index2]);
+                this.settings.clicksAway = Number(this.settings.scores[index2]);
             }
             //add score getters to settings so that solution can call them 
             this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
@@ -54,47 +61,51 @@ var AssignmentHTML = /** @class */ (function () {
                         case "checks remaining":
                             ret.push(function () { return asn.settings.numChecksLeft; });
                             break;
+                        case "time remaining":
+                            ret.push(function () { return asn.settings.timeRemaining; });
+                            break;
                         default: //also case "none"
-                            ret.push(function () { return ""; });
+                            throw new Error("score header not recognised");
                     }
                 }
                 return ret;
-            }(this, scoreHeaders);
+            }(this, this.settings.scoreHeaders);
             //time limit
-            this.settings.timeLimit = Number(markbookSettings["time limit"]);
-            if (this.settings.timeLimit > -1) {
-                this.timerDiv = document.createElement("div");
-                this.timerDiv.className += " timer";
-                this.settings.questionsDiv.parentElement.appendChild(this.timerDiv);
-                this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
-                    var asn = paramAsn;
-                    var countUp = timeLimit == 0;
-                    var target = new Date().getTime() + 1000 * 60 * timeLimit;
-                    var div = paramDiv;
-                    return function () {
-                        var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
-                        var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                        var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                        var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                        div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-                        if (distance < 60 * 1000 && !countUp) {
-                            div.className += " red";
-                        }
-                        // If the count down is over, write some text 
-                        if (distance < 0) {
-                            clearInterval(asn.timerInterval);
-                            div.innerHTML = "EXPIRED";
-                            asn.settings.numChecksLeft = 1;
-                            asn.showAllDecisionImages(false); //does not show warning
-                        }
-                    };
-                }(this.settings.timeLimit, this.timerDiv, this), 900);
+            var index3 = this.settings.scoreHeaders.indexOf("time remaining");
+            if (index3 > -1) {
+                this.settings.timeRemaining = Number(this.settings.scores[index3]);
+                if (this.settings.timeRemaining != 0) {
+                    var timerDiv = document.createElement("div");
+                    timerDiv.className += " timer";
+                    this.settings.questionsDiv.parentElement.appendChild(timerDiv);
+                    this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
+                        var asn = paramAsn;
+                        var countUp = timeLimit == 0;
+                        var target = new Date().getTime() + 1000 * 60 * timeLimit;
+                        var div = paramDiv;
+                        //REPEATS EVERY 0.9 SECONDS
+                        return function () {
+                            var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
+                            var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                            div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                            asn.settings.timeRemaining = minutes;
+                            if (distance < 60 * 1000 && !countUp) {
+                                div.className += " red";
+                            }
+                            // If the count down is over, write some text 
+                            if (distance < 0) {
+                                asn.settings.timeRemaining = 0;
+                                clearInterval(asn.timerInterval);
+                                div.innerHTML = "EXPIRED";
+                                asn.settings.numChecksLeft = 1;
+                                asn.showAllDecisionImages(false); //does not show warning
+                            }
+                        };
+                    }(this.settings.timeRemaining, timerDiv, this), 900);
+                }
             }
-            this.settings.markbookUpdate = markbookSettings.markbookUpdate;
-            this.settings.markbookIndex = 0; //incremented by solutions
-            this.settings.user = markbookSettings.user;
-            this.settings.workbookId = markbookSettings.workbookId;
-            this.settings.sheetName = markbookSettings.sheetName;
             //responses
             if (markbookSettings.responses) {
                 this.settings.responses = markbookSettings.responses;
@@ -216,7 +227,7 @@ var AssignmentHTML = /** @class */ (function () {
             while (this.settings.jumbledSolutionsDiv.firstChild) {
                 this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
             }
-            helpers.shuffle(divs);
+            helpers.shuffle(divs, this.settings.random);
             divs.forEach(function (d) { return _this.settings.jumbledSolutionsDiv.appendChild(d); });
         }
     };
@@ -247,15 +258,14 @@ var AssignmentHTML = /** @class */ (function () {
                 this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
             }
         }
-        /*
-                if (this.settings.markbookUpdate) {
-                    this.settings.markbookUpdate(
-                        this.settings.checksLeftIndex, //after all solutions have been set
-                        this.settings.numChecksLeft, //field.elementValue
-                        "white", //solution.color
-                        false, //append
-                        null); //no score update
-                }*/
+        //THIS CALL TO MARKBOOK UPDATE IS NECESSARY SINCE CHECKS MIGHT RUN OuT ETC.
+        if (this.settings.markbookUpdate) {
+            this.settings.markbookUpdate(null, //no response column 
+            null, //no response
+            "white", //solution.color
+            false, //append
+            this.settings.scoreGetters.map(function (f) { return f(); })); //no score update
+        }
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
             if (this.settings.markbookUpdate) {
                 this.settings.markbookUpdate = undefined;
@@ -321,7 +331,7 @@ var AssignmentHTML = /** @class */ (function () {
     AssignmentHTML.prototype.consumeRowsString = function (blobString) {
         var seed = undefined;
         if (!this.settings.journalMode) {
-            seed = helpers.CombineHashCodes([this.settings.user]); //different test per user, per name
+            seed = helpers.CombineHashCodes([this.settings.user]); //different test per user
         }
         this.settings.random = new Random(seed);
         var rows = JSON.parse(blobString);
@@ -438,7 +448,7 @@ var AssignmentHTML = /** @class */ (function () {
         while (this.settings.solutionsDiv && this.settings.solutionsDiv.firstChild) {
             this.settings.solutionsDiv.removeChild(this.settings.solutionsDiv.firstChild);
         }
-        this.rowHTMLs = helpers.shuffle(this.rowHTMLs);
+        this.rowHTMLs = helpers.shuffle(this.rowHTMLs, this.settings.random);
         this.rowHTMLs.forEach(function (r) { return _this.insertRowIntoDivs(r); });
     };
     AssignmentHTML.prototype.truncate = function (n) {
@@ -564,7 +574,7 @@ var AnchorCup = /** @class */ (function (_super) {
             _this.url = "https://" + _this.url;
         _this.tagName = "a";
         _this.attributes.push("href=\"" + _this.url + "\"");
-        _this.attributes.push("target=\"_blank\">");
+        _this.attributes.push("target=\"_blank\"");
         return _this;
     }
     Object.defineProperty(AnchorCup.prototype, "innerHTML", {
@@ -968,7 +978,8 @@ var FieldCup = /** @class */ (function (_super) {
         get: function () { return this._element.disabled; },
         set: function (value) {
             this._element.disabled = value;
-            this._decisionElement.hidden = value;
+            if (this._decisionElement != null)
+                this._decisionElement.hidden = value;
         },
         enumerable: true,
         configurable: true
@@ -2120,10 +2131,10 @@ var helpersMaker = function () {
     var createUID = function () {
         return 'ID' + Math.random().toString(36).substr(2, 16);
     };
-    var shuffle = function (a) {
+    var shuffle = function (a, random) {
         var _a;
         for (var i = a.length - 1; i > 0; i--) {
-            var j = Math.floor(Math.random() * (i + 1));
+            var j = Math.floor(random.next(i + 1));
             _a = [a[j], a[i]], a[i] = _a[0], a[j] = _a[1];
         }
         return a;
@@ -2336,7 +2347,7 @@ var RowHTML = /** @class */ (function () {
                         //(~\[[^\]]*\]\((?:\\\)|[^)])*\))
                         cellCup.replace(/(~\[[^\]]*\]\((?:\\\)|[^)])*\))/, function (s) { return new FractionCup(s); }, null);
                         //replace anchors
-                        if (this.settings.antiCheatMode) {
+                        if (this.settings.removeHyperlinks) {
                             cellCup.replace(/(?:[^\!]|^)(\[[^\]]*]\([^\)]*\))/, function (s) { return new ChunkCup(""); }, null);
                         }
                         else {
@@ -2644,8 +2655,74 @@ var QuestionHTML = /** @class */ (function (_super) {
     });
     return QuestionHTML;
 }(RowHTML));
+var TemplateHTML = /** @class */ (function (_super) {
+    __extends(TemplateHTML, _super);
+    function TemplateHTML(row, showTitle, paramSettings) {
+        var _this = _super.call(this, row, showTitle, paramSettings) || this;
+        //refresh button
+        if (_this.settings.allowRefresh) {
+            var refreshButton = document.createElement("img");
+            refreshButton.src = imageData.refresh;
+            refreshButton.className = "refreshButton hideOnPrint";
+            refreshButton.onclick = (function (ref) { var r = ref; return function () { r.refresh(); }; })(_this);
+            _this.marginDiv.appendChild(refreshButton);
+        }
+        _this.randomForTemplate = paramSettings.random;
+        return _this;
+    }
+    TemplateHTML.prototype.replacedTemplates = function () {
+        var comments = this.row.comment.split('\n');
+        //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
+        var templates = [];
+        var paramIndexForRangeEvaluation = this.randomForTemplate.next();
+        var customFunctions = {};
+        for (var i = 0; i < comments.length; i++) {
+            templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
+        }
+        if (this.row.purpose == "sudoku") {
+            //force calculate
+            templates.forEach(function (t) { if (t)
+                t.forceCalculate(); });
+            //number of dollars
+            var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
+            //sudoku only
+            var variablesUsed = templates.map(function (t) {
+                if (t)
+                    return t.variablesUsed;
+                var ret = [];
+                for (var i = 0; i < 26; i++)
+                    ret.push(false);
+                return ret;
+            });
+            //add variables to their own equations
+            for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
+                eqn[i] = true;
+            }
+            //DO NOT remove all equations (rows) but trim cols (variables) to num templates
+            variablesUsed = variablesUsed.map(function (arr) { return arr.slice(0, templates.length); });
+            var variablesToShow = showVariables(variablesUsed, numDollars, this.settings.random);
+            var replaceSudokuDollarInjector = function (variablesToShow) {
+                var variablesToShow = variablesToShow;
+                var index = 0;
+                return function (letter) {
+                    index++;
+                    return !(variablesToShow[index - 1]);
+                };
+            };
+            this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
+        }
+        //each comment is an equation
+        return templates;
+    };
+    TemplateHTML.prototype.refresh = function () {
+        this._cellCups = null;
+        this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
+        this.refreshsolutionDiv();
+    };
+    return TemplateHTML;
+}(QuestionHTML));
 //takes square grid of rows (equations) with variables as true (columns)
-function showVariables(arr, numDollars) {
+function showVariables(arr, numDollars, paramRandom) {
     //automatically show variables (columns) that only appear once (in diagonal)
     var colsToShow = arr[0].map(function (a) { return false; }); //set all cols to false
     for (var rowCol = 0; rowCol < arr[0].length; rowCol++) {
@@ -2692,7 +2769,7 @@ function showVariables(arr, numDollars) {
             break;
         }
         //randomly pick a col to remove
-        var colToRemove = colsWithATrue[Math.floor(Math.random() * colsWithATrue.length)];
+        var colToRemove = colsWithATrue[Math.floor(paramRandom.next(colsWithATrue.length))];
         colsToShow[colToRemove] = true;
         //set col to false 
         arr.forEach(function (f) { return f[colToRemove] = false; });
@@ -2712,72 +2789,6 @@ function showVariables(arr, numDollars) {
     }
     return colsToShow;
 }
-var TemplateHTML = /** @class */ (function (_super) {
-    __extends(TemplateHTML, _super);
-    function TemplateHTML(row, showTitle, paramSettings) {
-        var _this = _super.call(this, row, showTitle, paramSettings) || this;
-        //refresh button
-        if (_this.settings.allowRefresh) {
-            var refreshButton = document.createElement("img");
-            refreshButton.src = imageData.refresh;
-            refreshButton.className = "refreshButton hideOnPrint";
-            refreshButton.onclick = (function (ref) { var r = ref; return function () { r.refresh(); }; })(_this);
-            _this.marginDiv.appendChild(refreshButton);
-        }
-        _this.randomForTemplate = paramSettings.random;
-        return _this;
-    }
-    TemplateHTML.prototype.replacedTemplates = function () {
-        var comments = this.row.comment.split('\n');
-        //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
-        var templates = [];
-        var paramIndexForRangeEvaluation = this.randomForTemplate.next();
-        var customFunctions = {};
-        for (var i = 0; i < comments.length; i++) {
-            templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
-        }
-        if (this.row.purpose == "sudoku") {
-            //force calculate
-            templates.forEach(function (t) { if (t)
-                t.forceCalculate(); });
-            //number of dollars
-            var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
-            //sudoku only
-            var variablesUsed = templates.map(function (t) {
-                if (t)
-                    return t.variablesUsed;
-                var ret = [];
-                for (var i = 0; i < 26; i++)
-                    ret.push(false);
-                return ret;
-            });
-            //add variables to their own equations
-            for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
-                eqn[i] = true;
-            }
-            //DO NOT remove all equations (rows) but trim cols (variables) to num templates
-            variablesUsed = variablesUsed.map(function (arr) { return arr.slice(0, templates.length); });
-            var variablesToShow = showVariables(variablesUsed, numDollars);
-            var replaceSudokuDollarInjector = function (variablesToShow) {
-                var variablesToShow = variablesToShow;
-                var index = 0;
-                return function (letter) {
-                    index++;
-                    return !(variablesToShow[index - 1]);
-                };
-            };
-            this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
-        }
-        //each comment is an equation
-        return templates;
-    };
-    TemplateHTML.prototype.refresh = function () {
-        this._cellCups = null;
-        this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
-        this.refreshsolutionDiv();
-    };
-    return TemplateHTML;
-}(QuestionHTML));
 var ALLOWABLE_ERROR_FOR_CORRECT_ANSWER = 0.05;
 //DECISION LOGIC
 var Solution = /** @class */ (function () {
