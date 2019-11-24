@@ -2,40 +2,50 @@
 class AssignmentHTML {
     rowHTMLs: any[];
     settings: any;
-    timerDiv: HTMLDivElement;
     timerInterval: number;
     _questionNumbers: any[];
     submitButton: any;
+    previewWindow: Window;
     //anticheatDiv: HTMLDivElement;
     
     constructor(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
 
         this.settings = internalSettings;
-        this.settings.random = new Random();
+        //this.settings.random = new Random();
 
 
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
-            this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
+            //this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
             this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
-            this.settings.truncateMarks = Number(markbookSettings["truncate"]);
+            this.settings.truncateMarks = Number(markbookSettings["total mark limit"]);
             //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
             this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            //this.settings.antiCheatMode = (markbookSettings["anticheat mode"] == "ON");
+            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == "ON");
             this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
             this.settings.appendToMarkbook =  (markbookSettings["append stored responses"] == "ON");
-            this.settings.reportScoreAsPercentage =  (markbookSettings["report score as percentage"] == "ON");
             
-            let scoreHeaders = [markbookSettings["scoreHeader1"],markbookSettings["scoreHeader2"],markbookSettings["scoreHeader3"]];
-            let scores = [markbookSettings["score1"],markbookSettings["score2"],markbookSettings["score3"]];
+            this.settings.markbookUpdate = markbookSettings.markbookUpdate;
+            this.settings.markbookIndex = 0; //incremented by solutions
+
+            this.settings.user = markbookSettings.user;
+            this.settings.workbookId = markbookSettings.workbookId;
+            this.settings.sheetName = markbookSettings.sheetName;
+
+            //SCORES i.e. time remaining, checks remaining etc
+            this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
+            this.settings.scores = markbookSettings["scores"];
             
-            var index1 = scoreHeaders.indexOf("checks remaining"); 
+            //Number of checks remaining
+            var index1 = this.settings.scoreHeaders.indexOf("checks remaining"); 
             if (index1 > -1) {
-                this.settings.numChecksLeft = Number(scores[index1]);
+                this.settings.numChecksLeft = Number(this.settings.scores[index1]);
             } 
-            var index2 = scoreHeaders.indexOf("clicks away")
+
+            //Number of clicks away
+            var index2 = this.settings.scoreHeaders.indexOf("clicks away")
             if (index2 > -1) {
                 window.onblur = function(paramAsn) { 
                     var asn = paramAsn;
@@ -44,7 +54,7 @@ class AssignmentHTML {
                     };
                 }(this); 
             
-                this.settings.clicksAway = Number(scores[index2]);
+                this.settings.clicksAway = Number(this.settings.scores[index2]);
             } 
 
             //add score getters to settings so that solution can call them 
@@ -68,59 +78,60 @@ class AssignmentHTML {
                         case "checks remaining":
                         ret.push(function() {return asn.settings.numChecksLeft;})
                         break;
+                        case "time remaining":
+                        ret.push(function() {return asn.settings.timeRemaining;})
+                        break;
                         default: //also case "none"
-                        ret.push(function() { return ""; });
+                        throw new Error("score header not recognised");
                     }
                 }
                 return ret;
-            }(this,scoreHeaders);
+            }(this,this.settings.scoreHeaders);
             
 
             //time limit
-            this.settings.timeLimit = Number(markbookSettings["time limit"]);
-            if (this.settings.timeLimit > -1) {
+            var index3 = this.settings.scoreHeaders.indexOf("time remaining"); 
+            if (index3 > -1) {
+                this.settings.timeRemaining = Number(this.settings.scores[index3]);
 
-                this.timerDiv = document.createElement("div");
-                this.timerDiv.className += " timer";
-                this.settings.questionsDiv.parentElement.appendChild(this.timerDiv);
-                
-                this.timerInterval = setInterval(function(timeLimit, paramDiv, paramAsn) {
+                if (this.settings.timeRemaining != 0) {
+                    let timerDiv = document.createElement("div");
+                    timerDiv.className += " timer";
+                    this.settings.questionsDiv.parentElement.appendChild(timerDiv);
+                    
+                    this.timerInterval = setInterval(function(timeLimit, paramDiv, paramAsn) {
+                        
+                        var asn = paramAsn;
+                        var countUp = timeLimit == 0;
+                        var target = new Date().getTime() + 1000 * 60 * timeLimit;
+                        var div = paramDiv;
+                        //REPEATS EVERY 0.9 SECONDS
+                        return function() {
+                            let distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
+                            let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                            let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                            let seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
-                    var asn = paramAsn;
-                      var countUp = timeLimit == 0;
-                      var target = new Date().getTime() + 1000 * 60 * timeLimit;
-                      var div = paramDiv;
+                            div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                            asn.settings.timeRemaining = minutes;
 
-                      return function() {
-                          let distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
-                          let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                          let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                          let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                          div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-
-                          if (distance < 60 * 1000 && !countUp) {
-                              div.className += " red";
-                          }      
-                          
-                          // If the count down is over, write some text 
-                          if (distance < 0) {
-                            clearInterval(asn.timerInterval);
-                            div.innerHTML = "EXPIRED";
-                            asn.settings.numChecksLeft = 1;
-                            asn.showAllDecisionImages(false); //does not show warning
-                          }
-                      };
-                    }(this.settings.timeLimit, this.timerDiv, this), 900);
-                
+                            if (distance < 60 * 1000 && !countUp) {
+                                div.className += " red";
+                            }      
+                            
+                            // If the count down is over, write some text 
+                            if (distance < 0) {
+                                asn.settings.timeRemaining = 0;
+                                clearInterval(asn.timerInterval);
+                                div.innerHTML = "EXPIRED";
+                                asn.settings.numChecksLeft = 1;
+                                asn.showAllDecisionImages(false); //does not show warning
+                            }
+                        };
+                        }(this.settings.timeRemaining, timerDiv, this), 900);
+                    }
             }
 
-            this.settings.markbookUpdate = markbookSettings.markbookUpdate;
-            this.settings.markbookIndex = 0; //incremented by solutions
-
-            this.settings.user = markbookSettings.user;
-            this.settings.workbookId = markbookSettings.workbookId;
-            this.settings.sheetName = markbookSettings.sheetName;
 
             //responses
             if (markbookSettings.responses) { 
@@ -248,7 +259,7 @@ class AssignmentHTML {
             while (this.settings.jumbledSolutionsDiv.firstChild) {
                 this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
             }
-            helpers.shuffle(divs);
+            helpers.shuffle(divs,this.settings.random);
             divs.forEach(d => this.settings.jumbledSolutionsDiv.appendChild(d));
         }
     }
@@ -283,15 +294,15 @@ class AssignmentHTML {
                 this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
             }
         }
-/*
+//THIS CALL TO MARKBOOK UPDATE IS NECESSARY SINCE CHECKS MIGHT RUN OuT ETC.
         if (this.settings.markbookUpdate) {
             this.settings.markbookUpdate(
-                this.settings.checksLeftIndex, //after all solutions have been set 
-                this.settings.numChecksLeft, //field.elementValue
+                null, //no response column 
+                null, //no response
                 "white", //solution.color
                 false, //append
-                null); //no score update
-        }*/
+                this.settings.scoreGetters.map(f => f())); //no score update
+        }
 
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
             if (this.settings.markbookUpdate) {
@@ -318,9 +329,12 @@ class AssignmentHTML {
         var css:any = document.styleSheets[0];
         if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
-        let oldWindow = window;
-            let myWindow:any = window.open("", "AME", "");
-            myWindow.document.write(`
+        if (!this.previewWindow) {
+            this.previewWindow = window.open("", "preview", "");
+            this.previewWindow["helpers"] = window.helpersMaker();			
+        }
+
+            this.previewWindow.document.write(`
 <head>
 <style>
 ${styleText}
@@ -330,12 +344,13 @@ ${styleText}
 <div id="questionsDiv"></div>
 </body>
 `);
-settings.questionsDiv = myWindow.document.getElementById("questionsDiv");
+this.previewWindow.stop();
+let newSettings = {};
+for (let index in this.settings) {newSettings[index] = this.settings[index];}
+newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
 
-myWindow["helpers"] = oldWindow.helpersMaker();			
-myWindow.assignment = new AssignmentHTML(settings,null);
-myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
-
+this.previewWindow["assignment"] = new AssignmentHTML(newSettings,null);
+this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     }
 
 
@@ -355,7 +370,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
     consumeRowsString(blobString) {
         let seed = undefined;
         if (!this.settings.journalMode) {
-            seed = helpers.CombineHashCodes([this.settings.user]); //different test per user, per name
+            seed = helpers.CombineHashCodes([this.settings.user]); //different test per user
         }
         this.settings.random = new Random(seed);
            
@@ -452,7 +467,7 @@ myWindow.assignment.consumeRowsString(JSON.stringify(this.rows));
             this.settings.solutionsDiv.removeChild(this.settings.solutionsDiv.firstChild);
         }
 
-        this.rowHTMLs = helpers.shuffle(this.rowHTMLs);
+        this.rowHTMLs = helpers.shuffle(this.rowHTMLs,this.settings.random);
         this.rowHTMLs.forEach(r => this.insertRowIntoDivs(r));
     }
 

@@ -66,9 +66,9 @@ var helpersMaker = function() {
       return 'ID' + Math.random().toString(36).substr(2, 16);
     }
 
-    var shuffle = function(a) {
+    var shuffle = function(a, random) {
         for (let i = a.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
+            const j = Math.floor(random.next(i + 1));
             [a[i], a[j]] = [a[j], a[i]];
         }
         return a;

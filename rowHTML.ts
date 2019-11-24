@@ -146,7 +146,7 @@ class RowHTML {
                     cellCup.replace(/(~\[[^\]]*\]\((?:\\\)|[^)])*\))/, (s) => { return new FractionCup(s); }, null);
                 
                     //replace anchors
-                    if (this.settings.antiCheatMode) {
+                    if (this.settings.removeHyperlinks) {
                         cellCup.replace(/(?:[^\!]|^)(\[[^\]]*]\([^\)]*\))/, (s) => { return new ChunkCup(""); }, null);
                     }
                     else {
@@ -482,8 +482,87 @@ class QuestionHTML extends RowHTML {
 
 
 
+
+
+class TemplateHTML extends QuestionHTML{
+    randomForTemplate: any;
+    constructor(row, showTitle, paramSettings) {
+        super(row, showTitle, paramSettings);
+        
+        //refresh button
+        if (this.settings.allowRefresh) {       
+            let refreshButton =  document.createElement("img");
+            refreshButton.src = imageData.refresh;
+            refreshButton.className = "refreshButton hideOnPrint";
+            refreshButton.onclick = (function(ref) {var r = ref; return function() {r.refresh()};})(this);
+            this.marginDiv.appendChild(refreshButton);
+        }
+
+
+        this.randomForTemplate = paramSettings.random;
+    }
+
+
+    replacedTemplates() {
+        let comments = this.row.comment.split('\n');
+
+        //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
+
+            let templates = [];
+            let paramIndexForRangeEvaluation = this.randomForTemplate.next();
+            let customFunctions = {};
+            for (var i = 0; i < comments.length; i++) { 
+                templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
+            }
+            if (this.row.purpose == "sudoku") {
+                //force calculate
+                templates.forEach(function(t) {if (t) t.forceCalculate()});
+                //number of dollars
+                var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
+                //sudoku only
+                var variablesUsed = templates.map(function(t) {
+                        if (t) return t.variablesUsed;
+                        let ret =  [];
+                        for (var i = 0; i < 26; i++) ret.push(false);
+                        return ret; 
+                    });
+                //add variables to their own equations
+                for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
+                    eqn[i] = true;
+                }
+                //DO NOT remove all equations (rows) but trim cols (variables) to num templates
+                variablesUsed = variablesUsed.map(arr => arr.slice(0,templates.length));
+                
+                var variablesToShow = showVariables(variablesUsed,numDollars,this.settings.random);
+                var replaceSudokuDollarInjector = function(variablesToShow) {
+                    var variablesToShow = variablesToShow;
+                    var index = 0;
+
+                    return function(letter) {
+                      index++;
+                      return !(variablesToShow[index-1]);
+                    };
+                  }
+                this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
+
+        }
+        //each comment is an equation
+
+        return templates;
+    }
+
+
+        
+    refresh() { 
+        this._cellCups = null;
+        this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
+        this.refreshsolutionDiv();
+    }
+}
+
+
 //takes square grid of rows (equations) with variables as true (columns)
-function showVariables(arr:boolean[][],numDollars) {
+function showVariables(arr:boolean[][],numDollars,paramRandom) {
     //automatically show variables (columns) that only appear once (in diagonal)
     var colsToShow = arr[0].map(a => false); //set all cols to false
     for (var rowCol = 0; rowCol < arr[0].length; rowCol++) {
@@ -542,7 +621,7 @@ function showVariables(arr:boolean[][],numDollars) {
 
         //randomly pick a col to remove
 
-        var colToRemove = colsWithATrue[Math.floor(Math.random()*colsWithATrue.length)];
+        var colToRemove = colsWithATrue[Math.floor(paramRandom.next(colsWithATrue.length))];
         colsToShow[colToRemove] = true;
         //set col to false 
         arr.forEach(f => f[colToRemove] = false);
@@ -562,81 +641,3 @@ function showVariables(arr:boolean[][],numDollars) {
     }
     return colsToShow;
 }
-
-
-class TemplateHTML extends QuestionHTML{
-    randomForTemplate: any;
-    constructor(row, showTitle, paramSettings) {
-        super(row, showTitle, paramSettings);
-        
-        //refresh button
-        if (this.settings.allowRefresh) {       
-            let refreshButton =  document.createElement("img");
-            refreshButton.src = imageData.refresh;
-            refreshButton.className = "refreshButton hideOnPrint";
-            refreshButton.onclick = (function(ref) {var r = ref; return function() {r.refresh()};})(this);
-            this.marginDiv.appendChild(refreshButton);
-        }
-
-
-        this.randomForTemplate = paramSettings.random;
-    }
-
-
-    replacedTemplates() {
-        let comments = this.row.comment.split('\n');
-
-        //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
-
-            let templates = [];
-            let paramIndexForRangeEvaluation = this.randomForTemplate.next();
-            let customFunctions = {};
-            for (var i = 0; i < comments.length; i++) { 
-                templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
-            }
-            if (this.row.purpose == "sudoku") {
-                //force calculate
-                templates.forEach(function(t) {if (t) t.forceCalculate()});
-                //number of dollars
-                var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
-                //sudoku only
-                var variablesUsed = templates.map(function(t) {
-                        if (t) return t.variablesUsed;
-                        let ret =  [];
-                        for (var i = 0; i < 26; i++) ret.push(false);
-                        return ret; 
-                    });
-                //add variables to their own equations
-                for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
-                    eqn[i] = true;
-                }
-                //DO NOT remove all equations (rows) but trim cols (variables) to num templates
-                variablesUsed = variablesUsed.map(arr => arr.slice(0,templates.length));
-                
-                var variablesToShow = showVariables(variablesUsed,numDollars);
-                var replaceSudokuDollarInjector = function(variablesToShow) {
-                    var variablesToShow = variablesToShow;
-                    var index = 0;
-
-                    return function(letter) {
-                      index++;
-                      return !(variablesToShow[index-1]);
-                    };
-                  }
-                this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
-
-        }
-        //each comment is an equation
-
-        return templates;
-    }
-
-
-        
-    refresh() { 
-        this._cellCups = null;
-        this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
-        this.refreshsolutionDiv();
-    }
-}
-
