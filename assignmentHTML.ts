@@ -12,7 +12,7 @@ class AssignmentHTML {
         this.rowHTMLs = [];
 
         this.settings = internalSettings;
-        //this.settings.random = new Random();
+        this.settings.random = new Random();
 
 
         //markbookSettings values are true or false
@@ -39,97 +39,99 @@ class AssignmentHTML {
             this.settings.scores = markbookSettings["scores"];
             
             //Number of checks remaining
-            var index1 = this.settings.scoreHeaders.indexOf("checks remaining"); 
-            if (index1 > -1) {
-                this.settings.numChecksLeft = Number(this.settings.scores[index1]);
-            } 
+            if (this.settings.scoreHeaders) {
+                var index1 = this.settings.scoreHeaders.indexOf("checks remaining"); 
+                if (index1 > -1) {
+                    this.settings.numChecksLeft = Number(this.settings.scores[index1]);
+                } 
 
-            //Number of clicks away
-            var index2 = this.settings.scoreHeaders.indexOf("clicks away")
-            if (index2 > -1) {
-                window.onblur = function(paramAsn) { 
-                    var asn = paramAsn;
-                    return function() {
-                        asn.settings.clicksAway++;
-                    };
-                }(this); 
-            
-                this.settings.clicksAway = Number(this.settings.scores[index2]);
-            } 
-
-            //add score getters to settings so that solution can call them 
-            this.settings.scoreGetters = function(paramAsn,scoreHeaders){
-                var asn = paramAsn; 
-                var ret = [];
-                for (let header of scoreHeaders) {
-                    switch (header) {
-                        case "attempted %":
-                        ret.push(function() {return asn.percentAttempted;})
-                        break;
-                        case "correct %":
-                        ret.push(function() {return asn.percentCorrect;})
-                        break;
-                        case "stars %":
-                        ret.push(function() {return asn.percentStars;})
-                        break;
-                        case "clicks away":
-                        ret.push(function() {return asn.settings.clicksAway;})
-                        break;
-                        case "checks remaining":
-                        ret.push(function() {return asn.settings.numChecksLeft;})
-                        break;
-                        case "time remaining":
-                        ret.push(function() {return asn.settings.timeRemaining;})
-                        break;
-                        default: //also case "none"
-                        throw new Error("score header not recognised");
-                    }
-                }
-                return ret;
-            }(this,this.settings.scoreHeaders);
-            
-
-            //time limit
-            var index3 = this.settings.scoreHeaders.indexOf("time remaining"); 
-            if (index3 > -1) {
-                this.settings.timeRemaining = Number(this.settings.scores[index3]);
-
-                if (this.settings.timeRemaining != 0) {
-                    let timerDiv = document.createElement("div");
-                    timerDiv.className += " timer";
-                    this.settings.questionsDiv.parentElement.appendChild(timerDiv);
-                    
-                    this.timerInterval = setInterval(function(timeLimit, paramDiv, paramAsn) {
-                        
+                //Number of clicks away
+                var index2 = this.settings.scoreHeaders.indexOf("clicks away")
+                if (index2 > -1) {
+                    window.onblur = function(paramAsn) { 
                         var asn = paramAsn;
-                        var countUp = timeLimit == 0;
-                        var target = new Date().getTime() + 1000 * 60 * timeLimit;
-                        var div = paramDiv;
-                        //REPEATS EVERY 0.9 SECONDS
                         return function() {
-                            let distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
-                            let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                            let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            let seconds = Math.floor((distance % (1000 * 60)) / 1000);
-
-                            div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-                            asn.settings.timeRemaining = minutes;
-
-                            if (distance < 60 * 1000 && !countUp) {
-                                div.className += " red";
-                            }      
-                            
-                            // If the count down is over, write some text 
-                            if (distance < 0) {
-                                asn.settings.timeRemaining = 0;
-                                clearInterval(asn.timerInterval);
-                                div.innerHTML = "EXPIRED";
-                                asn.settings.numChecksLeft = 1;
-                                asn.showAllDecisionImages(false); //does not show warning
-                            }
+                            asn.settings.clicksAway++;
                         };
-                        }(this.settings.timeRemaining, timerDiv, this), 900);
+                    }(this); 
+                
+                    this.settings.clicksAway = Number(this.settings.scores[index2]);
+                } 
+
+                //add score getters to settings so that solution can call them 
+                this.settings.scoreGetters = function(paramAsn,scoreHeaders){
+                    var asn = paramAsn; 
+                    var ret = [];
+                    for (let header of scoreHeaders) {
+                        switch (header) {
+                            case "attempted %":
+                            ret.push(function() {return asn.percentAttempted;})
+                            break;
+                            case "correct %":
+                            ret.push(function() {return asn.percentCorrect;})
+                            break;
+                            case "stars %":
+                            ret.push(function() {return asn.percentStars;})
+                            break;
+                            case "clicks away":
+                            ret.push(function() {return asn.settings.clicksAway;})
+                            break;
+                            case "checks remaining":
+                            ret.push(function() {return asn.settings.numChecksLeft;})
+                            break;
+                            case "time remaining":
+                            ret.push(function() {return asn.settings.timeRemaining;})
+                            break;
+                            default: //also case "none"
+                            throw new Error("score header not recognised");
+                        }
                     }
+                    return ret;
+                }(this,this.settings.scoreHeaders);    
+
+                //time limit
+                var index3 = this.settings.scoreHeaders.indexOf("time remaining"); 
+                if (index3 > -1) {
+                    this.settings.timeRemaining = Number(this.settings.scores[index3]);
+
+                    if (this.settings.timeRemaining != 0) {
+                        let timerDiv = document.createElement("div");
+                        timerDiv.className += " timer";
+                        this.settings.questionsDiv.parentElement.appendChild(timerDiv);
+                        
+                        this.timerInterval = setInterval(function(timeLimit, paramDiv, paramAsn) {
+                            
+                            var asn = paramAsn;
+                            var countUp = timeLimit == 0;
+                            var target = new Date().getTime() + 1000 * 60 * timeLimit;
+                            var div = paramDiv;
+                            //REPEATS EVERY 0.9 SECONDS
+                            return function() {
+                                let distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
+                                let hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                let minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                                let seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+                                div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                                asn.settings.timeRemaining = minutes;
+
+                                if (distance < 60 * 1000 && !countUp) {
+                                    div.className += " red";
+                                }      
+                                
+                                // If the count down is over, write some text 
+                                if (distance < 0) {
+                                    asn.settings.timeRemaining = 0;
+                                    clearInterval(asn.timerInterval);
+                                    div.innerHTML = "EXPIRED";
+                                    asn.settings.numChecksLeft = 1;
+                                    asn.showAllDecisionImages(false); //does not show warning
+                                }
+                            };
+                            }(this.settings.timeRemaining, timerDiv, this), 900);
+                    }
+                
+                }
             }
 
 
@@ -295,13 +297,14 @@ class AssignmentHTML {
             }
         }
 //THIS CALL TO MARKBOOK UPDATE IS NECESSARY SINCE CHECKS MIGHT RUN OuT ETC.
+        let scores = this.settings.scoreGetters ? this.settings.scoreGetters.map(f => f()) : null; //no score update
         if (this.settings.markbookUpdate) {
             this.settings.markbookUpdate(
                 null, //no response column 
                 null, //no response
                 "white", //solution.color
                 false, //append
-                this.settings.scoreGetters.map(f => f())); //no score update
+                scores)
         }
 
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT

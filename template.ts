@@ -1,70 +1,14 @@
-
-class JSFunction {
-    interpreter: any;
-    error: any;
-    code: any;
-    JSName: any;
-    cache: {};
-    constructor(code, JSName) {
-        try {
-            this.interpreter = new Interpreter(code);
-        }
-        catch(error) {
-            this.error = error; 
-        }
-        this.code = code;
-        this.JSName = JSName;
-        this.cache = {};
+class UserError extends Error {
+    constructor(message) {
+        super(message);
     }
+} 
 
-    execute(parameters) { //parameters are currently js objects
-        //https://neil.fraser.name/software/JS-Interpreter/docs.html
-        if (this.error) { throw (this.error); }
-        
-        let joinedParameters = parameters.map(a => JSON.stringify(a)).join();
-        if (joinedParameters in this.cache) {
-            return this.cache[joinedParameters];
-        }
-        
-        if (this.JSName != "console") {
-            this.interpreter.appendCode(`
-              ${this.JSName}(${joinedParameters});`);
-        }
-
-        try {
-            var i = 100000; //counts up to 9998 using a while loop....?
-            while (i-- && this.interpreter.step()) {
-                //console.log(i);
-            }
-        }
-        catch (e) {
-            throw (e);
-            this.interpreter = new Interpreter(this.code);
-        }
-        if (i == -1) {
-            throw ("infinite loop error");            
-        }
-        //this.interpreter.run(); //MAY FALL INTO AN INFINITE LOOP
-
-        //array is returned as object
-        var evaluated = undefined;
-        if (this.interpreter.value && this.interpreter.value.K == "Array") {
-            var t = 0;
-            let arr = [];
-            while (t in this.interpreter.value.a) {
-               arr[t] = this.interpreter.value.a[t];
-               t++;
-            }
-            evaluated = JSON.stringify(arr);
-        }
-        else {
-            evaluated = JSON.stringify(this.interpreter.value);
-        }
-        this.cache[joinedParameters] = evaluated;
-        return evaluated;                    
-
+class EvaluationError extends Error {
+    constructor(message) {
+        super(message);
     }
-}
+} 
 
 class questionTemplate {
     _text: any;
@@ -102,6 +46,7 @@ class Template extends questionTemplate {
     OVERFLOW_LIMIT: number;
     variablesUsed: any;
     _calculatedValue: string;
+    errorMessages: Error[];
     //delimiters
     constructor(paramText, paramAllTemplates, paramRandom, paramIndexForRangeEvaluation, paramCustomFunctions)
     {
@@ -118,11 +63,12 @@ class Template extends questionTemplate {
             this.variablesUsed.push(false);
         }
         this._calculatedValue = "null";
+        this.errorMessages = [];
     }
 
     count() {
         if (this.overflowCounter++ > this.OVERFLOW_LIMIT) {
-            throw "Infinite loop error";
+            throw new UserError("contains an infinite loop");
         }
     }
 
@@ -132,23 +78,22 @@ class Template extends questionTemplate {
     get calculatedValue()
     {
         //eval result is in JSON form
-        if (this._calculatedValue == "null") {
-
-            let expr = toExpressionTree(this._text, 0);
-            if (expr.eval == undefined) { throw new Error("parse error");} 
-            let result = expr.eval(this);
-            
-            //error may generate null result
-            if (result == null) {
-                this._calculatedValue = "null";
-                return "";
+        if (this.errorMessages.length == 0 && this._calculatedValue == "null") {
+            let result = "null";
+            try {
+                let expr = toExpressionTree(this._text, 0);
+                result = expr.eval(this);
             }
-     
+            catch(e) {
+                //allow code errors to bubble up to solution which uses them to alter decision images etc. 
+                if (e instanceof CodeError) throw(e);
+                this.errorMessages.push(e.message);
+            }
             this._calculatedValue = result;
-            
         }
         return this._calculatedValue;
     }
+
 
     removeExtraSigFigs(number) {
         var ret = (parseFloat(number).toPrecision(12));

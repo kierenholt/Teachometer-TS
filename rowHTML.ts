@@ -19,13 +19,14 @@ class RowHTML {
     cupsWithGridlines: DivCup[];
     _cellCups: any;
     solutions: any[];
-    _softErrors: any;
     deleteSelf: any;
     duplicateSelf: any;
+    errors: any[];
     
     constructor(row, showTitle, settings) {
         this.row = row;
         this.settings = settings;
+        this.errors = [];
 
         this._outerDiv  = document.createElement("div");
         this.marginDiv  = document.createElement("div");
@@ -65,8 +66,6 @@ class RowHTML {
             duplicateButton.src = imageData.duplicate;
             this.marginDiv.appendChild(duplicateButton);        
         }
-
-
     }
 
     get outerDiv() { //called after constructor because parsing cellcups must happen first
@@ -76,8 +75,24 @@ class RowHTML {
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
             
             //this also peforms calculation of solution values & templates
-            //and assigns decision images to stored responses
-            
+            //and assign decision images to stored responses
+            if (this.solutions) {
+                this.solutions.forEach(s => s.importResponses());
+
+                for (var i = 0; i < this.solutions.length; i++) {
+                    if (this.solutions[i].template.errorMessages) {
+                        this.solutions[i].template.errorMessages.forEach(e =>
+                            this.errors.push(`Error in comment ${i+1} of ${this.solutions.length}: ${e}`)
+                            );
+                    }
+                }
+            }
+            if (this.errors.length > 0) {
+                var para = document.createElement("p");
+                para.className = "errorList";
+                para.innerHTML = "<u>This row contains some errors:</u>" + this.errors.join("<br>");
+                this._outerDiv.insertBefore(para,this._outerDiv.firstChild);
+            }
 
             //in case of grid, set element for both cellcups
             this.cellCups[0].element = this.dynamicDiv.children[0];
@@ -199,7 +214,6 @@ class RowHTML {
                     //replace dollars and create solutions array in questions and templates
                     if (injectorInstance) {
                         cellCup.onThisAndChildren(injectorInstance);
-                        this.solutions.forEach(s => s.importResponses());
                     }
 
                 //IMAGES AND TEXT
@@ -266,10 +280,6 @@ class RowHTML {
                 this._cellCups[0].class = "leftHalfWidth";
                 this._cellCups[1].class = "rightHalfWidth";
             }
-
-            
-
-
         } //end of if null
         return this._cellCups;
     }
@@ -282,8 +292,6 @@ class RowHTML {
     }
 
 }
-
-
 
 class QuestionHTML extends RowHTML {
     questionNumberDiv: HTMLParagraphElement;
@@ -318,7 +326,7 @@ class QuestionHTML extends RowHTML {
     //injects solutions into dollars and input elements
     getInjectorInstance() {
             this.solutions = [];
-            return this.injector(this.replacedTemplates(), this.solutions, this.settings);
+            return this.injector(this.replacedTemplates(), this.solutions, this.settings, this);
             //for sudoku this also instantiates replaceSudokuDollar
     }   
     
@@ -384,17 +392,19 @@ class QuestionHTML extends RowHTML {
     }
     
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
-    injector(paramTemplates, paramSolutions, paramSettings)  {
+    injector(paramTemplates, paramSolutions, paramSettings, paramRow)  {
             
             var currentRadioSet = null;
-            var templates = paramTemplates.slice().reverse();
+            var templates = paramTemplates;
             var solutions = paramSolutions;
             var settings =  paramSettings;
+            var templateIndex = 0; 
+            var row = paramRow;
             
             function addSolution(cup) {
                 var ret;
                 if (templates.length > 0) {
-                    ret =  new Solution(cup,templates.pop(),settings, solutions);
+                    ret =  new Solution(cup,templates[templateIndex++],settings, solutions);
                 }
                 else { 
                     ret = new Solution(cup,null,settings, solutions);
@@ -403,9 +413,10 @@ class QuestionHTML extends RowHTML {
             }
 
             function getTemplateValue() {
-                if (templates.length > 0) {
-                    let t = templates.pop();
+                if (templateIndex < templates.length) {
+                    let t = templates[templateIndex++];
                     let ret = t.calculatedValue;
+                    t.errorMessages.forEach(e => row.errors.push(`Error in comment ${templateIndex} of ${templates.length} : ` + e))
                     return calculatedJSONtoViewable(ret);
                 }
                 return "";
@@ -497,8 +508,6 @@ class TemplateHTML extends QuestionHTML{
             refreshButton.onclick = (function(ref) {var r = ref; return function() {r.refresh()};})(this);
             this.marginDiv.appendChild(refreshButton);
         }
-
-
         this.randomForTemplate = paramSettings.random;
     }
 
@@ -508,42 +517,42 @@ class TemplateHTML extends QuestionHTML{
 
         //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
 
-            let templates = [];
-            let paramIndexForRangeEvaluation = this.randomForTemplate.next();
-            let customFunctions = {};
-            for (var i = 0; i < comments.length; i++) { 
-                templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
+        let templates = [];
+        let paramIndexForRangeEvaluation = this.randomForTemplate.next();
+        let customFunctions = {};
+        for (var i = 0; i < comments.length; i++) { 
+            templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
+        }
+        if (this.row.purpose == "sudoku") {
+            //force calculate
+            templates.forEach(function(t) {if (t) t.forceCalculate()});
+            //number of dollars
+            var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
+            //sudoku only
+            var variablesUsed = templates.map(function(t) {
+                    if (t) return t.variablesUsed;
+                    let ret =  [];
+                    for (var i = 0; i < 26; i++) ret.push(false);
+                    return ret; 
+                });
+            //add variables to their own equations
+            for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
+                eqn[i] = true;
             }
-            if (this.row.purpose == "sudoku") {
-                //force calculate
-                templates.forEach(function(t) {if (t) t.forceCalculate()});
-                //number of dollars
-                var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
-                //sudoku only
-                var variablesUsed = templates.map(function(t) {
-                        if (t) return t.variablesUsed;
-                        let ret =  [];
-                        for (var i = 0; i < 26; i++) ret.push(false);
-                        return ret; 
-                    });
-                //add variables to their own equations
-                for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
-                    eqn[i] = true;
-                }
-                //DO NOT remove all equations (rows) but trim cols (variables) to num templates
-                variablesUsed = variablesUsed.map(arr => arr.slice(0,templates.length));
-                
-                var variablesToShow = showVariables(variablesUsed,numDollars,this.settings.random);
-                var replaceSudokuDollarInjector = function(variablesToShow) {
-                    var variablesToShow = variablesToShow;
-                    var index = 0;
+            //DO NOT remove all equations (rows) but trim cols (variables) to num templates
+            variablesUsed = variablesUsed.map(arr => arr.slice(0,templates.length));
+            
+            var variablesToShow = showVariables(variablesUsed,numDollars,this.settings.random);
+            var replaceSudokuDollarInjector = function(variablesToShow) {
+                var variablesToShow = variablesToShow;
+                var index = 0;
 
-                    return function(letter) {
-                      index++;
-                      return !(variablesToShow[index-1]);
-                    };
-                  }
-                this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
+                return function(letter) {
+                    index++;
+                    return !(variablesToShow[index-1]);
+                };
+                }
+            this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
 
         }
         //each comment is an equation

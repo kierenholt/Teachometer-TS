@@ -25,6 +25,7 @@ class Solution {
         this.settings = settings;
         this.markbookIndex = settings.markbookIndex++;
         this.template = template;
+//        this.template.onError = function(paramSolution) { var s = paramSolution; return function() {s.onTemplateError()} }(this);
         this.field = field;
         this.score = 0;
 
@@ -39,12 +40,12 @@ class Solution {
         field.onResponse = this.onResponseInjector(this);
     }
 
+
     //called from rowhtml after all new solutions made
     importResponses() {
         if (this.settings.responses && this.settings.responses[this.markbookIndex]) {     
             this.field.elementValue = this.settings.responses[this.markbookIndex]; //this = field
-            try { this.updateScoreAndImage(); }
-            catch (e) {}
+            this.updateScoreAndImage(); 
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
             
@@ -52,12 +53,7 @@ class Solution {
         }
         else {
             if (this.template) {
-                try {
-                    this.template.forceCalculate();
-                }
-                catch (e) {
-                    console.log("error calculating template "  + e);
-                }
+                this.template.forceCalculate();
             }
             //execute the template anyway
         }
@@ -73,17 +69,13 @@ class Solution {
             if (this.field instanceof CheckBoxCup || this.field instanceof  PoundCup) {
                 return "";
             }
-            else {
-                try { //this will remove too many dps etc.
-                    if (this.template instanceof Template) {
-                        return calculatedJSONtoViewable(this.template.calculatedValue); 
-                    }
-                    else { //for questiontemplate
-                        return this.template.calculatedValue; 
-                    }
+            else { 
+                //this will remove too many dps etc.
+                if (this.template instanceof Template) {
+                    return calculatedJSONtoViewable(this.template.calculatedValue); 
                 }
-                catch (e) {
-                    console.log("error calculating template "  + e);                    
+                else { //for questiontemplate
+                    return this.template.calculatedValue; 
                 }
             }
         }
@@ -132,7 +124,7 @@ class Solution {
                 let doAppend = !s.notYetChecked && 
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                let scores = s.settings.scoreGetters.map(f => f());
+                let scores = s.settings.scoreGetters ? s.settings.scoreGetters.map(f => f()): null;
 
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(
@@ -156,13 +148,18 @@ class Solution {
         if (this.template) {
             //check box
             if (this.field instanceof CheckBoxCup) {
-                try  {
+                try  { 
                     this.score = (this.template.calculatedValue == "true") ? 1 : 0;
                     this.field.elementValue = (this.score == 1); 
-                }
-                catch (e) {
-                    this.field.elementValue = "!";
-                    this.field.hoverText = e;
+                } 
+                catch (e) { //only catch code errors
+                    if (e instanceof CodeError) {
+                        this.field.elementValue = "!";
+                        this.field.hoverText = e;
+                    }
+                    else { 
+                        throw(e);
+                    }
                 }
             }
             //pound
@@ -174,23 +171,22 @@ class Solution {
                     poundCoerced.elementValue = val.toString();
                     poundCoerced.isRed = false;
                 }
-                catch (e) {
+                catch (e) { //only catch code errors
+                    if (e instanceof CodeError) {
                     poundCoerced.elementValue = e;
                     poundCoerced.isRed = true;
+                    }
+                    else { 
+                        throw(e);
+                    }
                 }
             }
             //input, combo, radio but only if scoring
             else if (this.affectsScore) {
-                try {
-                    this.score = this.template.isCorrect(this.field.elementValue) ? 1 : 0;
-                } 
-                catch (e) {}
+                this.score = this.template.isCorrect(this.field.elementValue) ? 1 : 0;
             }
             else { //calculate anyway
-                try {
-                    this.template.forceCalculate();
-                }
-                catch(e) {}
+                this.template.forceCalculate();
             }
 
         //https://www.quackit.com/css/css_color_codes.cfm

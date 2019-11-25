@@ -64,13 +64,15 @@
             "showRowTitles": true,
             "markbookUpdate": false,
 			"outOfOnlyQuestionsAttempted": true,
-			"appendToMarkbook": false,
-			"scoreHeader1": "attempted %",
-			"scoreHeader2": "correct %",
-			"scoreHeader3": "stars %"
+			"appendToMarkbook": false
 			};
+
+		var markbookSettings = {
+			"scoreHeaders": "",
+			"scores": ""
+		};
 			
-		window.assignment = new AssignmentHTML(internalSettings, null);
+		window.assignment = new AssignmentHTML(internalSettings, markbookSettings);
 
 		var rows = [];
 		for (let i = 0, row; row = inputTable.rows[i]; i++) {
@@ -148,7 +150,25 @@
 			<td>comment</td>
 </tr>
 
+<tr>
+		<td>template</td>
+		<td>$$</td><td>$$</td>
+		<td>faulty dollar comment</td>
+		<td>h
+2
+	</td>
+</tr>
 
+<tr>
+		<td>template</td>
+		<td>__</td><td></td>
+		<td>faulty input</td>
+		<td>a+1
+	</td>
+</tr>
+
+
+	
 <tr>
 	<td>template</td>
 	<td> $$ $$ $$ $$</td><td></td>
@@ -307,7 +327,7 @@ console()</td>
 			<td>sudoku</td>
 			<td>$$ $$ $$ $$</td>
 			<td></td>
-			<td>sudoku</td>
+			<td>test sudoku</td>
 			<td>2..9
 a + 2
 b + 2

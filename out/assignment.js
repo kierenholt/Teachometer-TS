@@ -3,7 +3,7 @@ var AssignmentHTML = /** @class */ (function () {
     function AssignmentHTML(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
         this.settings = internalSettings;
-        //this.settings.random = new Random();
+        this.settings.random = new Random();
         //markbookSettings values are true or false
         if (markbookSettings) {
             //"score is out of attempted questions not all questions" default true
@@ -24,86 +24,88 @@ var AssignmentHTML = /** @class */ (function () {
             this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
             this.settings.scores = markbookSettings["scores"];
             //Number of checks remaining
-            var index1 = this.settings.scoreHeaders.indexOf("checks remaining");
-            if (index1 > -1) {
-                this.settings.numChecksLeft = Number(this.settings.scores[index1]);
-            }
-            //Number of clicks away
-            var index2 = this.settings.scoreHeaders.indexOf("clicks away");
-            if (index2 > -1) {
-                window.onblur = function (paramAsn) {
-                    var asn = paramAsn;
-                    return function () {
-                        asn.settings.clicksAway++;
-                    };
-                }(this);
-                this.settings.clicksAway = Number(this.settings.scores[index2]);
-            }
-            //add score getters to settings so that solution can call them 
-            this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
-                var asn = paramAsn;
-                var ret = [];
-                for (var _i = 0, scoreHeaders_1 = scoreHeaders; _i < scoreHeaders_1.length; _i++) {
-                    var header = scoreHeaders_1[_i];
-                    switch (header) {
-                        case "attempted %":
-                            ret.push(function () { return asn.percentAttempted; });
-                            break;
-                        case "correct %":
-                            ret.push(function () { return asn.percentCorrect; });
-                            break;
-                        case "stars %":
-                            ret.push(function () { return asn.percentStars; });
-                            break;
-                        case "clicks away":
-                            ret.push(function () { return asn.settings.clicksAway; });
-                            break;
-                        case "checks remaining":
-                            ret.push(function () { return asn.settings.numChecksLeft; });
-                            break;
-                        case "time remaining":
-                            ret.push(function () { return asn.settings.timeRemaining; });
-                            break;
-                        default: //also case "none"
-                            throw new Error("score header not recognised");
-                    }
+            if (this.settings.scoreHeaders) {
+                var index1 = this.settings.scoreHeaders.indexOf("checks remaining");
+                if (index1 > -1) {
+                    this.settings.numChecksLeft = Number(this.settings.scores[index1]);
                 }
-                return ret;
-            }(this, this.settings.scoreHeaders);
-            //time limit
-            var index3 = this.settings.scoreHeaders.indexOf("time remaining");
-            if (index3 > -1) {
-                this.settings.timeRemaining = Number(this.settings.scores[index3]);
-                if (this.settings.timeRemaining != 0) {
-                    var timerDiv = document.createElement("div");
-                    timerDiv.className += " timer";
-                    this.settings.questionsDiv.parentElement.appendChild(timerDiv);
-                    this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
+                //Number of clicks away
+                var index2 = this.settings.scoreHeaders.indexOf("clicks away");
+                if (index2 > -1) {
+                    window.onblur = function (paramAsn) {
                         var asn = paramAsn;
-                        var countUp = timeLimit == 0;
-                        var target = new Date().getTime() + 1000 * 60 * timeLimit;
-                        var div = paramDiv;
-                        //REPEATS EVERY 0.9 SECONDS
                         return function () {
-                            var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
-                            var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                            var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                            var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                            div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-                            asn.settings.timeRemaining = minutes;
-                            if (distance < 60 * 1000 && !countUp) {
-                                div.className += " red";
-                            }
-                            // If the count down is over, write some text 
-                            if (distance < 0) {
-                                asn.settings.timeRemaining = 0;
-                                clearInterval(asn.timerInterval);
-                                div.innerHTML = "EXPIRED";
-                                asn.settings.numChecksLeft = 1;
-                                asn.showAllDecisionImages(false); //does not show warning
-                            }
+                            asn.settings.clicksAway++;
                         };
-                    }(this.settings.timeRemaining, timerDiv, this), 900);
+                    }(this);
+                    this.settings.clicksAway = Number(this.settings.scores[index2]);
+                }
+                //add score getters to settings so that solution can call them 
+                this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
+                    var asn = paramAsn;
+                    var ret = [];
+                    for (var _i = 0, scoreHeaders_1 = scoreHeaders; _i < scoreHeaders_1.length; _i++) {
+                        var header = scoreHeaders_1[_i];
+                        switch (header) {
+                            case "attempted %":
+                                ret.push(function () { return asn.percentAttempted; });
+                                break;
+                            case "correct %":
+                                ret.push(function () { return asn.percentCorrect; });
+                                break;
+                            case "stars %":
+                                ret.push(function () { return asn.percentStars; });
+                                break;
+                            case "clicks away":
+                                ret.push(function () { return asn.settings.clicksAway; });
+                                break;
+                            case "checks remaining":
+                                ret.push(function () { return asn.settings.numChecksLeft; });
+                                break;
+                            case "time remaining":
+                                ret.push(function () { return asn.settings.timeRemaining; });
+                                break;
+                            default: //also case "none"
+                                throw new Error("score header not recognised");
+                        }
+                    }
+                    return ret;
+                }(this, this.settings.scoreHeaders);
+                //time limit
+                var index3 = this.settings.scoreHeaders.indexOf("time remaining");
+                if (index3 > -1) {
+                    this.settings.timeRemaining = Number(this.settings.scores[index3]);
+                    if (this.settings.timeRemaining != 0) {
+                        var timerDiv = document.createElement("div");
+                        timerDiv.className += " timer";
+                        this.settings.questionsDiv.parentElement.appendChild(timerDiv);
+                        this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
+                            var asn = paramAsn;
+                            var countUp = timeLimit == 0;
+                            var target = new Date().getTime() + 1000 * 60 * timeLimit;
+                            var div = paramDiv;
+                            //REPEATS EVERY 0.9 SECONDS
+                            return function () {
+                                var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
+                                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                                div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                                asn.settings.timeRemaining = minutes;
+                                if (distance < 60 * 1000 && !countUp) {
+                                    div.className += " red";
+                                }
+                                // If the count down is over, write some text 
+                                if (distance < 0) {
+                                    asn.settings.timeRemaining = 0;
+                                    clearInterval(asn.timerInterval);
+                                    div.innerHTML = "EXPIRED";
+                                    asn.settings.numChecksLeft = 1;
+                                    asn.showAllDecisionImages(false); //does not show warning
+                                }
+                            };
+                        }(this.settings.timeRemaining, timerDiv, this), 900);
+                    }
                 }
             }
             //responses
@@ -259,12 +261,13 @@ var AssignmentHTML = /** @class */ (function () {
             }
         }
         //THIS CALL TO MARKBOOK UPDATE IS NECESSARY SINCE CHECKS MIGHT RUN OuT ETC.
+        var scores = this.settings.scoreGetters ? this.settings.scoreGetters.map(function (f) { return f(); }) : null; //no score update
         if (this.settings.markbookUpdate) {
             this.settings.markbookUpdate(null, //no response column 
             null, //no response
             "white", //solution.color
             false, //append
-            this.settings.scoreGetters.map(function (f) { return f(); })); //no score update
+            scores);
         }
         if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
             if (this.settings.markbookUpdate) {
@@ -504,6 +507,70 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
+var CodeError = /** @class */ (function (_super) {
+    __extends(CodeError, _super);
+    function CodeError(message) {
+        return _super.call(this, message) || this;
+    }
+    return CodeError;
+}(Error));
+var JSFunction = /** @class */ (function () {
+    function JSFunction(code, JSName) {
+        try {
+            this.interpreter = new Interpreter(code);
+        }
+        catch (error) {
+            this.error = error; //don't throw it until code is executed
+        }
+        this.code = code;
+        this.JSName = JSName;
+        this.cache = {};
+    }
+    JSFunction.prototype.execute = function (parameters) {
+        //https://neil.fraser.name/software/JS-Interpreter/docs.html
+        if (this.error) {
+            throw new CodeError(this.error);
+        }
+        var joinedParameters = parameters.map(function (a) { return JSON.stringify(a); }).join();
+        if (joinedParameters in this.cache) {
+            return this.cache[joinedParameters];
+        }
+        if (this.JSName != "console") {
+            this.interpreter.appendCode("\n              " + this.JSName + "(" + joinedParameters + ");");
+        }
+        try {
+            var i = 100000; //counts up to 9998 using a while loop....?
+            while (i-- && this.interpreter.step()) {
+                //console.log(i);
+            }
+        }
+        catch (e) {
+            throw (e);
+            this.interpreter = new Interpreter(this.code);
+        }
+        if (i == -1) {
+            throw new CodeError("your code contains an infinite loop");
+        }
+        //this.interpreter.run(); //MAY FALL INTO AN INFINITE LOOP
+        //array is returned as object
+        var evaluated = undefined;
+        if (this.interpreter.value && this.interpreter.value.K == "Array") {
+            var t = 0;
+            var arr = [];
+            while (t in this.interpreter.value.a) {
+                arr[t] = this.interpreter.value.a[t];
+                t++;
+            }
+            evaluated = JSON.stringify(arr);
+        }
+        else {
+            evaluated = JSON.stringify(this.interpreter.value);
+        }
+        this.cache[joinedParameters] = evaluated;
+        return evaluated;
+    };
+    return JSFunction;
+}());
 var Cup = /** @class */ (function () {
     function Cup(str) {
         this.attributes = [];
@@ -1285,7 +1352,7 @@ function alphaIndex(str) {
     if (isUpperAlpha(str)) {
         return str.charCodeAt(0) - 65;
     }
-    throw "function alphaindex called on non alphanumeric string";
+    throw new Error("function alphaindex called on non alphanumeric string");
 }
 ;
 function isAlpha(str) {
@@ -1414,7 +1481,7 @@ function replaceVariables(s, injector) {
                 buffer += JSONtoEval(val);
             }
             else {
-                throw "variable does not exist";
+                throw new UserError("variable \"" + s[i] + "\" does not exist");
             }
         }
         //CHECK FOR CUSTOM VARIABLES
@@ -1423,7 +1490,7 @@ function replaceVariables(s, injector) {
                 buffer += JSONtoEval(injector.customFunctions[s[i]]);
             }
             else {
-                throw ("variable not yet defined");
+                throw new EvaluationError("variable has not yet been defined"); //not critical
             }
         }
         else if (s[i] == 'π') {
@@ -1463,14 +1530,14 @@ function toExpressionTree(s, i, commaIsTerminator) {
         }
         else if (i + 1 < s.length && s.substr(i, 2) == "..") {
             if (buffer.length + children.length == 0) {
-                throw new Error("Range expression missing something before ..");
+                throw new UserError("Range expression missing something before ..");
             }
             children.push(buffer);
             return new RangeExpression(new SimpleExpression(children, i), s, i);
         }
         else if (s[i] == ",") {
             if (buffer.length + children.length == 0) {
-                throw new Error("List expression missing something before ,");
+                throw new UserError("List expression missing something before ,");
             }
             children.push(buffer);
             return new ListExpression(new SimpleExpression(children, i), s, i);
@@ -1598,7 +1665,7 @@ var ListExpression = /** @class */ (function () {
                 i = expr.i;
             }
             else {
-                throw new Error("bad list");
+                throw new UserError("bad list");
             }
         }
         this.i = i;
@@ -1626,7 +1693,7 @@ var ArrayExpression = /** @class */ (function () {
                 i = expr.i;
             }
             else {
-                throw "bad array";
+                throw new UserError("bad array");
             }
         }
         this.i = i;
@@ -1691,7 +1758,7 @@ var FunctionExpression = /** @class */ (function () {
                 this.eval = function (injector) { return false; };
             }
             else {
-                throw ("string without following bracket");
+                throw new UserError("string without following bracket");
             }
         }
         else {
@@ -1867,7 +1934,7 @@ var FunctionExpression = /** @class */ (function () {
         if (this.functionName == "coprime") {
             var denom = evaluatedParameters[0];
             if (denom < 2) {
-                throw new Error("no smaller coprime number exists for " + denom);
+                throw new UserError("no smaller coprime number exists for " + denom);
             }
             var guess = injector.random.next(denom - 1) + 1;
             while (HCF(denom, guess) > 1) {
@@ -2064,7 +2131,7 @@ var FunctionExpression = /** @class */ (function () {
             return "null";
         }
         if (injector.customFunctions[this.functionNamePreserveCase] === null) {
-            throw ("custom function with name \"" + this.functionNamePreserveCase + "\" not defined");
+            throw new UserError("custom function with name \"" + this.functionNamePreserveCase + "\" not defined");
         }
         //try Math
         if (typeof (Math[this.functionName]) == "function") {
@@ -2232,6 +2299,7 @@ var RowHTML = /** @class */ (function () {
     function RowHTML(row, showTitle, settings) {
         this.row = row;
         this.settings = settings;
+        this.errors = [];
         this._outerDiv = document.createElement("div");
         this.marginDiv = document.createElement("div");
         this.dynamicDiv = document.createElement("div");
@@ -2277,11 +2345,28 @@ var RowHTML = /** @class */ (function () {
     }
     Object.defineProperty(RowHTML.prototype, "outerDiv", {
         get: function () {
+            var _this = this;
             if (!this._cellCups) {
                 //parse markdown and attach cups to solutions
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
                 //this also peforms calculation of solution values & templates
-                //and assigns decision images to stored responses
+                //and assign decision images to stored responses
+                if (this.solutions) {
+                    this.solutions.forEach(function (s) { return s.importResponses(); });
+                    for (var i = 0; i < this.solutions.length; i++) {
+                        if (this.solutions[i].template.errorMessages) {
+                            this.solutions[i].template.errorMessages.forEach(function (e) {
+                                return _this.errors.push("Error in comment " + (i + 1) + " of " + _this.solutions.length + ": " + e);
+                            });
+                        }
+                    }
+                }
+                if (this.errors.length > 0) {
+                    var para = document.createElement("p");
+                    para.className = "errorList";
+                    para.innerHTML = "<u>This row contains some errors:</u>" + this.errors.join("<br>");
+                    this._outerDiv.insertBefore(para, this._outerDiv.firstChild);
+                }
                 //in case of grid, set element for both cellcups
                 this.cellCups[0].element = this.dynamicDiv.children[0];
                 if (this.cellCups[1]) {
@@ -2387,7 +2472,6 @@ var RowHTML = /** @class */ (function () {
                         //replace dollars and create solutions array in questions and templates
                         if (injectorInstance) {
                             cellCup.onThisAndChildren(injectorInstance);
-                            this.solutions.forEach(function (s) { return s.importResponses(); });
                         }
                         //IMAGES AND TEXT
                         //replace titles
@@ -2486,7 +2570,7 @@ var QuestionHTML = /** @class */ (function (_super) {
     //injects solutions into dollars and input elements
     QuestionHTML.prototype.getInjectorInstance = function () {
         this.solutions = [];
-        return this.injector(this.replacedTemplates(), this.solutions, this.settings);
+        return this.injector(this.replacedTemplates(), this.solutions, this.settings, this);
         //for sudoku this also instantiates replaceSudokuDollar
     };
     Object.defineProperty(QuestionHTML.prototype, "jumbleDivs", {
@@ -2554,15 +2638,17 @@ var QuestionHTML = /** @class */ (function (_super) {
         return this.refreshsolutionDiv();
     };
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
-    QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
+    QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings, paramRow) {
         var currentRadioSet = null;
-        var templates = paramTemplates.slice().reverse();
+        var templates = paramTemplates;
         var solutions = paramSolutions;
         var settings = paramSettings;
+        var templateIndex = 0;
+        var row = paramRow;
         function addSolution(cup) {
             var ret;
             if (templates.length > 0) {
-                ret = new Solution(cup, templates.pop(), settings, solutions);
+                ret = new Solution(cup, templates[templateIndex++], settings, solutions);
             }
             else {
                 ret = new Solution(cup, null, settings, solutions);
@@ -2570,9 +2656,10 @@ var QuestionHTML = /** @class */ (function (_super) {
             solutions.push(ret);
         }
         function getTemplateValue() {
-            if (templates.length > 0) {
-                var t = templates.pop();
+            if (templateIndex < templates.length) {
+                var t = templates[templateIndex++];
                 var ret = t.calculatedValue;
+                t.errorMessages.forEach(function (e) { return row.errors.push("Error in comment " + templateIndex + " of " + templates.length + " : " + e); });
                 return calculatedJSONtoViewable(ret);
             }
             return "";
@@ -2800,6 +2887,7 @@ var Solution = /** @class */ (function () {
         this.settings = settings;
         this.markbookIndex = settings.markbookIndex++;
         this.template = template;
+        //        this.template.onError = function(paramSolution) { var s = paramSolution; return function() {s.onTemplateError()} }(this);
         this.field = field;
         this.score = 0;
         this.triggerCalculateFromLateFunction = true;
@@ -2814,22 +2902,14 @@ var Solution = /** @class */ (function () {
     Solution.prototype.importResponses = function () {
         if (this.settings.responses && this.settings.responses[this.markbookIndex]) {
             this.field.elementValue = this.settings.responses[this.markbookIndex]; //this = field
-            try {
-                this.updateScoreAndImage();
-            }
-            catch (e) { }
+            this.updateScoreAndImage();
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
             //this.showDecisionImage(); moved to consumeblob
         }
         else {
             if (this.template) {
-                try {
-                    this.template.forceCalculate();
-                }
-                catch (e) {
-                    console.log("error calculating template " + e);
-                }
+                this.template.forceCalculate();
             }
             //execute the template anyway
         }
@@ -2849,16 +2929,12 @@ var Solution = /** @class */ (function () {
                     return "";
                 }
                 else {
-                    try { //this will remove too many dps etc.
-                        if (this.template instanceof Template) {
-                            return calculatedJSONtoViewable(this.template.calculatedValue);
-                        }
-                        else { //for questiontemplate
-                            return this.template.calculatedValue;
-                        }
+                    //this will remove too many dps etc.
+                    if (this.template instanceof Template) {
+                        return calculatedJSONtoViewable(this.template.calculatedValue);
                     }
-                    catch (e) {
-                        console.log("error calculating template " + e);
+                    else { //for questiontemplate
+                        return this.template.calculatedValue;
                     }
                 }
             }
@@ -2920,7 +2996,7 @@ var Solution = /** @class */ (function () {
                 var doAppend = !s.notYetChecked &&
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                var scores = s.settings.scoreGetters.map(function (f) { return f(); });
+                var scores = s.settings.scoreGetters ? s.settings.scoreGetters.map(function (f) { return f(); }) : null;
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
                     s.settings.markbookUpdate(s.markbookIndex, s.field.elementValue, //field.elementValue
                     s.color, //solution.color
@@ -2942,9 +3018,14 @@ var Solution = /** @class */ (function () {
                     this.score = (this.template.calculatedValue == "true") ? 1 : 0;
                     this.field.elementValue = (this.score == 1);
                 }
-                catch (e) {
-                    this.field.elementValue = "!";
-                    this.field.hoverText = e;
+                catch (e) { //only catch code errors
+                    if (e instanceof CodeError) {
+                        this.field.elementValue = "!";
+                        this.field.hoverText = e;
+                    }
+                    else {
+                        throw (e);
+                    }
                 }
             }
             //pound
@@ -2956,23 +3037,22 @@ var Solution = /** @class */ (function () {
                     poundCoerced.elementValue = val.toString();
                     poundCoerced.isRed = false;
                 }
-                catch (e) {
-                    poundCoerced.elementValue = e;
-                    poundCoerced.isRed = true;
+                catch (e) { //only catch code errors
+                    if (e instanceof CodeError) {
+                        poundCoerced.elementValue = e;
+                        poundCoerced.isRed = true;
+                    }
+                    else {
+                        throw (e);
+                    }
                 }
             }
             //input, combo, radio but only if scoring
             else if (this.affectsScore) {
-                try {
-                    this.score = this.template.isCorrect(this.field.elementValue) ? 1 : 0;
-                }
-                catch (e) { }
+                this.score = this.template.isCorrect(this.field.elementValue) ? 1 : 0;
             }
             else { //calculate anyway
-                try {
-                    this.template.forceCalculate();
-                }
-                catch (e) { }
+                this.template.forceCalculate();
             }
             //https://www.quackit.com/css/css_color_codes.cfm
         }
@@ -2995,63 +3075,20 @@ var Solution = /** @class */ (function () {
     };
     return Solution;
 }());
-var JSFunction = /** @class */ (function () {
-    function JSFunction(code, JSName) {
-        try {
-            this.interpreter = new Interpreter(code);
-        }
-        catch (error) {
-            this.error = error;
-        }
-        this.code = code;
-        this.JSName = JSName;
-        this.cache = {};
+var UserError = /** @class */ (function (_super) {
+    __extends(UserError, _super);
+    function UserError(message) {
+        return _super.call(this, message) || this;
     }
-    JSFunction.prototype.execute = function (parameters) {
-        //https://neil.fraser.name/software/JS-Interpreter/docs.html
-        if (this.error) {
-            throw (this.error);
-        }
-        var joinedParameters = parameters.map(function (a) { return JSON.stringify(a); }).join();
-        if (joinedParameters in this.cache) {
-            return this.cache[joinedParameters];
-        }
-        if (this.JSName != "console") {
-            this.interpreter.appendCode("\n              " + this.JSName + "(" + joinedParameters + ");");
-        }
-        try {
-            var i = 100000; //counts up to 9998 using a while loop....?
-            while (i-- && this.interpreter.step()) {
-                //console.log(i);
-            }
-        }
-        catch (e) {
-            throw (e);
-            this.interpreter = new Interpreter(this.code);
-        }
-        if (i == -1) {
-            throw ("infinite loop error");
-        }
-        //this.interpreter.run(); //MAY FALL INTO AN INFINITE LOOP
-        //array is returned as object
-        var evaluated = undefined;
-        if (this.interpreter.value && this.interpreter.value.K == "Array") {
-            var t = 0;
-            var arr = [];
-            while (t in this.interpreter.value.a) {
-                arr[t] = this.interpreter.value.a[t];
-                t++;
-            }
-            evaluated = JSON.stringify(arr);
-        }
-        else {
-            evaluated = JSON.stringify(this.interpreter.value);
-        }
-        this.cache[joinedParameters] = evaluated;
-        return evaluated;
-    };
-    return JSFunction;
-}());
+    return UserError;
+}(Error));
+var EvaluationError = /** @class */ (function (_super) {
+    __extends(EvaluationError, _super);
+    function EvaluationError(message) {
+        return _super.call(this, message) || this;
+    }
+    return EvaluationError;
+}(Error));
 var questionTemplate = /** @class */ (function () {
     function questionTemplate(paramText) {
         this._text = paramText;
@@ -3095,11 +3132,12 @@ var Template = /** @class */ (function (_super) {
             _this.variablesUsed.push(false);
         }
         _this._calculatedValue = "null";
+        _this.errorMessages = [];
         return _this;
     }
     Template.prototype.count = function () {
         if (this.overflowCounter++ > this.OVERFLOW_LIMIT) {
-            throw "Infinite loop error";
+            throw new UserError("contains an infinite loop");
         }
     };
     Object.defineProperty(Template.prototype, "calculatedValue", {
@@ -3107,16 +3145,17 @@ var Template = /** @class */ (function (_super) {
         //evaluateVariable, getSolutionText, 
         get: function () {
             //eval result is in JSON form
-            if (this._calculatedValue == "null") {
-                var expr = toExpressionTree(this._text, 0);
-                if (expr.eval == undefined) {
-                    throw new Error("parse error");
+            if (this.errorMessages.length == 0 && this._calculatedValue == "null") {
+                var result = "null";
+                try {
+                    var expr = toExpressionTree(this._text, 0);
+                    result = expr.eval(this);
                 }
-                var result = expr.eval(this);
-                //error may generate null result
-                if (result == null) {
-                    this._calculatedValue = "null";
-                    return "";
+                catch (e) {
+                    //allow code errors to bubble up to solution which uses them to alter decision images etc. 
+                    if (e instanceof CodeError)
+                        throw (e);
+                    this.errorMessages.push(e.message);
                 }
                 this._calculatedValue = result;
             }
