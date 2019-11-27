@@ -1,7 +1,7 @@
 function alphaIndex(str) { //lowercase only!!!
     if (isLowerAlpha(str)) { return str.charCodeAt(0) - 97; }
     if (isUpperAlpha(str)) { return str.charCodeAt(0) - 65; }
-    throw "function alphaindex called on non alphanumeric string";
+    throw new Error("function alphaindex called on non alphanumeric string");
 };
 
 function isAlpha(str) {
@@ -128,7 +128,7 @@ function replaceVariables(s, injector) {
                     buffer += JSONtoEval(val);
                 }
                 else {
-                    throw "variable does not exist";
+                    throw new TemplateError(`variable "${s[i]}" does not exist`,true,true);
                 }
         }
         //CHECK FOR CUSTOM VARIABLES
@@ -137,7 +137,7 @@ function replaceVariables(s, injector) {
                     buffer += JSONtoEval(injector.customFunctions[s[i]]); 
                 }
                 else {
-                    throw("variable not yet defined");
+                    throw new TemplateError(`variable has not yet been defined`,false,false); //not critical
                 }
         }
 
@@ -185,12 +185,12 @@ function toExpressionTree(s, i, commaIsTerminator?):IExpression {
             i = expr.i;
         }
         else if (i + 1 < s.length && s.substr(i, 2) == "..") {
-            if (buffer.length + children.length == 0) { throw new Error("Range expression missing something before ..");}
+            if (buffer.length + children.length == 0) { throw new TemplateError("Range expression missing something before ..",true,true);}
             children.push(buffer);
             return new RangeExpression(new SimpleExpression(children,i), s, i);
         }
         else if (s[i] == ",") {
-            if (buffer.length + children.length == 0) { throw new Error("List expression missing something before ,");}
+            if (buffer.length + children.length == 0) { throw new TemplateError("List expression missing something before ,",true,true);}
             children.push(buffer);
             return new ListExpression(new SimpleExpression(children,i), s, i);
         }
@@ -340,7 +340,7 @@ class ListExpression implements IExpression {
                 i = expr.i;
             }
             else {
-                throw new Error("bad list");
+                throw new TemplateError("bad list",true,true);
             }
         }
         this.i = i;
@@ -372,7 +372,7 @@ class ArrayExpression implements IExpression {
                 i = expr.i;
             }
             else {
-                throw "bad array";
+                throw new TemplateError("bad array",true,true);
             }
         }
         this.i = i;
@@ -448,7 +448,7 @@ class FunctionExpression implements IExpression {
                 this.eval = function(injector) { return false; }
             }
             else {
-                throw ("string without following bracket");
+                throw new TemplateError("string without following bracket",true,true);
             }
         }
         else {
@@ -651,7 +651,7 @@ class FunctionExpression implements IExpression {
         if (this.functionName == "coprime") {
             let denom = evaluatedParameters[0];
             if (denom < 2) {
-                throw new Error("no smaller coprime number exists for "+denom);
+                throw new TemplateError("no smaller coprime number exists for "+denom,true,true);
             }
             let guess = injector.random.next(denom-1) + 1;
             while (HCF(denom, guess) > 1) {
@@ -852,9 +852,9 @@ class FunctionExpression implements IExpression {
         if (this.functionName == "variable") {
             let JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
-            if (injector.allSolutions == undefined) {throw new Error("allSolutions not found on template");} 
+            if (injector.allSolutions == undefined) {throw new TemplateError("allSolutions not found on template",false,false);} 
             let thisSolution = injector.allSolutions.filter(s => s.template == injector);
-            if (thisSolution.length != 1) {throw new Error("number of mathcing solutions != 1");} 
+            if (thisSolution.length != 1) {throw new Error("number of matching solutions != 1");} 
             thisSolution[0].triggerCalculateFromLateFunction = false;
             if (thisSolution[0].field.elementValue) {
                 //store variable in template.customfunctions
@@ -871,7 +871,7 @@ class FunctionExpression implements IExpression {
         }
         
         if (injector.customFunctions[this.functionNamePreserveCase] === null) {
-            throw (`custom function with name "${this.functionNamePreserveCase}" not defined`);
+            throw new TemplateError(`custom function with name "${this.functionNamePreserveCase}" not defined`,false,false);
         }
 
         //try Math
