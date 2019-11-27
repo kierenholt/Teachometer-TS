@@ -1481,7 +1481,7 @@ function replaceVariables(s, injector) {
                 buffer += JSONtoEval(val);
             }
             else {
-                throw new UserError("variable \"" + s[i] + "\" does not exist");
+                throw new TemplateError("variable \"" + s[i] + "\" does not exist", true, true);
             }
         }
         //CHECK FOR CUSTOM VARIABLES
@@ -1490,7 +1490,7 @@ function replaceVariables(s, injector) {
                 buffer += JSONtoEval(injector.customFunctions[s[i]]);
             }
             else {
-                throw new EvaluationError("variable has not yet been defined"); //not critical
+                throw new TemplateError("variable has not yet been defined", false, false); //not critical
             }
         }
         else if (s[i] == 'π') {
@@ -1530,14 +1530,14 @@ function toExpressionTree(s, i, commaIsTerminator) {
         }
         else if (i + 1 < s.length && s.substr(i, 2) == "..") {
             if (buffer.length + children.length == 0) {
-                throw new UserError("Range expression missing something before ..");
+                throw new TemplateError("Range expression missing something before ..", true, true);
             }
             children.push(buffer);
             return new RangeExpression(new SimpleExpression(children, i), s, i);
         }
         else if (s[i] == ",") {
             if (buffer.length + children.length == 0) {
-                throw new UserError("List expression missing something before ,");
+                throw new TemplateError("List expression missing something before ,", true, true);
             }
             children.push(buffer);
             return new ListExpression(new SimpleExpression(children, i), s, i);
@@ -1665,7 +1665,7 @@ var ListExpression = /** @class */ (function () {
                 i = expr.i;
             }
             else {
-                throw new UserError("bad list");
+                throw new TemplateError("bad list", true, true);
             }
         }
         this.i = i;
@@ -1693,7 +1693,7 @@ var ArrayExpression = /** @class */ (function () {
                 i = expr.i;
             }
             else {
-                throw new UserError("bad array");
+                throw new TemplateError("bad array", true, true);
             }
         }
         this.i = i;
@@ -1758,7 +1758,7 @@ var FunctionExpression = /** @class */ (function () {
                 this.eval = function (injector) { return false; };
             }
             else {
-                throw new UserError("string without following bracket");
+                throw new TemplateError("string without following bracket", true, true);
             }
         }
         else {
@@ -1934,7 +1934,7 @@ var FunctionExpression = /** @class */ (function () {
         if (this.functionName == "coprime") {
             var denom = evaluatedParameters[0];
             if (denom < 2) {
-                throw new UserError("no smaller coprime number exists for " + denom);
+                throw new TemplateError("no smaller coprime number exists for " + denom, true, true);
             }
             var guess = injector.random.next(denom - 1) + 1;
             while (HCF(denom, guess) > 1) {
@@ -2112,11 +2112,11 @@ var FunctionExpression = /** @class */ (function () {
             var JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
             if (injector.allSolutions == undefined) {
-                throw new Error("allSolutions not found on template");
+                throw new TemplateError("allSolutions not found on template", false, false);
             }
             var thisSolution = injector.allSolutions.filter(function (s) { return s.template == injector; });
             if (thisSolution.length != 1) {
-                throw new Error("number of mathcing solutions != 1");
+                throw new Error("number of matching solutions != 1");
             }
             thisSolution[0].triggerCalculateFromLateFunction = false;
             if (thisSolution[0].field.elementValue) {
@@ -2131,7 +2131,7 @@ var FunctionExpression = /** @class */ (function () {
             return "null";
         }
         if (injector.customFunctions[this.functionNamePreserveCase] === null) {
-            throw new UserError("custom function with name \"" + this.functionNamePreserveCase + "\" not defined");
+            throw new TemplateError("custom function with name \"" + this.functionNamePreserveCase + "\" not defined", false, false);
         }
         //try Math
         if (typeof (Math[this.functionName]) == "function") {
@@ -2345,26 +2345,13 @@ var RowHTML = /** @class */ (function () {
     }
     Object.defineProperty(RowHTML.prototype, "outerDiv", {
         get: function () {
-            var _this = this;
             if (!this._cellCups) {
                 //parse markdown and attach cups to solutions
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
-                //this also peforms calculation of solution values & templates
-                //and assign decision images to stored responses
-                if (this.solutions) {
-                    this.solutions.forEach(function (s) { return s.importResponses(); });
-                    for (var i = 0; i < this.solutions.length; i++) {
-                        if (this.solutions[i].template.errorMessages) {
-                            this.solutions[i].template.errorMessages.forEach(function (e) {
-                                return _this.errors.push("Error in comment " + (i + 1) + " of " + _this.solutions.length + ": " + e);
-                            });
-                        }
-                    }
-                }
                 if (this.errors.length > 0) {
                     var para = document.createElement("p");
                     para.className = "errorList";
-                    para.innerHTML = "<u>This row contains some errors:</u>" + this.errors.join("<br>");
+                    para.innerHTML = "<u>This row contains some errors:</u><br>" + this.errors.join("<br>");
                     this._outerDiv.insertBefore(para, this._outerDiv.firstChild);
                 }
                 //in case of grid, set element for both cellcups
@@ -2570,7 +2557,7 @@ var QuestionHTML = /** @class */ (function (_super) {
     //injects solutions into dollars and input elements
     QuestionHTML.prototype.getInjectorInstance = function () {
         this.solutions = [];
-        return this.injector(this.replacedTemplates(), this.solutions, this.settings, this);
+        return this.injector(this.replacedTemplates(), this.solutions, this.settings);
         //for sudoku this also instantiates replaceSudokuDollar
     };
     Object.defineProperty(QuestionHTML.prototype, "jumbleDivs", {
@@ -2638,13 +2625,12 @@ var QuestionHTML = /** @class */ (function (_super) {
         return this.refreshsolutionDiv();
     };
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
-    QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings, paramRow) {
+    QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
         var currentRadioSet = null;
         var templates = paramTemplates;
         var solutions = paramSolutions;
         var settings = paramSettings;
         var templateIndex = 0;
-        var row = paramRow;
         function addSolution(cup) {
             var ret;
             if (templates.length > 0) {
@@ -2659,7 +2645,6 @@ var QuestionHTML = /** @class */ (function (_super) {
             if (templateIndex < templates.length) {
                 var t = templates[templateIndex++];
                 var ret = t.calculatedValue;
-                t.errorMessages.forEach(function (e) { return row.errors.push("Error in comment " + templateIndex + " of " + templates.length + " : " + e); });
                 return calculatedJSONtoViewable(ret);
             }
             return "";
@@ -2766,10 +2751,15 @@ var TemplateHTML = /** @class */ (function (_super) {
         for (var i = 0; i < comments.length; i++) {
             templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
         }
+        //force calculate
+        templates.forEach(function (t) { if (t)
+            t.forceCalculate(); });
+        for (var t in templates) {
+            for (var e in templates[t].errorMessages) {
+                this.errors.push("Error in line " + (t + 1) + " of comments : " + templates[t].errorMessages[e]);
+            }
+        }
         if (this.row.purpose == "sudoku") {
-            //force calculate
-            templates.forEach(function (t) { if (t)
-                t.forceCalculate(); });
             //number of dollars
             var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
             //sudoku only
@@ -3075,19 +3065,15 @@ var Solution = /** @class */ (function () {
     };
     return Solution;
 }());
-var UserError = /** @class */ (function (_super) {
-    __extends(UserError, _super);
-    function UserError(message) {
-        return _super.call(this, message) || this;
+var TemplateError = /** @class */ (function (_super) {
+    __extends(TemplateError, _super);
+    function TemplateError(message, paramFeedbackToUser, paramIsCritical) {
+        var _this = _super.call(this, message) || this;
+        _this.feedbackToUser = paramFeedbackToUser;
+        _this.isCritical = paramIsCritical;
+        return _this;
     }
-    return UserError;
-}(Error));
-var EvaluationError = /** @class */ (function (_super) {
-    __extends(EvaluationError, _super);
-    function EvaluationError(message) {
-        return _super.call(this, message) || this;
-    }
-    return EvaluationError;
+    return TemplateError;
 }(Error));
 var questionTemplate = /** @class */ (function () {
     function questionTemplate(paramText) {
@@ -3137,7 +3123,7 @@ var Template = /** @class */ (function (_super) {
     }
     Template.prototype.count = function () {
         if (this.overflowCounter++ > this.OVERFLOW_LIMIT) {
-            throw new UserError("contains an infinite loop");
+            throw new TemplateError("contains an infinite loop", true, true);
         }
     };
     Object.defineProperty(Template.prototype, "calculatedValue", {
@@ -3153,9 +3139,12 @@ var Template = /** @class */ (function (_super) {
                 }
                 catch (e) {
                     //allow code errors to bubble up to solution which uses them to alter decision images etc. 
-                    if (e instanceof CodeError)
-                        throw (e);
-                    this.errorMessages.push(e.message);
+                    if (e.isCritical) {
+                        if (e.feedbackToUser)
+                            this.errorMessages.push(e.message);
+                        else
+                            throw (e);
+                    }
                 }
                 this._calculatedValue = result;
             }

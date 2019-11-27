@@ -1,12 +1,11 @@
-class UserError extends Error {
-    constructor(message) {
+class TemplateError extends Error {
+    feedbackToUser: any;
+    isCritical: any;
+    constructor(message,paramFeedbackToUser,paramIsCritical) {
         super(message);
-    }
-} 
+        this.feedbackToUser = paramFeedbackToUser;
+        this.isCritical = paramIsCritical;
 
-class EvaluationError extends Error {
-    constructor(message) {
-        super(message);
     }
 } 
 
@@ -68,7 +67,7 @@ class Template extends questionTemplate {
 
     count() {
         if (this.overflowCounter++ > this.OVERFLOW_LIMIT) {
-            throw new UserError("contains an infinite loop");
+            throw new TemplateError("contains an infinite loop",true,true);
         }
     }
 
@@ -86,8 +85,10 @@ class Template extends questionTemplate {
             }
             catch(e) {
                 //allow code errors to bubble up to solution which uses them to alter decision images etc. 
-                if (e instanceof CodeError) throw(e);
-                this.errorMessages.push(e.message);
+                if (e.isCritical) {
+                    if (e.feedbackToUser) this.errorMessages.push(e.message);
+                    else throw (e);
+                }
             }
             this._calculatedValue = result;
         }

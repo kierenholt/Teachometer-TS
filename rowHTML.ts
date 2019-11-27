@@ -74,23 +74,10 @@ class RowHTML {
             //parse markdown and attach cups to solutions
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
             
-            //this also peforms calculation of solution values & templates
-            //and assign decision images to stored responses
-            if (this.solutions) {
-                this.solutions.forEach(s => s.importResponses());
-
-                for (var i = 0; i < this.solutions.length; i++) {
-                    if (this.solutions[i].template.errorMessages) {
-                        this.solutions[i].template.errorMessages.forEach(e =>
-                            this.errors.push(`Error in comment ${i+1} of ${this.solutions.length}: ${e}`)
-                            );
-                    }
-                }
-            }
             if (this.errors.length > 0) {
                 var para = document.createElement("p");
                 para.className = "errorList";
-                para.innerHTML = "<u>This row contains some errors:</u>" + this.errors.join("<br>");
+                para.innerHTML = "<u>This row contains some errors:</u><br>" + this.errors.join("<br>");
                 this._outerDiv.insertBefore(para,this._outerDiv.firstChild);
             }
 
@@ -326,7 +313,7 @@ class QuestionHTML extends RowHTML {
     //injects solutions into dollars and input elements
     getInjectorInstance() {
             this.solutions = [];
-            return this.injector(this.replacedTemplates(), this.solutions, this.settings, this);
+            return this.injector(this.replacedTemplates(), this.solutions, this.settings);
             //for sudoku this also instantiates replaceSudokuDollar
     }   
     
@@ -392,14 +379,13 @@ class QuestionHTML extends RowHTML {
     }
     
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
-    injector(paramTemplates, paramSolutions, paramSettings, paramRow)  {
+    injector(paramTemplates, paramSolutions, paramSettings)  {
             
             var currentRadioSet = null;
             var templates = paramTemplates;
             var solutions = paramSolutions;
             var settings =  paramSettings;
-            var templateIndex = 0; 
-            var row = paramRow;
+            var templateIndex = 0;
             
             function addSolution(cup) {
                 var ret;
@@ -416,7 +402,6 @@ class QuestionHTML extends RowHTML {
                 if (templateIndex < templates.length) {
                     let t = templates[templateIndex++];
                     let ret = t.calculatedValue;
-                    t.errorMessages.forEach(e => row.errors.push(`Error in comment ${templateIndex} of ${templates.length} : ` + e))
                     return calculatedJSONtoViewable(ret);
                 }
                 return "";
@@ -523,9 +508,16 @@ class TemplateHTML extends QuestionHTML{
         for (var i = 0; i < comments.length; i++) { 
             templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
         }
+        //force calculate
+        templates.forEach(function(t) {if (t) t.forceCalculate()});
+        for (var t in templates) {
+            for (var e in templates[t].errorMessages) {
+                this.errors.push(`Error in line ${t+1} of comments : ` + templates[t].errorMessages[e])
+            }
+        }
+
+
         if (this.row.purpose == "sudoku") {
-            //force calculate
-            templates.forEach(function(t) {if (t) t.forceCalculate()});
             //number of dollars
             var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
             //sudoku only
