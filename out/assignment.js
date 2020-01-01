@@ -517,10 +517,23 @@ var JSFunction = (function () {
 }());
 var Cup = (function () {
     function Cup(str) {
-        this.attributes = [];
+        this.attributes = {};
         this.tagName = "";
         this.str = str;
     }
+    Object.defineProperty(Cup.prototype, "joinedAttributes", {
+        get: function () {
+            var buffer = "";
+            for (var key in this.attributes) {
+                if (this.attributes.hasOwnProperty(key)) {
+                    buffer += key + "=\"" + this.attributes[key] + "\" ";
+                }
+            }
+            return buffer;
+        },
+        enumerable: true,
+        configurable: true
+    });
     Cup.prototype.onThisAndChildren = function (action) { action(this); };
     Object.defineProperty(Cup.prototype, "innerHTML", {
         get: function () { return ""; },
@@ -528,7 +541,7 @@ var Cup = (function () {
         configurable: true
     });
     Object.defineProperty(Cup.prototype, "HTML", {
-        get: function () { return "<" + this.tagName + " " + this.attributes.join("  ") + ">" + this.innerHTML + "</" + this.tagName + ">"; },
+        get: function () { return "<" + this.tagName + " " + this.joinedAttributes + " >" + this.innerHTML + "</" + this.tagName + ">"; },
         enumerable: true,
         configurable: true
     });
@@ -558,9 +571,9 @@ var ImageCup = (function (_super) {
         if (_this.width == null || isNaN(_this.width))
             _this.width = 100;
         _this.tagName = "img";
-        _this.attributes.push("style=\"position: relative; left:" + (50 - _this.width / 2) + "%; width:" + _this.width + "%\"");
-        _this.attributes.push("src=\"" + _this.source + "\"");
-        _this.attributes.push("alt=\"" + _this.comment + "\"");
+        _this.attributes["style"] = "position: relative; left:" + (50 - _this.width / 2) + "%; width:" + _this.width + "%";
+        _this.attributes["src"] = _this.source;
+        _this.attributes["alt"] = _this.comment;
         return _this;
     }
     ImageCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
@@ -569,6 +582,8 @@ var ImageCup = (function (_super) {
         }
         this.source = this.source.replace(patternMakeItGlobal, replacer);
         this.comment = this.comment.replace(patternMakeItGlobal, replacer);
+        this.attributes["src"] = this.source;
+        this.attributes["alt"] = this.comment;
     };
     return ImageCup;
 }(Cup));
@@ -581,8 +596,8 @@ var AnchorCup = (function (_super) {
         if (!(_this.url.startsWith("http://") || _this.url.startsWith("https://")))
             _this.url = "https://" + _this.url;
         _this.tagName = "a";
-        _this.attributes.push("href=\"" + _this.url + "\"");
-        _this.attributes.push("target=\"_blank\"");
+        _this.attributes["href"] = _this.url;
+        _this.attributes["target"] = "_blank";
         return _this;
     }
     Object.defineProperty(AnchorCup.prototype, "innerHTML", {
@@ -598,6 +613,7 @@ var AnchorCup = (function (_super) {
         }
         this.text = this.text.replace(patternMakeItGlobal, replacer);
         this.url = this.url.replace(patternMakeItGlobal, replacer);
+        this.attributes["href"] = this.url;
     };
     return AnchorCup;
 }(Cup));
@@ -799,7 +815,7 @@ var CodeCup = (function (_super) {
         str = helpers.trimChar(str, "\n");
         _this = _super.call(this, str) || this;
         _this.children = [new ChunkCup(str)];
-        _this.attributes.push("class=\"codeblock\"");
+        _this.attributes["class"] = "codeblock";
         _this.tagName = "pre";
         _this.replace = null;
         return _this;
@@ -821,7 +837,7 @@ var RelativePositionCup = (function (_super) {
         _this.xPos = Number(xPosAsString).toString() + (inPixels ? "px" : "%");
         _this.yPos = Number(yPosAsString).toString() + (inPixels ? "px" : "%");
         _this.children = [new ChunkCup(childrenAsString)];
-        _this.attributes.push("style=\"position:absolute;left:" + _this.xPos + ";top:" + _this.yPos + "\"");
+        _this.attributes["style"] = "position:absolute;left:" + _this.xPos + ";top:" + _this.yPos;
         return _this;
     }
     return RelativePositionCup;
@@ -860,7 +876,7 @@ var DivCup = (function (_super) {
     }
     Object.defineProperty(DivCup.prototype, "class", {
         set: function (value) {
-            this.attributes.push("class=\"" + value + "\"");
+            this.attributes["class"] = value;
         },
         enumerable: true,
         configurable: true
@@ -892,8 +908,8 @@ var TableCup = (function (_super) {
         _this.hasBorder = str.startsWith("|");
         _this.tagName = "table";
         _this.children = str.split("\n").filter(function (s) { return s.length > 0; }).map(function (s) { return new RowCup(s); });
-        _this.attributes.push("class=\"markdowntable\"");
-        _this.attributes.push("style=\"" + (_this.hasBorder ? "" : "border: none;") + "\"");
+        _this.attributes["class"] = "markdowntable";
+        _this.attributes["style"] = _this.hasBorder ? "" : "border: none;";
         return _this;
     }
     return TableCup;
@@ -935,7 +951,7 @@ var FieldCup = (function (_super) {
         _this.instanceNum = FieldCup.instances.length;
         FieldCup.instances.push(_this);
         _this._element = { value: "", "disabled": false };
-        _this.attributes.push("id=cup" + _this.instanceNum);
+        _this.attributes["id"] = "cup" + _this.instanceNum;
         _this._decisionImage = decisionImageEnum.None;
         return _this;
     }
@@ -1030,7 +1046,7 @@ var RadioSet = (function () {
     RadioSet.prototype.add = function (radioCup) {
         this.radioCups.push(radioCup);
         radioCup.onResponse = this._cachedOnResponse;
-        radioCup.attributes.push("name=radioSet" + this.instanceNum);
+        radioCup.attributes["name"] = "radioSet" + this.instanceNum;
     };
     Object.defineProperty(RadioSet.prototype, "onResponse", {
         set: function (value) {
@@ -1074,7 +1090,7 @@ var RadioCup = (function (_super) {
     }
     Object.defineProperty(RadioCup.prototype, "HTML", {
         get: function () {
-            return this.letter + (".<input type=\"radio\" " + this.attributes.join("  ") + " value=\"" + this.letter + "\" >" + this.decisionImageHTML);
+            return this.letter + (".<input type=\"radio\" " + this.joinedAttributes + " value=\"" + this.letter + "\" >" + this.decisionImageHTML);
         },
         enumerable: true,
         configurable: true
@@ -1101,7 +1117,7 @@ var TextAreaCup = (function (_super) {
     }
     Object.defineProperty(TextAreaCup.prototype, "HTML", {
         get: function () {
-            return "<br><textarea " + this.attributes.join("  ") + " rows=\"10\"></textarea>";
+            return "<br><textarea " + this.joinedAttributes + " rows=\"10\"></textarea>";
         },
         enumerable: true,
         configurable: true
@@ -1122,7 +1138,7 @@ var InputCup = (function (_super) {
     }
     Object.defineProperty(InputCup.prototype, "HTML", {
         get: function () {
-            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.attributes.join("  ") + " >" + this.decisionImageHTML;
+            return "<input size=\"" + this.str.length + "\" type=\"text\" " + this.joinedAttributes + " >" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
@@ -1146,7 +1162,7 @@ var ComboCup = (function (_super) {
     Object.defineProperty(ComboCup.prototype, "HTML", {
         get: function () {
             var optionHTML = this.options.map(function (o) { return "<option value='" + o + "'>" + o + "</option>"; }).join("");
-            return "<select " + this.attributes.join("  ") + " >" + optionHTML + " </select>" + this.decisionImageHTML;
+            return "<select " + this.joinedAttributes + " >" + optionHTML + " </select>" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
@@ -1176,7 +1192,7 @@ var CheckBoxCup = (function (_super) {
     }
     Object.defineProperty(CheckBoxCup.prototype, "HTML", {
         get: function () {
-            return "<span " + this.attributes.join("  ") + " ></span>" + this.decisionImageHTML;
+            return "<span " + this.joinedAttributes + " ></span>" + this.decisionImageHTML;
         },
         enumerable: true,
         configurable: true
@@ -1221,7 +1237,7 @@ var PoundCup = (function (_super) {
     }
     Object.defineProperty(PoundCup.prototype, "HTML", {
         get: function () {
-            return "<span " + this.attributes.join("  ") + " ></span>";
+            return "<span " + this.joinedAttributes + " ></span>";
         },
         enumerable: true,
         configurable: true

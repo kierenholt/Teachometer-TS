@@ -3,15 +3,25 @@
 
 class Cup {
   str: any;
-  attributes = [];
+  attributes = {};
   tagName = "";
   
   constructor(str) { this.str = str; }
 
+  get joinedAttributes() {
+    let buffer = "";
+    for (var key in this.attributes) { //does not support Object.entries(obj)
+      if (this.attributes.hasOwnProperty(key)) {
+        buffer += key + "=\"" + this.attributes[key] + "\" "
+      }
+    }
+    return buffer
+  }
+
   onThisAndChildren(action) { action(this); }
 
   get innerHTML() { return ""; }
-  get HTML() { return `<${this.tagName} ${this.attributes.join("  ")}>${this.innerHTML}</${this.tagName}>` }
+  get HTML() { return `<${this.tagName} ${this.joinedAttributes} >${this.innerHTML}</${this.tagName}>` }
 }
 
 class BulletCup extends Cup {
@@ -33,9 +43,9 @@ class ImageCup extends Cup {
     if (this.width == null || isNaN(this.width))
       this.width = 100;
       this.tagName = "img";
-      this.attributes.push(`style="position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%"`);
-      this.attributes.push(`src="${this.source}"`);
-      this.attributes.push(`alt="${this.comment}"`);
+      this.attributes["style"] = `position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%`;
+      this.attributes["src"] = this.source;
+      this.attributes["alt"] = this.comment;
   }
 
   
@@ -51,6 +61,9 @@ class ImageCup extends Cup {
 
     this.source = this.source.replace(patternMakeItGlobal, replacer);
     this.comment = this.comment.replace(patternMakeItGlobal, replacer);
+    this.attributes["src"] = this.source;
+    this.attributes["alt"] = this.comment;
+
   }
 }
 
@@ -64,8 +77,8 @@ class AnchorCup extends Cup {
     if (!(this.url.startsWith("http://") || this.url.startsWith("https://")))
       this.url = "https://" + this.url;
     this.tagName = "a";
-    this.attributes.push(`href="${this.url}"`);
-    this.attributes.push(`target="_blank"`);
+    this.attributes["href"] = this.url;
+    this.attributes["target"] = "_blank";
   }
 
   get innerHTML() {
@@ -83,6 +96,7 @@ class AnchorCup extends Cup {
 
     this.text = this.text.replace(patternMakeItGlobal, replacer);
     this.url = this.url.replace(patternMakeItGlobal, replacer);
+    this.attributes["href"] = this.url;
   }
 }
 
@@ -255,7 +269,7 @@ class CodeCup extends CupContainer {
     str = helpers.trimChar(str,"\n");
     super(str);
     this.children = [new ChunkCup(str)];
-    this.attributes.push(`class="codeblock"`);
+    this.attributes["class"] = "codeblock";
     this.tagName = "pre";
     this.replace = null;
   }
@@ -278,7 +292,7 @@ class RelativePositionCup extends CupContainer {
     this.xPos = Number(xPosAsString).toString() + (inPixels ? "px" : "%");
     this.yPos = Number(yPosAsString).toString() + (inPixels ? "px" : "%");
     this.children = [new ChunkCup(childrenAsString)];
-    this.attributes.push(`style=\"position:absolute;left:${this.xPos};top:${this.yPos}\"`);
+    this.attributes["style"] = `position:absolute;left:${this.xPos};top:${this.yPos}`;
   }
 }
 
@@ -310,7 +324,7 @@ class DivCup extends CupContainer {
   }
 
   set class(value) {
-    this.attributes.push(`class="${value}"`)
+    this.attributes["class"] = value;
   }
 
   toggleGridlines() {
@@ -360,8 +374,8 @@ class TableCup extends CupContainer {
     this.hasBorder = str.startsWith("|");
     this.tagName = "table";
     this.children = str.split("\n").filter(s => s.length > 0).map(s => new RowCup(s));
-    this.attributes.push(`class="markdowntable"`); 
-    this.attributes.push(`style="${this.hasBorder ? "" : "border: none;"}"`);
+    this.attributes["class"] = "markdowntable"; 
+    this.attributes["style"] = this.hasBorder ? "" : "border: none;";
     //this.numCols = rows[0].children.Length;
   }
 }
@@ -414,7 +428,7 @@ class FieldCup extends Cup implements Field {
     this.instanceNum = FieldCup.instances.length;
     FieldCup.instances.push(this);
     this._element = {value: "", "disabled": false};
-    this.attributes.push(`id=cup${this.instanceNum}`);
+    this.attributes["id"] = `cup${this.instanceNum}`;
     this._decisionImage = decisionImageEnum.None;
   }
   
@@ -501,7 +515,7 @@ class RadioSet implements Field {
     this.radioCups.push(radioCup);
     radioCup.onResponse = this._cachedOnResponse;
     //add formname to all radiocups so only one can be selected at a time
-    radioCup.attributes.push(`name=radioSet${this.instanceNum}`); 
+    radioCup.attributes["name"] = `radioSet${this.instanceNum}`; 
   }
   
   set onResponse(value) {
@@ -535,7 +549,7 @@ class RadioCup extends FieldCup { //needs to extend fieldcup for the instancenum
 
   //called by different cups which exist in the expression tree
   get HTML() {
-    return this.letter + `.<input type="radio" ${this.attributes.join("  ")} value="${this.letter}" >${this.decisionImageHTML}`;
+    return this.letter + `.<input type="radio" ${this.joinedAttributes} value="${this.letter}" >${this.decisionImageHTML}`;
   }
   
   setElement(newElement) {
@@ -557,7 +571,7 @@ class TextAreaCup extends FieldCup {
   }
 
   get HTML() {
-    return `<br><textarea ${this.attributes.join("  ")} rows="10"></textarea>`;
+    return `<br><textarea ${this.joinedAttributes} rows="10"></textarea>`;
   }
 
   setElement(newElement) {
@@ -576,7 +590,7 @@ class InputCup extends FieldCup {
   }
 
   get HTML() {
-    return `<input size="${this.str.length}" type="text" ${this.attributes.join("  ")} >${this.decisionImageHTML}`;
+    return `<input size="${this.str.length}" type="text" ${this.joinedAttributes} >${this.decisionImageHTML}`;
   }
   
   setElement(newElement) {
@@ -598,7 +612,7 @@ class ComboCup extends FieldCup {
 
   get HTML() {
     let optionHTML = this.options.map(o => `<option value='${o}'>${o}</option>`).join("");
-    return `<select ${this.attributes.join("  ")} >${optionHTML} </select>${this.decisionImageHTML}`;
+    return `<select ${this.joinedAttributes} >${optionHTML} </select>${this.decisionImageHTML}`;
   }
   
   setElement(newElement) {
@@ -633,7 +647,7 @@ class CheckBoxCup extends FieldCup {
   }
 
   get HTML() { //empty element
-    return `<span ${this.attributes.join("  ")} ></span>${this.decisionImageHTML}`;
+    return `<span ${this.joinedAttributes} ></span>${this.decisionImageHTML}`;
   }
   
   setElement(newElement) {
@@ -670,7 +684,7 @@ class PoundCup extends FieldCup {
   }
 
   get HTML() {
-    return `<span ${this.attributes.join("  ")} ></span>`; //no decision image
+    return `<span ${this.joinedAttributes} ></span>`; //no decision image
   }
   
   setElement(newElement) {
