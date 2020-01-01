@@ -1,12 +1,23 @@
 <html>
 <head> 
 	<meta charset="UTF-8"> 
-<link id="style" rel="stylesheet" type="text/css" href="style.css">
+<link id="style" rel="stylesheet" type="text/css" href="style.css"> <!---MUST STAY FIRST IN HEAD-->
 	
 	<script src=assignment.js></script>
   <script async src="acorn_interpreter.js"></script>
 
 <style>
+
+
+/* BUTTONS */
+div#buttons {
+  z-index: 10;
+  position: fixed;
+  top: 0;
+  width: 100%;  
+  background-color: #fff;
+  padding: 10px;
+}
 
 @media print {
   body {
@@ -123,8 +134,7 @@
         "submitButtonText" : "check answers",
         "showRowTitles": true,
         "markbookUpdate": false,
-        "allowGridlines" : true,
-        "numChecksLeft": -1
+        "allowGridlines" : true
         };
 		window.assignment.previewInNewWindow(previewSettings,null);
 	}

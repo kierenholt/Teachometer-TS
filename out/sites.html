@@ -37,8 +37,8 @@
         "journal mode": "OFF",
         "allow refresh": "ON",
         "append stored responses": "ON",
-        "scoreHeaders": ["checks remaining"],
-        "scores": ["0"]
+        "scoreHeaders": ["% attempted","% correct"],
+        "scores": ["1"]
         };
         markbookSettings.user = "<?=user?>";
         markbookSettings.workbookId = "<?=workbookId?>";
@@ -46,7 +46,7 @@
         
         //responses
         
-        var responsesString = `["0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0","0"]`;//`["B","2","2","1"]`;
+        var responsesString = `["11","10","9","8","7","6","0","0","0","0","0","0","0","0","0","0","0","0"]`;//`["B","2","2","1"]`;
         if (responsesString) {
           markbookSettings.responses = JSON.parse(responsesString);
         }

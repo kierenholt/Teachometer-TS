@@ -5,6 +5,7 @@
       "module": "none",
       //"outDir": "out",
       "outFile": "out/assignment.js",
-      "sourceMap": true
+      "sourceMap": true,
+      "removeComments": true
     },
   }

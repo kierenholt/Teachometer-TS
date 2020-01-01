@@ -25,7 +25,6 @@ class Solution {
         this.settings = settings;
         this.markbookIndex = settings.markbookIndex++;
         this.template = template;
-//        this.template.onError = function(paramSolution) { var s = paramSolution; return function() {s.onTemplateError()} }(this);
         this.field = field;
         this.score = 0;
 
@@ -168,7 +167,7 @@ class Solution {
                 try {
                     let val = this.template.calculatedValue;
                     val = JSON.parse(val);
-                    poundCoerced.elementValue = val.toString();
+                    poundCoerced.elementValue = String(val);
                     poundCoerced.isRed = false;
                 }
                 catch (e) { //only catch code errors
@@ -177,7 +176,7 @@ class Solution {
                     poundCoerced.isRed = true;
                     }
                     else { 
-                        throw(e);
+                        //throw(e);
                     }
                 }
             }

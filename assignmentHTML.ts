@@ -14,18 +14,20 @@ class AssignmentHTML {
         this.settings = internalSettings;
         this.settings.random = new Random();
 
+/*shuffle questions
+mark limit
+default viewing permission
+journal mode
+append mode
+remove hyperlinks*/
 
         //markbookSettings values are true or false
         if (markbookSettings) {
-            //"score is out of attempted questions not all questions" default true
-            //this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
-            this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
-            this.settings.truncateMarks = Number(markbookSettings["total mark limit"]);
-            //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
-            this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == "ON");
-            this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
-            this.settings.appendToMarkbook =  (markbookSettings["append stored responses"] == "ON");
+            this.settings.shuffleQuestions = (markbookSettings["shuffle questions"] == true);
+            this.settings.truncateMarks = Number(markbookSettings["mark limit"]);
+            this.settings.journalMode = (markbookSettings["journal mode"] == true);
+            this.settings.appendToMarkbook =  (markbookSettings["append mode"] == true);
+            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == true);
             
             this.settings.markbookUpdate = markbookSettings.markbookUpdate;
             this.settings.markbookIndex = 0; //incremented by solutions
@@ -38,15 +40,26 @@ class AssignmentHTML {
             this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
             this.settings.scores = markbookSettings["scores"];
             
-            //Number of checks remaining
+
+            /*
+
+    "correct-%-enabled":{"value":true,"element":"checkbox","textBeforeElement":"% correct","long description":""},
+    "attempted-%-enabled":{"value":false,"element":"checkbox","textBeforeElement":"% attempted","long description":""},
+    "stars-%-enabled":{"value":false,"element":"checkbox","textBeforeElement":"% stars","long description":""},
+    "checks-remaining-enabled":{"value":false,"element":"checkbox","textBeforeElement":"num checks remaining","long description":""},
+    "time-remaining-enabled":{"value":false,"element":"checkbox","textBeforeElement":"time remaining (min)","long description":""},
+            */
+           
+            //score columns
             if (this.settings.scoreHeaders) {
-                var index1 = this.settings.scoreHeaders.indexOf("checks remaining"); 
+                //Number of checks remaining
+                var index1 = this.settings.scoreHeaders.indexOf("num checks remaining"); 
                 if (index1 > -1) {
                     this.settings.numChecksLeft = Number(this.settings.scores[index1]);
                 } 
 
                 //Number of clicks away
-                var index2 = this.settings.scoreHeaders.indexOf("clicks away")
+/*                var index2 = this.settings.scoreHeaders.indexOf("clicks away")
                 if (index2 > -1) {
                     window.onblur = function(paramAsn) { 
                         var asn = paramAsn;
@@ -54,32 +67,31 @@ class AssignmentHTML {
                             asn.settings.clicksAway++;
                         };
                     }(this); 
-                
                     this.settings.clicksAway = Number(this.settings.scores[index2]);
                 } 
-
+*/
                 //add score getters to settings so that solution can call them 
                 this.settings.scoreGetters = function(paramAsn,scoreHeaders){
                     var asn = paramAsn; 
                     var ret = [];
                     for (let header of scoreHeaders) {
                         switch (header) {
-                            case "attempted %":
+                            case "% attempted":
                             ret.push(function() {return asn.percentAttempted;})
                             break;
-                            case "correct %":
+                            case "% correct":
                             ret.push(function() {return asn.percentCorrect;})
                             break;
-                            case "stars %":
+                            case "% stars":
                             ret.push(function() {return asn.percentStars;})
                             break;
                             case "clicks away":
                             ret.push(function() {return asn.settings.clicksAway;})
                             break;
-                            case "checks remaining":
+                            case "num checks remaining":
                             ret.push(function() {return asn.settings.numChecksLeft;})
                             break;
-                            case "time remaining":
+                            case "time remaining (min)":
                             ret.push(function() {return asn.settings.timeRemaining;})
                             break;
                             default: //also case "none"
@@ -332,12 +344,13 @@ class AssignmentHTML {
         var css:any = document.styleSheets[0];
         if (css) for (let rule of css.cssRules) {styleText += rule.cssText;}
 
-        if (!this.previewWindow) {
             this.previewWindow = window.open("", "preview", "");
-            this.previewWindow["helpers"] = window.helpersMaker();			
-        }
-
-            this.previewWindow.document.write(`
+            if (this.previewWindow["assignment"]) {
+                this.previewWindow["assignment"].deleteAll();
+            }
+            else { //initialise new assignment
+                this.previewWindow["helpers"] = window.helpersMaker();			
+                this.previewWindow.document.write(`
 <head>
 <style>
 ${styleText}
@@ -347,13 +360,14 @@ ${styleText}
 <div id="questionsDiv"></div>
 </body>
 `);
-this.previewWindow.stop();
-let newSettings = {};
-for (let index in this.settings) {newSettings[index] = this.settings[index];}
-newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+                this.previewWindow.stop();
+                let newSettings = {};
+                for (let index in this.settings) {newSettings[index] = this.settings[index];}
+                newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
 
-this.previewWindow["assignment"] = new AssignmentHTML(newSettings,null);
-this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
+                this.previewWindow["assignment"] = new AssignmentHTML(newSettings,null);
+            }
+            this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     }
 
 
@@ -395,34 +409,36 @@ this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
         }
 
         //SUBMIT BUTTON, if test not already taken and submitted
-        if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
-            this.submitButton = document.createElement("button");
-            this.submitButton.id = "submitButton";
+        if (!this.submitButton)  {
+            if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
+                this.submitButton = document.createElement("button");
+                this.submitButton.id = "submitButton";
 
-            this.submitButton.onclick = 
-            function(paramAssignment) {
-                var asn = paramAssignment; 
-                return function() {asn.showAllDecisionImages(true)};
-            }(this);
+                this.submitButton.onclick = 
+                function(paramAssignment) {
+                    var asn = paramAssignment; 
+                    return function() {asn.showAllDecisionImages(true)};
+                }(this);
 
-            var checksLeftText = "";
-            if (this.settings.numChecksLeft != undefined) {
-                checksLeftText = this.settings.numChecksLeft < 1 ? "" :
-                    this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
-                    ` (${this.settings.numChecksLeft} checks remaining)`;
+                var checksLeftText = "";
+                if (this.settings.numChecksLeft != undefined) {
+                    checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                        this.settings.numChecksLeft == 1 ? ` (${this.settings.numChecksLeft} check remaining)` :
+                        ` (${this.settings.numChecksLeft} checks remaining)`;
+                }
+                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+                this.settings.questionsDiv.parentElement.appendChild(this.submitButton);
             }
-            this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
-            this.settings.questionsDiv.appendChild(this.submitButton);
-        }
-        else { //checks = 0
-            if (this.settings.markbookUpdate) {
-                this.settings.markbookUpdate = undefined;
+            else { //checks = 0
+                if (this.settings.markbookUpdate) {
+                    this.settings.markbookUpdate = undefined;
+                }
+                var scoreParagraph = document.createElement("p");
+                scoreParagraph.id = "scoreParagraph";
+                scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf} (${this.percentCorrect}%)</h1>`;
+                this.settings.questionsDiv.appendChild(scoreParagraph);
+                this.disabled = true;
             }
-            var scoreParagraph = document.createElement("p");
-            scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf} (${this.percentCorrect}%)</h1>`;
-            this.settings.questionsDiv.appendChild(scoreParagraph);
-            this.disabled = true;
         }
     }
 

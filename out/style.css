@@ -94,16 +94,6 @@ p#scoreParagraph {
   text-align: center;
 }
 
-/* BUTTONS */
-div#buttons {
-  z-index: 10;
-  position: fixed;
-  top: 0;
-  width: 100%;  
-  background-color: #fff;
-  padding: 10px;
-}
-
 /*ERROR LIST - comes at the top of a row with errors*/ 
 p.errorList {
   color: red;
@@ -179,7 +169,7 @@ table.fraction > tbody > tr:first-child > td {
 
 /*** IMAGES ***/
 img {
-  background-color:#fff;
+  /*background-color:#fff; interupts the teachometer logo button*/
 }
 
 /*** GRIDLINES ***/

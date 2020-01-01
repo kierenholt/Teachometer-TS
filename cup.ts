@@ -666,6 +666,7 @@ class CheckBoxCup extends FieldCup {
 class PoundCup extends FieldCup {
   constructor(str) {
     super(str);
+    this._element = {checked: false, "disabled": false, "style":{"color":""}};
   }
 
   get HTML() {
@@ -673,6 +674,7 @@ class PoundCup extends FieldCup {
   }
   
   setElement(newElement) {
+    newElement.style.color = this._element.style.color;
     super.setElement(newElement);
     //no change event etc. `
     //no decision element

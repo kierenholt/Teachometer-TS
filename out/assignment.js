@@ -1,77 +1,56 @@
-var AssignmentHTML = /** @class */ (function () {
-    //anticheatDiv: HTMLDivElement;
+var AssignmentHTML = (function () {
     function AssignmentHTML(internalSettings, markbookSettings) {
         this.rowHTMLs = [];
         this.settings = internalSettings;
         this.settings.random = new Random();
-        //markbookSettings values are true or false
         if (markbookSettings) {
-            //"score is out of attempted questions not all questions" default true
-            //this.settings.outOfOnlyQuestionsAttempted = (markbookSettings["score attempted questions only"] == "ON");
-            this.settings.shuffleQuestions = (markbookSettings["shuffle"] == "ON");
-            this.settings.truncateMarks = Number(markbookSettings["total mark limit"]);
-            //this.settings.numChecksLeft = Number(markbookSettings["check limit"]);
-            this.settings.journalMode = (markbookSettings["journal mode"] == "ON");
-            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == "ON");
-            this.settings.allowRefresh = (markbookSettings["allow refresh"] == "ON");
-            this.settings.appendToMarkbook = (markbookSettings["append stored responses"] == "ON");
+            this.settings.shuffleQuestions = (markbookSettings["shuffle questions"] == true);
+            this.settings.truncateMarks = Number(markbookSettings["mark limit"]);
+            this.settings.journalMode = (markbookSettings["journal mode"] == true);
+            this.settings.appendToMarkbook = (markbookSettings["append mode"] == true);
+            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == true);
             this.settings.markbookUpdate = markbookSettings.markbookUpdate;
-            this.settings.markbookIndex = 0; //incremented by solutions
+            this.settings.markbookIndex = 0;
             this.settings.user = markbookSettings.user;
             this.settings.workbookId = markbookSettings.workbookId;
             this.settings.sheetName = markbookSettings.sheetName;
-            //SCORES i.e. time remaining, checks remaining etc
             this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
             this.settings.scores = markbookSettings["scores"];
-            //Number of checks remaining
             if (this.settings.scoreHeaders) {
-                var index1 = this.settings.scoreHeaders.indexOf("checks remaining");
+                var index1 = this.settings.scoreHeaders.indexOf("num checks remaining");
                 if (index1 > -1) {
                     this.settings.numChecksLeft = Number(this.settings.scores[index1]);
                 }
-                //Number of clicks away
-                var index2 = this.settings.scoreHeaders.indexOf("clicks away");
-                if (index2 > -1) {
-                    window.onblur = function (paramAsn) {
-                        var asn = paramAsn;
-                        return function () {
-                            asn.settings.clicksAway++;
-                        };
-                    }(this);
-                    this.settings.clicksAway = Number(this.settings.scores[index2]);
-                }
-                //add score getters to settings so that solution can call them 
                 this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
                     var asn = paramAsn;
                     var ret = [];
                     for (var _i = 0, scoreHeaders_1 = scoreHeaders; _i < scoreHeaders_1.length; _i++) {
                         var header = scoreHeaders_1[_i];
                         switch (header) {
-                            case "attempted %":
+                            case "% attempted":
                                 ret.push(function () { return asn.percentAttempted; });
                                 break;
-                            case "correct %":
+                            case "% correct":
                                 ret.push(function () { return asn.percentCorrect; });
                                 break;
-                            case "stars %":
+                            case "% stars":
                                 ret.push(function () { return asn.percentStars; });
                                 break;
                             case "clicks away":
                                 ret.push(function () { return asn.settings.clicksAway; });
                                 break;
-                            case "checks remaining":
+                            case "num checks remaining":
                                 ret.push(function () { return asn.settings.numChecksLeft; });
                                 break;
-                            case "time remaining":
+                            case "time remaining (min)":
                                 ret.push(function () { return asn.settings.timeRemaining; });
                                 break;
-                            default: //also case "none"
+                            default:
                                 throw new Error("score header not recognised");
                         }
                     }
                     return ret;
                 }(this, this.settings.scoreHeaders);
-                //time limit
                 var index3 = this.settings.scoreHeaders.indexOf("time remaining");
                 if (index3 > -1) {
                     this.settings.timeRemaining = Number(this.settings.scores[index3]);
@@ -84,7 +63,6 @@ var AssignmentHTML = /** @class */ (function () {
                             var countUp = timeLimit == 0;
                             var target = new Date().getTime() + 1000 * 60 * timeLimit;
                             var div = paramDiv;
-                            //REPEATS EVERY 0.9 SECONDS
                             return function () {
                                 var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
                                 var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
@@ -95,20 +73,18 @@ var AssignmentHTML = /** @class */ (function () {
                                 if (distance < 60 * 1000 && !countUp) {
                                     div.className += " red";
                                 }
-                                // If the count down is over, write some text 
                                 if (distance < 0) {
                                     asn.settings.timeRemaining = 0;
                                     clearInterval(asn.timerInterval);
                                     div.innerHTML = "EXPIRED";
                                     asn.settings.numChecksLeft = 1;
-                                    asn.showAllDecisionImages(false); //does not show warning
+                                    asn.showAllDecisionImages(false);
                                 }
                             };
                         }(this.settings.timeRemaining, timerDiv, this), 900);
                     }
                 }
             }
-            //responses
             if (markbookSettings.responses) {
                 this.settings.responses = markbookSettings.responses;
             }
@@ -116,12 +92,9 @@ var AssignmentHTML = /** @class */ (function () {
                 this.settings.responses = {};
             }
         }
-        //end of if(markbooksettings)
     }
-    //CALLED FROM A BUTTON
     AssignmentHTML.prototype.addRows = function (paramRows, index) {
         for (var r = 0, row = void 0; row = paramRows[r]; r++) {
-            //FILL TITLE ROWS
             var showTitle = true;
             if (this.rowHTMLs.length > 0) {
                 var previousTitle = this.rowHTMLs[this.rowHTMLs.length - 1].row.title;
@@ -129,7 +102,6 @@ var AssignmentHTML = /** @class */ (function () {
                     showTitle = false;
                 }
             }
-            //create new row
             var newRowHTML = null;
             if (row.purpose == "question") {
                 newRowHTML = new QuestionHTML(row, showTitle, this.settings);
@@ -150,7 +122,6 @@ var AssignmentHTML = /** @class */ (function () {
                 var row = paramRow;
                 return function () { asn.duplicateRow(row); };
             }(this, newRowHTML);
-            //insert into rowHTMLs
             if (index != undefined && index < this.rowHTMLs.length) {
                 this.rowHTMLs.splice(index + 1, 0, newRowHTML);
             }
@@ -190,39 +161,33 @@ var AssignmentHTML = /** @class */ (function () {
             newRowHTML.jumbleDivs.forEach(function (s) { return _this.settings.jumbledSolutionsDiv.appendChild(s); });
         }
     };
-    //also called from a button
     AssignmentHTML.prototype.refresh = function () {
         this.templateHTMLs.forEach(function (r) { return r.refresh(); });
     };
-    //called from rowhtml delete button
     AssignmentHTML.prototype.deleteRows = function (TRHTMLs) {
         TRHTMLs.forEach(function (r) { return r.delete(); });
         this.rowHTMLs = this.rowHTMLs.filter(function (r) { return !TRHTMLs.includes(r); });
         this.updateQuestionNumbersAndMarkbookIndex();
     };
-    //also called from a button
     AssignmentHTML.prototype.duplicateRow = function (TRHTML) {
         var index = this.rowHTMLs.indexOf(TRHTML);
         this.addRows([TRHTML.row], index);
         this.updateQuestionNumbersAndMarkbookIndex();
     };
-    //also called from a button
     AssignmentHTML.prototype.deleteAll = function () {
         this.rowHTMLs.forEach(function (r) { return r.delete(false); });
         this.rowHTMLs = [];
     };
     AssignmentHTML.prototype.updateQuestionNumbersAndMarkbookIndex = function () {
         var _this = this;
-        //update subsequent question numbers
         this._questionNumbers = [];
-        var qn = 1; //start numbering at 1
+        var qn = 1;
         for (var _i = 0, _a = this.questionHTMLs; _i < _a.length; _i++) {
             var rowHTML = _a[_i];
-            this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++)); //triggers solutiondiv refresh
+            this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++));
         }
-        //shuffle jumbledSolutionsDiv
         if (this.settings.jumbledSolutionsDiv) {
-            var divs = []; //HTML collection is not an array
+            var divs = [];
             for (var i = 0; i < this.settings.jumbledSolutionsDiv.children.length; i++) {
                 divs.push(this.settings.jumbledSolutionsDiv.children[i]);
             }
@@ -240,7 +205,6 @@ var AssignmentHTML = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    //this is the 'check my answers' button
     AssignmentHTML.prototype.showAllDecisionImages = function (showwarning) {
         if (this.settings.numChecksLeft == 1 && showwarning) {
             if (!confirm("This will show your marks, but also prevent you making any further changes. Are you sure?")) {
@@ -250,7 +214,6 @@ var AssignmentHTML = /** @class */ (function () {
         this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
         if (this.settings.numChecksLeft != undefined) {
             this.settings.numChecksLeft--;
-            //submit button text
             this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
                 " (" + this.settings.numChecksLeft + " checks remaining)";
             var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
@@ -260,16 +223,11 @@ var AssignmentHTML = /** @class */ (function () {
                 this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
             }
         }
-        //THIS CALL TO MARKBOOK UPDATE IS NECESSARY SINCE CHECKS MIGHT RUN OuT ETC.
-        var scores = this.settings.scoreGetters ? this.settings.scoreGetters.map(function (f) { return f(); }) : null; //no score update
+        var scores = this.settings.scoreGetters ? this.settings.scoreGetters.map(function (f) { return f(); }) : null;
         if (this.settings.markbookUpdate) {
-            this.settings.markbookUpdate(null, //no response column 
-            null, //no response
-            "white", //solution.color
-            false, //append
-            scores);
+            this.settings.markbookUpdate(null, null, "white", false, scores);
         }
-        if (this.settings.numChecksLeft == 0) { //NO CHECKS LEFT
+        if (this.settings.numChecksLeft == 0) {
             if (this.settings.markbookUpdate) {
                 this.settings.markbookUpdate = undefined;
             }
@@ -296,18 +254,21 @@ var AssignmentHTML = /** @class */ (function () {
                 var rule = _a[_i];
                 styleText += rule.cssText;
             }
-        if (!this.previewWindow) {
-            this.previewWindow = window.open("", "preview", "");
+        this.previewWindow = window.open("", "preview", "");
+        if (this.previewWindow["assignment"]) {
+            this.previewWindow["assignment"].deleteAll();
+        }
+        else {
             this.previewWindow["helpers"] = window.helpersMaker();
+            this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
+            this.previewWindow.stop();
+            var newSettings = {};
+            for (var index in this.settings) {
+                newSettings[index] = this.settings[index];
+            }
+            newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+            this.previewWindow["assignment"] = new AssignmentHTML(newSettings, null);
         }
-        this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
-        this.previewWindow.stop();
-        var newSettings = {};
-        for (var index in this.settings) {
-            newSettings[index] = this.settings[index];
-        }
-        newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
-        this.previewWindow["assignment"] = new AssignmentHTML(newSettings, null);
         this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     };
     Object.defineProperty(AssignmentHTML.prototype, "rows", {
@@ -334,56 +295,53 @@ var AssignmentHTML = /** @class */ (function () {
     AssignmentHTML.prototype.consumeRowsString = function (blobString) {
         var seed = undefined;
         if (!this.settings.journalMode) {
-            seed = helpers.CombineHashCodes([this.settings.user]); //different test per user
+            seed = helpers.CombineHashCodes([this.settings.user]);
         }
         this.settings.random = new Random(seed);
         var rows = JSON.parse(blobString);
         if (rows != undefined && rows.length > 0) {
-            //DO  NOT ADD ROWHTMLS ONE BY ONE
             this.addRows(rows);
         }
-        //if shuffle is ON
         if (this.settings.shuffleQuestions) {
             this.shuffle();
         }
         if (this.settings.truncateMarks > 0) {
             this.truncate(this.settings.truncateMarks);
         }
-        //must be before disabled = true
-        if (this.settings.numChecksLeft <= 0) { //show results
+        if (this.settings.numChecksLeft <= 0) {
             this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
         }
-        //SUBMIT BUTTON, if test not already taken and submitted
-        if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
-            this.submitButton = document.createElement("button");
-            this.submitButton.id = "submitButton";
-            this.submitButton.onclick =
-                function (paramAssignment) {
-                    var asn = paramAssignment;
-                    return function () { asn.showAllDecisionImages(true); };
-                }(this);
-            var checksLeftText = "";
-            if (this.settings.numChecksLeft != undefined) {
-                checksLeftText = this.settings.numChecksLeft < 1 ? "" :
-                    this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
-                        " (" + this.settings.numChecksLeft + " checks remaining)";
+        if (!this.submitButton) {
+            if (this.settings.numChecksLeft == undefined || this.settings.numChecksLeft != 0) {
+                this.submitButton = document.createElement("button");
+                this.submitButton.id = "submitButton";
+                this.submitButton.onclick =
+                    function (paramAssignment) {
+                        var asn = paramAssignment;
+                        return function () { asn.showAllDecisionImages(true); };
+                    }(this);
+                var checksLeftText = "";
+                if (this.settings.numChecksLeft != undefined) {
+                    checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                        this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
+                            " (" + this.settings.numChecksLeft + " checks remaining)";
+                }
+                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+                this.settings.questionsDiv.parentElement.appendChild(this.submitButton);
             }
-            this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
-            this.settings.questionsDiv.appendChild(this.submitButton);
-        }
-        else { //checks = 0
-            if (this.settings.markbookUpdate) {
-                this.settings.markbookUpdate = undefined;
+            else {
+                if (this.settings.markbookUpdate) {
+                    this.settings.markbookUpdate = undefined;
+                }
+                var scoreParagraph = document.createElement("p");
+                scoreParagraph.id = "scoreParagraph";
+                scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
+                this.settings.questionsDiv.appendChild(scoreParagraph);
+                this.disabled = true;
             }
-            var scoreParagraph = document.createElement("p");
-            scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
-            this.settings.questionsDiv.appendChild(scoreParagraph);
-            this.disabled = true;
         }
     };
     Object.defineProperty(AssignmentHTML.prototype, "percentStars", {
-        //called by solution 
         get: function () {
             if (this.outOf == 0) {
                 return 0;
@@ -415,34 +373,32 @@ var AssignmentHTML = /** @class */ (function () {
     });
     Object.defineProperty(AssignmentHTML.prototype, "rawCorrect", {
         get: function () {
-            return this.questionHTMLs.reduce(function (a, b) { return a + b.correct; }, 0); //all solutions count 1 mark
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.correct; }, 0);
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(AssignmentHTML.prototype, "rawAttempted", {
         get: function () {
-            return this.questionHTMLs.reduce(function (a, b) { return a + b.attempted; }, 0); //all solutions count 1 mark
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.attempted; }, 0);
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(AssignmentHTML.prototype, "rawStars", {
         get: function () {
-            return this.questionHTMLs.reduce(function (a, b) { return a + b.stars; }, 0); //all solutions count 1 mark
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.stars; }, 0);
         },
         enumerable: true,
         configurable: true
     });
     Object.defineProperty(AssignmentHTML.prototype, "outOf", {
-        //called by solution when updating markbook
         get: function () {
-            return this.questionHTMLs.reduce(function (a, b) { return a + b.outOf; }, 0); //all solutions count 1 mark
+            return this.questionHTMLs.reduce(function (a, b) { return a + b.outOf; }, 0);
         },
         enumerable: true,
         configurable: true
     });
-    //also called by a button, does not replace qn numbers
     AssignmentHTML.prototype.shuffle = function () {
         var _this = this;
         while (this.settings.questionsDiv.firstChild) {
@@ -455,7 +411,6 @@ var AssignmentHTML = /** @class */ (function () {
         this.rowHTMLs.forEach(function (r) { return _this.insertRowIntoDivs(r); });
     };
     AssignmentHTML.prototype.truncate = function (n) {
-        /*** MARKS ***/
         if (n == undefined) {
             n = prompt("enter number of marks you want left over", "10");
         }
@@ -464,7 +419,6 @@ var AssignmentHTML = /** @class */ (function () {
             n -= this.questionHTMLs[i].solutions.length;
             i++;
         }
-        //trim surplus solutions from this question
         var lastQn = this.questionHTMLs[i];
         if (n > 0) {
             for (var j = 0; j < (lastQn.solutions.length - n); j++) {
@@ -475,12 +429,6 @@ var AssignmentHTML = /** @class */ (function () {
             i++;
         }
         this.deleteRows(this.questionHTMLs.slice(i));
-        /*** QUESTIONS
-
-        let n  = prompt("enter number of questions you want left over","10")
-        if ((helpers.isNumeric(n)) {
-            this.deleteRows(this.rowHTMLs.slice(n));
-        }*/
     };
     Object.defineProperty(AssignmentHTML.prototype, "disabled", {
         set: function (value) {
@@ -507,27 +455,26 @@ var __extends = (this && this.__extends) || (function () {
         d.prototype = b === null ? Object.create(b) : (__.prototype = b.prototype, new __());
     };
 })();
-var CodeError = /** @class */ (function (_super) {
+var CodeError = (function (_super) {
     __extends(CodeError, _super);
     function CodeError(message) {
         return _super.call(this, message) || this;
     }
     return CodeError;
 }(Error));
-var JSFunction = /** @class */ (function () {
+var JSFunction = (function () {
     function JSFunction(code, JSName) {
         try {
             this.interpreter = new Interpreter(code);
         }
         catch (error) {
-            this.error = error; //don't throw it until code is executed
+            this.error = error;
         }
         this.code = code;
         this.JSName = JSName;
         this.cache = {};
     }
     JSFunction.prototype.execute = function (parameters) {
-        //https://neil.fraser.name/software/JS-Interpreter/docs.html
         if (this.error) {
             throw new CodeError(this.error);
         }
@@ -539,9 +486,8 @@ var JSFunction = /** @class */ (function () {
             this.interpreter.appendCode("\n              " + this.JSName + "(" + joinedParameters + ");");
         }
         try {
-            var i = 100000; //counts up to 9998 using a while loop....?
+            var i = 100000;
             while (i-- && this.interpreter.step()) {
-                //console.log(i);
             }
         }
         catch (e) {
@@ -551,8 +497,6 @@ var JSFunction = /** @class */ (function () {
         if (i == -1) {
             throw new CodeError("your code contains an infinite loop");
         }
-        //this.interpreter.run(); //MAY FALL INTO AN INFINITE LOOP
-        //array is returned as object
         var evaluated = undefined;
         if (this.interpreter.value && this.interpreter.value.K == "Array") {
             var t = 0;
@@ -571,7 +515,7 @@ var JSFunction = /** @class */ (function () {
     };
     return JSFunction;
 }());
-var Cup = /** @class */ (function () {
+var Cup = (function () {
     function Cup(str) {
         this.attributes = [];
         this.tagName = "";
@@ -590,7 +534,7 @@ var Cup = /** @class */ (function () {
     });
     return Cup;
 }());
-var BulletCup = /** @class */ (function (_super) {
+var BulletCup = (function (_super) {
     __extends(BulletCup, _super);
     function BulletCup(str) {
         return _super.call(this, str) || this;
@@ -602,7 +546,7 @@ var BulletCup = /** @class */ (function (_super) {
     });
     return BulletCup;
 }(Cup));
-var ImageCup = /** @class */ (function (_super) {
+var ImageCup = (function (_super) {
     __extends(ImageCup, _super);
     function ImageCup(str) {
         var _a;
@@ -619,11 +563,8 @@ var ImageCup = /** @class */ (function (_super) {
         _this.attributes.push("alt=\"" + _this.comment + "\"");
         return _this;
     }
-    //does not do replace (i.e. cups), but does do textreplace (dollars)
-    //for replacing dollars with numbers etc.
     ImageCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
         function replacer(match, p1, p2, p3, offset, string) {
-            // p1 is nondigits, p2 digits, and p3 non-alphanumerics
             return getTemplateValue();
         }
         this.source = this.source.replace(patternMakeItGlobal, replacer);
@@ -631,7 +572,7 @@ var ImageCup = /** @class */ (function (_super) {
     };
     return ImageCup;
 }(Cup));
-var AnchorCup = /** @class */ (function (_super) {
+var AnchorCup = (function (_super) {
     __extends(AnchorCup, _super);
     function AnchorCup(str) {
         var _a;
@@ -651,11 +592,8 @@ var AnchorCup = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    //does not do replace (i.e. cups), but does do textreplace (dollars)
-    //for replacing dollars with numbers etc.
     AnchorCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
         function replacer(match, p1, p2, p3, offset, string) {
-            // p1 is nondigits, p2 digits, and p3 non-alphanumerics
             return getTemplateValue();
         }
         this.text = this.text.replace(patternMakeItGlobal, replacer);
@@ -663,17 +601,13 @@ var AnchorCup = /** @class */ (function (_super) {
     };
     return AnchorCup;
 }(Cup));
-///has a different replace function from chunkcup
-///replacing is done by innerfractioncup
-var FractionCup = /** @class */ (function (_super) {
+var FractionCup = (function (_super) {
     __extends(FractionCup, _super);
     function FractionCup(str) {
         var _a;
         var _this = _super.call(this, str) || this;
         var top = "";
         var bottom = "";
-        //~\[([^\]]*)\]\(([^)]*)\)
-        //~\[([^\]]*)\]\((?:\\\)|[^)])*)\)
         _a = _this.str.split(/~\[([^\]]*)\]\(((?:\\\)|[^)])*)\)/), top = _a[1], bottom = _a[2];
         _this.top = new InnerFractionCup(top.replace("\\", ""));
         _this.bottom = new InnerFractionCup(bottom.replace("\\", ""));
@@ -697,7 +631,7 @@ var FractionCup = /** @class */ (function (_super) {
     });
     return FractionCup;
 }(Cup));
-var ChunkCup = /** @class */ (function (_super) {
+var ChunkCup = (function (_super) {
     __extends(ChunkCup, _super);
     function ChunkCup(str) {
         var _this = _super.call(this, str) || this;
@@ -709,7 +643,6 @@ var ChunkCup = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    //for parsing cups
     ChunkCup.prototype.replace = function (pattern, nodeConstructor, confirmReplace) {
         var retVal = [];
         for (var _i = 0, _a = this.str.split(pattern); _i < _a.length; _i++) {
@@ -723,12 +656,10 @@ var ChunkCup = /** @class */ (function (_super) {
                 }
             }
         }
-        return retVal; //return an array of replacements
+        return retVal;
     };
-    //for replacing dollars with numbers etc.
     ChunkCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
         function replacer(match, p1, p2, p3, offset, string) {
-            // p1 is nondigits, p2 digits, and p3 non-alphanumerics
             return getTemplateValue();
         }
         this.str = this.str.replace(patternMakeItGlobal, replacer);
@@ -742,7 +673,7 @@ var ChunkCup = /** @class */ (function (_super) {
     });
     return ChunkCup;
 }(Cup));
-var UnderlineCup = /** @class */ (function (_super) {
+var UnderlineCup = (function (_super) {
     __extends(UnderlineCup, _super);
     function UnderlineCup(str) {
         var _this = _super.call(this, str.substring(1, str.length - 1)) || this;
@@ -757,7 +688,7 @@ var UnderlineCup = /** @class */ (function (_super) {
     ;
     return UnderlineCup;
 }(ChunkCup));
-var BoldCup = /** @class */ (function (_super) {
+var BoldCup = (function (_super) {
     __extends(BoldCup, _super);
     function BoldCup(str) {
         var _this = _super.call(this, str.replace("*", "")) || this;
@@ -772,7 +703,7 @@ var BoldCup = /** @class */ (function (_super) {
     ;
     return BoldCup;
 }(ChunkCup));
-var SuperScriptCup = /** @class */ (function (_super) {
+var SuperScriptCup = (function (_super) {
     __extends(SuperScriptCup, _super);
     function SuperScriptCup(str) {
         var _this = _super.call(this, str.replace("^", "")) || this;
@@ -787,7 +718,7 @@ var SuperScriptCup = /** @class */ (function (_super) {
     ;
     return SuperScriptCup;
 }(ChunkCup));
-var SubScriptCup = /** @class */ (function (_super) {
+var SubScriptCup = (function (_super) {
     __extends(SubScriptCup, _super);
     function SubScriptCup(str) {
         var _this = _super.call(this, str.replace("~", "")) || this;
@@ -802,7 +733,7 @@ var SubScriptCup = /** @class */ (function (_super) {
     ;
     return SubScriptCup;
 }(ChunkCup));
-var TitleCup = /** @class */ (function (_super) {
+var TitleCup = (function (_super) {
     __extends(TitleCup, _super);
     function TitleCup(str) {
         var _this = _super.call(this, str.replace("#", "")) || this;
@@ -817,7 +748,7 @@ var TitleCup = /** @class */ (function (_super) {
     ;
     return TitleCup;
 }(ChunkCup));
-var CupContainer = /** @class */ (function (_super) {
+var CupContainer = (function (_super) {
     __extends(CupContainer, _super);
     function CupContainer(str) {
         var _this = _super.call(this, str) || this;
@@ -843,13 +774,13 @@ var CupContainer = /** @class */ (function (_super) {
                         newChildren.push(child);
                     }
                 }
-                else { //child does not have a replace function
+                else {
                     newChildren.push(child);
                 }
             }
             this.children = newChildren;
         }
-        return [this]; //needs to return an array since chunkcup does it
+        return [this];
     };
     Object.defineProperty(CupContainer.prototype, "innerHTML", {
         get: function () {
@@ -860,8 +791,7 @@ var CupContainer = /** @class */ (function (_super) {
     });
     return CupContainer;
 }(Cup));
-///does not replace chunks or dollars
-var CodeCup = /** @class */ (function (_super) {
+var CodeCup = (function (_super) {
     __extends(CodeCup, _super);
     function CodeCup(str) {
         var _this = this;
@@ -876,15 +806,11 @@ var CodeCup = /** @class */ (function (_super) {
     }
     return CodeCup;
 }(CupContainer));
-var RelativePositionCup = /** @class */ (function (_super) {
+var RelativePositionCup = (function (_super) {
     __extends(RelativePositionCup, _super);
     function RelativePositionCup(str, inPixels) {
         var _a;
         var _this = _super.call(this, str) || this;
-        //strip newline
-        // if (this.str.StartsWith("\n")){
-        //   this.str = this.str.Substring(1);
-        // }
         if (inPixels == undefined) {
             inPixels = false;
         }
@@ -900,7 +826,7 @@ var RelativePositionCup = /** @class */ (function (_super) {
     }
     return RelativePositionCup;
 }(CupContainer));
-var InnerFractionCup = /** @class */ (function (_super) {
+var InnerFractionCup = (function (_super) {
     __extends(InnerFractionCup, _super);
     function InnerFractionCup(str) {
         var _this = _super.call(this, str) || this;
@@ -909,7 +835,7 @@ var InnerFractionCup = /** @class */ (function (_super) {
     }
     return InnerFractionCup;
 }(CupContainer));
-var ParagraphCup = /** @class */ (function (_super) {
+var ParagraphCup = (function (_super) {
     __extends(ParagraphCup, _super);
     function ParagraphCup(str) {
         var _this = _super.call(this, str) || this;
@@ -925,7 +851,7 @@ var ParagraphCup = /** @class */ (function (_super) {
     });
     return ParagraphCup;
 }(CupContainer));
-var DivCup = /** @class */ (function (_super) {
+var DivCup = (function (_super) {
     __extends(DivCup, _super);
     function DivCup(str) {
         var _this = _super.call(this, str) || this;
@@ -959,9 +885,8 @@ var DivCup = /** @class */ (function (_super) {
     });
     return DivCup;
 }(CupContainer));
-var TableCup = /** @class */ (function (_super) {
+var TableCup = (function (_super) {
     __extends(TableCup, _super);
-    //children are rows
     function TableCup(str) {
         var _this = _super.call(this, str) || this;
         _this.hasBorder = str.startsWith("|");
@@ -970,11 +895,10 @@ var TableCup = /** @class */ (function (_super) {
         _this.attributes.push("class=\"markdowntable\"");
         _this.attributes.push("style=\"" + (_this.hasBorder ? "" : "border: none;") + "\"");
         return _this;
-        //this.numCols = rows[0].children.Length;
     }
     return TableCup;
 }(CupContainer));
-var RowCup = /** @class */ (function (_super) {
+var RowCup = (function (_super) {
     __extends(RowCup, _super);
     function RowCup(str) {
         var _this = _super.call(this, str) || this;
@@ -984,7 +908,7 @@ var RowCup = /** @class */ (function (_super) {
     }
     return RowCup;
 }(CupContainer));
-var CellCup = /** @class */ (function (_super) {
+var CellCup = (function (_super) {
     __extends(CellCup, _super);
     function CellCup(str) {
         var _this = _super.call(this, str) || this;
@@ -1004,8 +928,7 @@ var decisionImageEnum;
     decisionImageEnum[decisionImageEnum["Hourglass"] = 4] = "Hourglass";
     decisionImageEnum[decisionImageEnum["Error"] = 5] = "Error";
 })(decisionImageEnum || (decisionImageEnum = {}));
-//FIELD PRESENTATION LAYER
-var FieldCup = /** @class */ (function (_super) {
+var FieldCup = (function (_super) {
     __extends(FieldCup, _super);
     function FieldCup(str) {
         var _this = _super.call(this, str) || this;
@@ -1028,11 +951,9 @@ var FieldCup = /** @class */ (function (_super) {
         configurable: true
     });
     FieldCup.prototype.setElement = function (newElement) {
-        //replaces the dummy element with a real HTML input element
         newElement.value = this._element.value;
         newElement.disabled = this._element.disabled;
         this._element = newElement;
-        //get decision image, update
         this._decisionElement = newElement.nextSibling;
         this.decisionImage = this._decisionImage;
     };
@@ -1067,7 +988,7 @@ var FieldCup = /** @class */ (function (_super) {
         enumerable: true,
         configurable: true
     });
-    FieldCup.prototype.onResponse = function () { }; //to be overridden;
+    FieldCup.prototype.onResponse = function () { };
     FieldCup.prototype.decisionToDataURL = function (decision) {
         if (decision == decisionImageEnum.Cross) {
             return imageData.cross;
@@ -1089,7 +1010,7 @@ var FieldCup = /** @class */ (function (_super) {
     FieldCup.instances = [];
     return FieldCup;
 }(Cup));
-var RadioSet = /** @class */ (function () {
+var RadioSet = (function () {
     function RadioSet() {
         this.radioCups = [];
         this.instanceNum = RadioSet.numInstances++;
@@ -1097,9 +1018,7 @@ var RadioSet = /** @class */ (function () {
     }
     Object.defineProperty(RadioSet.prototype, "decisionImage", {
         set: function (value) {
-            //remove all decisions first
             this.radioCups.forEach(function (r) { return r.decisionImage = decisionImageEnum.None; });
-            //apply image to checked radio only
             var found = this.radioCups.filter(function (r) { return r.elementValue == true; });
             if (found.length) {
                 found[0].decisionImage = value;
@@ -1108,11 +1027,9 @@ var RadioSet = /** @class */ (function () {
         enumerable: true,
         configurable: true
     });
-    //called by rowHTML injector
     RadioSet.prototype.add = function (radioCup) {
         this.radioCups.push(radioCup);
         radioCup.onResponse = this._cachedOnResponse;
-        //add formname to all radiocups so only one can be selected at a time
         radioCup.attributes.push("name=radioSet" + this.instanceNum);
     };
     Object.defineProperty(RadioSet.prototype, "onResponse", {
@@ -1146,7 +1063,7 @@ var RadioSet = /** @class */ (function () {
     RadioSet.numInstances = 0;
     return RadioSet;
 }());
-var RadioCup = /** @class */ (function (_super) {
+var RadioCup = (function (_super) {
     __extends(RadioCup, _super);
     function RadioCup(str) {
         var _this = _super.call(this, str) || this;
@@ -1156,7 +1073,6 @@ var RadioCup = /** @class */ (function (_super) {
         return _this;
     }
     Object.defineProperty(RadioCup.prototype, "HTML", {
-        //called by different cups which exist in the expression tree
         get: function () {
             return this.letter + (".<input type=\"radio\" " + this.attributes.join("  ") + " value=\"" + this.letter + "\" >" + this.decisionImageHTML);
         },
@@ -1165,23 +1081,20 @@ var RadioCup = /** @class */ (function (_super) {
     });
     RadioCup.prototype.setElement = function (newElement) {
         _super.prototype.setElement.call(this, newElement);
-        //attach onresponse function to click event 
         newElement.onclick = function (paramCup) {
             var cup = paramCup;
             return function () { cup.onResponse(); };
         }(this);
     };
     Object.defineProperty(RadioCup.prototype, "elementValue", {
-        get: function () { return this._element.checked; } //true or false
-        ,
-        set: function (value) { this._element.checked = (value == true); } //true or false
-        ,
+        get: function () { return this._element.checked; },
+        set: function (value) { this._element.checked = (value == true); },
         enumerable: true,
         configurable: true
     });
     return RadioCup;
 }(FieldCup));
-var TextAreaCup = /** @class */ (function (_super) {
+var TextAreaCup = (function (_super) {
     __extends(TextAreaCup, _super);
     function TextAreaCup(str) {
         return _super.call(this, str) || this;
@@ -1195,7 +1108,6 @@ var TextAreaCup = /** @class */ (function (_super) {
     });
     TextAreaCup.prototype.setElement = function (newElement) {
         _super.prototype.setElement.call(this, newElement);
-        //attach onresponse function to blur event 
         newElement.onblur = function (paramCup) {
             var cup = paramCup;
             return function () { cup.onResponse(); };
@@ -1203,7 +1115,7 @@ var TextAreaCup = /** @class */ (function (_super) {
     };
     return TextAreaCup;
 }(FieldCup));
-var InputCup = /** @class */ (function (_super) {
+var InputCup = (function (_super) {
     __extends(InputCup, _super);
     function InputCup(str) {
         return _super.call(this, str) || this;
@@ -1217,7 +1129,6 @@ var InputCup = /** @class */ (function (_super) {
     });
     InputCup.prototype.setElement = function (newElement) {
         _super.prototype.setElement.call(this, newElement);
-        //attach onresponse function to blur event 
         newElement.onblur = function (paramCup) {
             var cup = paramCup;
             return function () { cup.onResponse(); };
@@ -1225,7 +1136,7 @@ var InputCup = /** @class */ (function (_super) {
     };
     return InputCup;
 }(FieldCup));
-var ComboCup = /** @class */ (function (_super) {
+var ComboCup = (function (_super) {
     __extends(ComboCup, _super);
     function ComboCup(str) {
         var _this = _super.call(this, str) || this;
@@ -1242,17 +1153,13 @@ var ComboCup = /** @class */ (function (_super) {
     });
     ComboCup.prototype.setElement = function (newElement) {
         _super.prototype.setElement.call(this, newElement);
-        //attach onresponse function to blur event 
         newElement.onchange = function (paramCup) {
             var cup = paramCup;
             return function () { cup.onResponse(); };
         }(this);
     };
-    //for replacing dollars with numbers etc.
     ComboCup.prototype.textReplace = function (pattern, getTemplateValue) {
-        //https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/replace
         var replacer = function (match, offset, string) {
-            // p1 is nondigits, p2 digits, and p3 non-alphanumericsif (index > -1) 
             return getTemplateValue();
         };
         this.str = this.str.replace(pattern, replacer);
@@ -1260,7 +1167,7 @@ var ComboCup = /** @class */ (function (_super) {
     };
     return ComboCup;
 }(FieldCup));
-var CheckBoxCup = /** @class */ (function (_super) {
+var CheckBoxCup = (function (_super) {
     __extends(CheckBoxCup, _super);
     function CheckBoxCup(str) {
         var _this = _super.call(this, str) || this;
@@ -1276,7 +1183,7 @@ var CheckBoxCup = /** @class */ (function (_super) {
     });
     CheckBoxCup.prototype.setElement = function (newElement) {
         _super.prototype.setElement.call(this, newElement);
-        this._element = { value: "", disabled: false }; //no element
+        this._element = { value: "", disabled: false };
     };
     Object.defineProperty(CheckBoxCup.prototype, "hoverText", {
         set: function (value) {
@@ -1291,7 +1198,7 @@ var CheckBoxCup = /** @class */ (function (_super) {
         },
         set: function (value) {
             if ((value == "✓") || (value == true)) {
-                this._element.value = "tick"; //just stored for markbook
+                this._element.value = "tick";
             }
             if ((value == "✗") || (value == false)) {
                 this._element.value = "cross";
@@ -1305,28 +1212,28 @@ var CheckBoxCup = /** @class */ (function (_super) {
     });
     return CheckBoxCup;
 }(FieldCup));
-var PoundCup = /** @class */ (function (_super) {
+var PoundCup = (function (_super) {
     __extends(PoundCup, _super);
     function PoundCup(str) {
-        return _super.call(this, str) || this;
+        var _this = _super.call(this, str) || this;
+        _this._element = { checked: false, "disabled": false, "style": { "color": "" } };
+        return _this;
     }
     Object.defineProperty(PoundCup.prototype, "HTML", {
         get: function () {
-            return "<span " + this.attributes.join("  ") + " ></span>"; //no decision image
+            return "<span " + this.attributes.join("  ") + " ></span>";
         },
         enumerable: true,
         configurable: true
     });
     PoundCup.prototype.setElement = function (newElement) {
+        newElement.style.color = this._element.style.color;
         _super.prototype.setElement.call(this, newElement);
-        //no change event etc. `
-        //no decision element
     };
     Object.defineProperty(PoundCup.prototype, "elementValue", {
         get: function () {
             return this._element.innerText;
         },
-        //DOES NOT GET MARKED. NO DECISION IMAGE
         set: function (value) {
             this._element.innerText = value;
         },
@@ -1334,7 +1241,6 @@ var PoundCup = /** @class */ (function (_super) {
         configurable: true
     });
     PoundCup.prototype.showDecisionImage = function (image) {
-        //do nothing
     };
     Object.defineProperty(PoundCup.prototype, "isRed", {
         set: function (value) {
@@ -1427,7 +1333,7 @@ function calculatedJSONtoViewable(ret) {
     if (typeof (ret) == "string") {
         return helpers.stripQuotes(ret);
     }
-    if (typeof (ret) == "number") { //round it a bit to prevent 54.9999999999
+    if (typeof (ret) == "number") {
         if (ret % 1 == 0) {
             return ret.toString();
         }
@@ -1440,14 +1346,13 @@ function calculatedJSONtoViewable(ret) {
         return ret.toString();
     }
 }
-//takes in string which may not be strict JSON e.g. missing quotes
 function safeStringify(str) {
     var ret = undefined;
     try {
         var obj = JSON.parse(str);
         ret = JSON.stringify(obj);
     }
-    catch (e) { //not in JSON so it needs quotes
+    catch (e) {
         ret = "\"" + str + "\"";
     }
     return ret;
@@ -1466,14 +1371,12 @@ function JSONtoEval(str) {
     }
     ;
     return str;
-    //.toString() causes problems with arrays [2] -> "2"
 }
-//REPLACE VARIABLES
 function replaceVariables(s, injector) {
     var buffer = "";
     for (var i = 0; i < s.length; i++) {
         if (isLowerAlpha(s[i]) &&
-            (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !helpers.isNumeric(s[i - 1]))) { //allow abcdfgh OR e if previous char was NOT numeric i.e. not 5e)
+            (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !helpers.isNumeric(s[i - 1]))) {
             var index = alphaIndex(s[i]);
             if (index < injector.allTemplateComments.length) {
                 injector.variablesUsed[index] = true;
@@ -1484,13 +1387,12 @@ function replaceVariables(s, injector) {
                 throw new TemplateError("variable \"" + s[i] + "\" does not exist", true, true);
             }
         }
-        //CHECK FOR CUSTOM VARIABLES
         else if (s[i] in injector.customFunctions) {
             if (injector.customFunctions[s[i]]) {
                 buffer += JSONtoEval(injector.customFunctions[s[i]]);
             }
             else {
-                throw new TemplateError("variable has not yet been defined", false, false); //not critical
+                throw new TemplateError("variable has not yet been defined", false, false);
             }
         }
         else if (s[i] == 'π') {
@@ -1503,12 +1405,11 @@ function replaceVariables(s, injector) {
     return buffer;
 }
 function toExpressionTree(s, i, commaIsTerminator) {
-    //PARSES s (the comment) into tree of expression objects
     var children = [];
     var buffer = "";
-    while (i < s.length && s[i] != ")" //bracket ends expression
+    while (i < s.length && s[i] != ")"
         && s[i] != "]"
-        && (commaIsTerminator != true || s[i] != ",") //allows commas to terminate like a bracket
+        && (commaIsTerminator != true || s[i] != ",")
         && (i + 1 >= s.length || !(s[i] == "/" && s[i + 1] == "/"))) {
         if (s[i] == '(') {
             if (buffer.length > 0) {
@@ -1565,20 +1466,16 @@ function toExpressionTree(s, i, commaIsTerminator) {
         }
         i++;
     }
-    //push last string into children
     if (buffer.length > 0) {
         children.push(buffer);
     }
-    //always end on the last bracket, since i gets incremented afterwards
     return new SimpleExpression(children, i);
 }
-//brackets could contain a single expression or a range,list etc.
-var SimpleExpression = /** @class */ (function () {
+var SimpleExpression = (function () {
     function SimpleExpression(children, i) {
         this.children = children;
         this.i = i;
     }
-    ///EVAL
     SimpleExpression.prototype.eval = function (injector) {
         injector.count();
         if (this.children.length == 1 && typeof (this.children[0]) != "string") {
@@ -1597,20 +1494,17 @@ var SimpleExpression = /** @class */ (function () {
         if (helpers.IsNullOrWhiteSpace(buffer)) {
             return "";
         }
-        //replace -- with +
         buffer = helpers.replaceAll(buffer, " ", "");
         buffer = helpers.replaceAll(buffer, "\t", "");
-        //if (buffer[0] == '"') {return buffer;}
         buffer = helpers.replaceAll(buffer, "--", "+");
-        /*** THE ONLY EVAL ***/
         var evaluated = eval(buffer);
         return JSON.stringify(evaluated);
     };
     return SimpleExpression;
 }());
-var QuoteExpression = /** @class */ (function () {
+var QuoteExpression = (function () {
     function QuoteExpression(s, i) {
-        i++; //skip first quote
+        i++;
         this.s = "";
         while (i < s.length && s[i] != '"') {
             this.s += s[i];
@@ -1624,14 +1518,12 @@ var QuoteExpression = /** @class */ (function () {
     };
     return QuoteExpression;
 }());
-var RangeExpression = /** @class */ (function () {
+var RangeExpression = (function () {
     function RangeExpression(firstBuffer, s, i) {
         this.minExpr = firstBuffer;
         this.maxExpr = toExpressionTree(s, i + 2);
         this.i = this.maxExpr.i;
     }
-    ///EVAL
-    //always returns number
     RangeExpression.prototype.eval = function (injector) {
         injector.count();
         var decimalmin = Number(this.minExpr.eval(injector));
@@ -1648,7 +1540,7 @@ var RangeExpression = /** @class */ (function () {
     };
     return RangeExpression;
 }());
-var ListExpression = /** @class */ (function () {
+var ListExpression = (function () {
     function ListExpression(firstBuffer, s, i) {
         this.options = [];
         if (firstBuffer != null) {
@@ -1670,16 +1562,15 @@ var ListExpression = /** @class */ (function () {
         }
         this.i = i;
     }
-    ///EVAL
     ListExpression.prototype.eval = function (injector) {
         injector.count();
         var randomIndex = injector.indexForListEvaluation % this.options.length;
         var evaluated = this.options[randomIndex].eval(injector);
-        return evaluated; //already eval'd
+        return evaluated;
     };
     return ListExpression;
 }());
-var ArrayExpression = /** @class */ (function () {
+var ArrayExpression = (function () {
     function ArrayExpression(s, i) {
         this.options = [];
         while (i < s.length && s[i] != ']'
@@ -1698,7 +1589,6 @@ var ArrayExpression = /** @class */ (function () {
         }
         this.i = i;
     }
-    ///EVAL
     ArrayExpression.prototype.eval = function (injector) {
         injector.count();
         var evaluated = "[" + this.options.map(function (o) { return o.eval(injector); }).join() + "]";
@@ -1706,40 +1596,7 @@ var ArrayExpression = /** @class */ (function () {
     };
     return ArrayExpression;
 }());
-/* FUNCTION NAMES
-        "maxlength",
-        "padleftzeroes",
-        "padrightzeroes",
-        "includes",
-        "abs",
-        "mean",
-        "median",
-        "mode",
-        "max",
-        "min",
-        "if",
-        "exponent",
-        "mantissa",
-        "HCF",
-        "coprime",
-        "floor (math)",
-        "ceil (math)",
-        "roundtodp",
-        "pow (math)",
-        "includesign",
-        "includeoppsign",
-        "sind",
-        "cosd",
-        "tand",
-        "choose",
-        "toexponential",
-        "normalcdf",
-        "code",
-        "variable"
-
- */
-//returns all types of variables
-var FunctionExpression = /** @class */ (function () {
+var FunctionExpression = (function () {
     function FunctionExpression(s, i) {
         this.functionName = "";
         this.functionNamePreserveCase = "";
@@ -1750,7 +1607,7 @@ var FunctionExpression = /** @class */ (function () {
             i++;
         }
         if (s[i] != "(") {
-            this.i = i - 1; //includes final bracket
+            this.i = i - 1;
             if (this.functionName == "true") {
                 this.eval = function (injector) { return true; };
             }
@@ -1763,13 +1620,11 @@ var FunctionExpression = /** @class */ (function () {
         }
         else {
             this.list = new ListExpression(null, s, i + 1);
-            this.i = this.list.i; //skips final bracket
+            this.i = this.list.i;
         }
     }
-    ///EVAL
     FunctionExpression.prototype.eval = function (injector) {
         injector.count();
-        //if must be called before all options are evaluated
         if (this.functionName == "if") {
             if (this.list.options[0].eval(injector) == "true") {
                 return this.list.options[1].eval(injector);
@@ -1778,10 +1633,8 @@ var FunctionExpression = /** @class */ (function () {
                 return this.list.options[2].eval(injector);
             }
         }
-        //call evaluate on each option then cast to numbers
         var evaluatedParameters = this.list.options.map(function (o) {
             var f = o.eval(injector);
-            //parameters are in JSON
             return JSON.parse(f);
         });
         if (this.functionName == "exponent") {
@@ -1794,25 +1647,21 @@ var FunctionExpression = /** @class */ (function () {
             var Eindex = asExponent.indexOf('e');
             return JSON.stringify(asExponent.substr(0, Eindex));
         }
-        //RETURNS BOOLEAN
         if (this.functionName == "includes") {
             var ret = evaluatedParameters[0].toString().includes(evaluatedParameters[1]);
             return JSON.stringify(ret);
         }
         if (this.functionName == "maxlength") {
-            //if string
             if (evaluatedParameters[0][0] == '"') {
                 return "\"" + evaluatedParameters[0].substr(1, evaluatedParameters[1]) + "\"";
             }
             var ret_1 = evaluatedParameters[0].toString().substr(0, evaluatedParameters[1]);
             return JSON.stringify(ret_1);
         }
-        //RETURNS STRING
         if (this.functionName == "padleftzeroes") {
             var ret_2 = evaluatedParameters[0].toString().padStart(evaluatedParameters[1], '0');
             return JSON.stringify(ret_2);
         }
-        //RETURNS STRING
         if (this.functionName == "padrightzeroes") {
             var str = evaluatedParameters[0].toString();
             if (!str.includes('.'))
@@ -1993,18 +1842,11 @@ var FunctionExpression = /** @class */ (function () {
         }
         if (this.functionName == "atand") {
             var ret_23 = 0;
-            //if one parameter is specified, return normal arctan
             if (evaluatedParameters.length == 1) {
                 ret_23 = (180 * Math.atan(evaluatedParameters[0]) / Math.PI);
             }
-            //if two parameters x y are specified, return a bearing 0 - 360
             if (evaluatedParameters.length == 2) {
-                ret_23 = (180 * Math.atan(evaluatedParameters[0] / evaluatedParameters[1]) / Math.PI); //-90 to 90
-                //x y
-                //+ + 0-90
-                //+ - 90-180
-                //- - 180-270
-                //- + 270-360
+                ret_23 = (180 * Math.atan(evaluatedParameters[0] / evaluatedParameters[1]) / Math.PI);
                 var xIsPos = evaluatedParameters[0] > 0;
                 var yIsPos = evaluatedParameters[1] > 0;
                 if (xIsPos) {
@@ -2074,9 +1916,7 @@ var FunctionExpression = /** @class */ (function () {
             var ret_30 = lcm(evaluatedParameters);
             return JSON.stringify(ret_30);
         }
-        //CREATE CUSTOM FUNCTION
         if (this.functionName == "code") {
-            //if text is entered
             var JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
             var DEFAULTCODE = "function " + JSName + "() {\n\n    //your code goes here\n\n    }";
@@ -2085,17 +1925,15 @@ var FunctionExpression = /** @class */ (function () {
                 if (thisSolution.length == 1) {
                     thisSolution[0].triggerCalculateFromLateFunction = false;
                     var code = thisSolution[0].field.elementValue;
-                    //DEFAULT CODE EXCEPT FOR CONSOLE
-                    if (code == "" && JSName != "console") { //first time
+                    if (code == "" && JSName != "console") {
                         thisSolution[0].field.elementValue = DEFAULTCODE;
                     }
-                    else { //user has entered code
+                    else {
                         if (code != DEFAULTCODE) {
                             injector.customFunctions[JSName] = new JSFunction(code, JSName);
-                            //code has been entered so this counts as answer
                             injector.allSolutions.filter(function (s) { return s.triggerCalculateFromLateFunction; }).forEach(function (s) {
                                 s.template._calculatedValue = "null";
-                                s.field.onResponse(); //includes score update
+                                s.field.onResponse();
                             });
                         }
                     }
@@ -2103,11 +1941,9 @@ var FunctionExpression = /** @class */ (function () {
             }
             return "null";
         }
-        //CALL CUSTOM CODE FUNCTION 
         if (injector.customFunctions[this.functionNamePreserveCase] instanceof JSFunction) {
-            return injector.customFunctions[this.functionNamePreserveCase].execute(evaluatedParameters); //already in JSON
+            return injector.customFunctions[this.functionNamePreserveCase].execute(evaluatedParameters);
         }
-        //ASSIGN VALUE TO CUSTOM VARIABLE
         if (this.functionName == "variable") {
             var JSName = helpers.stripQuotes(evaluatedParameters[0]);
             injector.customFunctions[JSName] = null;
@@ -2120,12 +1956,10 @@ var FunctionExpression = /** @class */ (function () {
             }
             thisSolution[0].triggerCalculateFromLateFunction = false;
             if (thisSolution[0].field.elementValue) {
-                //store variable in template.customfunctions
-                injector.customFunctions[JSName] = safeStringify(thisSolution[0].field.elementValue); //needs to be in JSON before going in to template
-                //if the value is not null, then update any dependent calculatedvalues using
+                injector.customFunctions[JSName] = safeStringify(thisSolution[0].field.elementValue);
                 injector.allSolutions.filter(function (s) { return s.triggerCalculateFromLateFunction; }).forEach(function (s) {
                     s.template._calculatedValue = "null";
-                    s.field.onResponse(); //includes score update
+                    s.field.onResponse();
                 });
             }
             return "null";
@@ -2133,7 +1967,6 @@ var FunctionExpression = /** @class */ (function () {
         if (injector.customFunctions[this.functionNamePreserveCase] === null) {
             throw new TemplateError("custom function with name \"" + this.functionNamePreserveCase + "\" not defined", false, false);
         }
-        //try Math
         if (typeof (Math[this.functionName]) == "function") {
             var ret_31 = Math[this.functionName](evaluatedParameters[0], evaluatedParameters[1], evaluatedParameters[2]);
             return JSON.stringify(ret_31);
@@ -2142,7 +1975,6 @@ var FunctionExpression = /** @class */ (function () {
     };
     return FunctionExpression;
 }());
-//16x16 icons
 var imageData = {
     "cross": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAIhSURBVDjLlZPrThNRFIWJicmJz6BWiYbIkYDEG0JbBiitDQgm0PuFXqSAtKXtpE2hNuoPTXwSnwtExd6w0pl2OtPlrphKLSXhx07OZM769qy19wwAGLhM1ddC184+d18QMzoq3lfsD3LZ7Y3XbE5DL6Atzuyilc5Ciyd7IHVfgNcDYTQ2tvDr5crn6uLSvX+Av2Lk36FFpSVENDe3OxDZu8apO5rROJDLo30+Nlvj5RnTlVNAKs1aCVFr7b4BPn6Cls21AWgEQlz2+Dl1h7IdA+i97A/geP65WhbmrnZZ0GIJpr6OqZqYAd5/gJpKox4Mg7pD2YoC2b0/54rJQuJZdm6Izcgma4TW1WZ0h+y8BfbyJMwBmSxkjw+VObNanp5h/adwGhaTXF4NWbLj9gEONyCmUZmd10pGgf1/vwcgOT3tUQE0DdicwIod2EmSbwsKE1P8QoDkcHPJ5YESjgBJkYQpIEZ2KEB51Y6y3ojvY+P8XEDN7uKS0w0ltA7QGCWHCxSWWpwyaCeLy0BkA7UXyyg8fIzDoWHeBaDN4tQdSvAVdU1Aok+nsNTipIEVnkywo/FHatVkBoIhnFisOBoZxcGtQd4B0GYJNZsDSiAEadUBCkstPtN3Avs2Msa+Dt9XfxoFSNYF/Bh9gP0bOqHLAm2WUF1YQskwrVFYPWkf3h1iXwbvqGfFPSGW9Eah8HSS9fuZDnS32f71m8KFY7xs/QZyu6TH2+2+FAAAAABJRU5ErkJggg==",
     "tick": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGrSURBVDjLvZPZLkNhFIV75zjvYm7VGFNCqoZUJ+roKUUpjRuqp61Wq0NKDMelGGqOxBSUIBKXWtWGZxAvobr8lWjChRgSF//dv9be+9trCwAI/vIE/26gXmviW5bqnb8yUK028qZjPfoPWEj4Ku5HBspgAz941IXZeze8N1bottSo8BTZviVWrEh546EO03EXpuJOdG63otJbjBKHkEp/Ml6yNYYzpuezWL4s5VMtT8acCMQcb5XL3eJE8VgBlR7BeMGW9Z4yT9y1CeyucuhdTGDxfftaBO7G4L+zg91UocxVmCiy51NpiP3n2treUPujL8xhOjYOzZYsQWANyRYlU4Y9Br6oHd5bDh0bCpSOixJiWx71YY09J5pM/WEbzFcDmHvwwBu2wnikg+lEj4mwBe5bC5h1OUqcwpdC60dxegRmR06TyjCF9G9z+qM2uCJmuMJmaNZaUrCSIi6X+jJIBBYtW5Cge7cd7sgoHDfDaAvKQGAlRZYc6ltJlMxX03UzlaRlBdQrzSCwksLRbOpHUSb7pcsnxCCwngvM2Rm/ugUCi84fycr4l2t8Bb6iqTxSCgNIAAAAAElFTkSuQmCC",
@@ -2155,7 +1987,6 @@ var imageData = {
     "grid": "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAApklEQVQ4jb3SQQqBURTF8R99E0aSMrEFC7AGpvYmG1A2YgG2YCIDJSlRTF65fS4lcut1T+f/Ou/d1+O5ZkFPysoYqJKAbtCtNww0k4CP6uuABuboBG+EVdGD0jcJg30Wugx6WlbG8IMRKozRDt4gnDqq7Y8MThVOOAfz4jHbsfR9wuCa3eq/b9DAAr3gDbEuul/6NmGwy0L/O8JP/kG9DkGfcXvBwB3GoiAx97DmjwAAAABJRU5ErkJggg=="
 };
 var helpersMaker = function () {
-    //http://programmers.stackexchange.com/questions/49550/which-hashing-algorithm-is-best-for-uniqueness-and-speed
     var stringToHash = function (str) {
         var hash = 0;
         if (str.length == 0) {
@@ -2164,7 +1995,7 @@ var helpersMaker = function () {
         for (var i = 0; i < str.length; i++) {
             var char = str.charCodeAt(i);
             hash = ((hash << 5) - hash) + char;
-            hash = hash & hash; // Convert to 32bit integer
+            hash = hash & hash;
         }
         return hash;
     };
@@ -2206,7 +2037,6 @@ var helpersMaker = function () {
         }
         return a;
     };
-    //used by replaceAll
     var startsWith = function (a, ai, b, bi) {
         if (ai == 0 && bi != 0) {
             return false;
@@ -2265,13 +2095,7 @@ var helpersMaker = function () {
     };
 };
 var helpers = helpersMaker();
-/**
- * Creates a pseudo-random value generator. The seed must be an integer.
- *
- * Uses an optimized version of the Park-Miller PRNG.
- * http://www.firstpr.com.au/dsp/rand31/
- */
-var Random = /** @class */ (function () {
+var Random = (function () {
     function Random(seed) {
         if (seed == undefined) {
             var now = new Date();
@@ -2290,12 +2114,7 @@ var Random = /** @class */ (function () {
     };
     return Random;
 }());
-//dollars in template markdown need replacing with calculated templates BEFORE cups are rendered (e.g. ![]($$))
-//so templates need to be calculated BEFORE cups are rendered
-//so templates may request elementvalue BEFORE an element EXISTS!
-//so cups need values etc. BEFORE element exists!
-//RowHTML -> QuestionHTML -> TemplateHTML 
-var RowHTML = /** @class */ (function () {
+var RowHTML = (function () {
     function RowHTML(row, showTitle, settings) {
         this.row = row;
         this.settings = settings;
@@ -2314,7 +2133,6 @@ var RowHTML = /** @class */ (function () {
             this._outerDiv.appendChild(this.titleDiv);
         }
         this._outerDiv.appendChild(this.dynamicDiv);
-        //delete button
         if (this.settings.allowRowDelete) {
             var deleteButton = document.createElement("img");
             deleteButton.className = "deleteButton hideOnPrint";
@@ -2328,7 +2146,6 @@ var RowHTML = /** @class */ (function () {
             deleteButton.src = imageData.trash;
             this.marginDiv.appendChild(deleteButton);
         }
-        //duplicate button
         if (this.settings.allowRowDelete) {
             var duplicateButton = document.createElement("img");
             duplicateButton.className = "duplicateButton hideOnPrint";
@@ -2346,20 +2163,20 @@ var RowHTML = /** @class */ (function () {
     Object.defineProperty(RowHTML.prototype, "outerDiv", {
         get: function () {
             if (!this._cellCups) {
-                //parse markdown and attach cups to solutions
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
+                if (this.solutions) {
+                    this.solutions.forEach(function (s) { return s.importResponses(); });
+                }
                 if (this.errors.length > 0) {
                     var para = document.createElement("p");
                     para.className = "errorList";
                     para.innerHTML = "<u>This row contains some errors:</u><br>" + this.errors.join("<br>");
                     this._outerDiv.insertBefore(para, this._outerDiv.firstChild);
                 }
-                //in case of grid, set element for both cellcups
                 this.cellCups[0].element = this.dynamicDiv.children[0];
                 if (this.cellCups[1]) {
                     this.cellCups[1].element = this.dynamicDiv.children[1];
                 }
-                //match up newly made HTMLelements to existing cups, onresponse events
                 var elems = helpers.descendants(this.dynamicDiv);
                 for (var _i = 0, elems_1 = elems; _i < elems_1.length; _i++) {
                     var el = elems_1[_i];
@@ -2397,46 +2214,28 @@ var RowHTML = /** @class */ (function () {
         get: function () {
             if (this._cellCups == null) {
                 this._cellCups = [];
-                //for questionHTML this persists the dollar replacer etc.
                 var injectorInstance = this.getInjectorInstance();
                 for (var _i = 0, _a = this.row.leftRight; _i < _a.length; _i++) {
                     var markdown = _a[_i];
                     if (markdown) {
                         var cellCup = new DivCup(markdown);
-                        //STRUCTURAL CUPS
-                        //replace code
                         cellCup.replace(/(`{3,}[^`]*`{3,})/, function (s) { return new CodeCup(s); }, null);
-                        //replace tables and rows and cells in one go
                         cellCup.replace(/(?:^|\n)([\|¦](?:[^\n]|\n\|)*)/, function (s) { return new TableCup(s); }, null);
-                        //replace relative position containers 
                         cellCup.replace(/(?:^|\n)(@\[[0-9]+,[0-9]+\]\([^)]*\))/, function (s) { return new RelativePositionCup(s); }, null);
-                        //replace bullet points with li
                         cellCup.replace(/(?:^|\n)(\*)/, function (s) { return new BulletCup(s); }, null);
-                        //replace newlines with paragraph (br)
                         cellCup.replace(/(\n[^\n]*)/, function (s) { return new ParagraphCup(s); }, null);
-                        //replace fractions
-                        //(~\[[^\]]*\]\([^)]*\))
-                        //(~\[[^\]]*\]\((?:\\\)|[^)])*\))
                         cellCup.replace(/(~\[[^\]]*\]\((?:\\\)|[^)])*\))/, function (s) { return new FractionCup(s); }, null);
-                        //replace anchors
                         if (this.settings.removeHyperlinks) {
                             cellCup.replace(/(?:[^\!]|^)(\[[^\]]*]\([^\)]*\))/, function (s) { return new ChunkCup(""); }, null);
                         }
                         else {
                             cellCup.replace(/(?:[^\!]|^)(\[[^\]]*]\([^\)]*\))/, function (s) { return new AnchorCup(s); }, null);
                         }
-                        //replace images
                         cellCup.replace(/(!\[[^\]]*]\([^\)]*\))/, function (s) { return new ImageCup(s); }, null);
-                        //INPUTS 
-                        //MUST GO AFTER THE IMAGES AND STUFF
                         cellCup.replace(/(_{10,})/, function (s) { return new TextAreaCup(s); }, null);
-                        //replace inputs
                         cellCup.replace(/(_{2,9})/, function (s) { return new InputCup(s); }, null);
-                        //replace checkboxes
                         cellCup.replace(/(?:[^\!]|^)(\[\])/, function (s) { return new CheckBoxCup(""); }, null);
-                        //replace pound signs
                         cellCup.replace(/(££)/, function (s) { return new PoundCup(""); }, null);
-                        //decides whether to replace radio given A. B. C. letter order. ;
                         var replaceRadioInjector = function () {
                             var nextLetter = 'A';
                             return function (letter) {
@@ -2447,29 +2246,19 @@ var RowHTML = /** @class */ (function () {
                                 return false;
                             };
                         };
-                        //replace radio buttons
                         cellCup.replace(/(?:^|\s)([A-Z]\.)/, function (s) { return new RadioCup(s); }, replaceRadioInjector());
-                        //replace combos
                         cellCup.replace(/({[^}]+\/[^}]+})/, function (s) { return new ComboCup(s); }, null);
-                        //sudoku needs some dollars hiding!
                         if (this.row.purpose == "sudoku") {
                             cellCup.replace(/(\$\$)/, function (s) { return new InputCup("___"); }, this.replaceSudokuDollar);
                         }
-                        //REPLACE DOLLARS
-                        //replace dollars and create solutions array in questions and templates
                         if (injectorInstance) {
                             cellCup.onThisAndChildren(injectorInstance);
                         }
-                        //IMAGES AND TEXT
-                        //replace titles
                         cellCup.replace(/((?:\n|^)#[^\n]+(?:\n|$))/, function (s) { return new TitleCup(s); }, null);
-                        //replace superscripts
                         cellCup.replace(/(\^[\S]+)/, function (s) { return new SuperScriptCup(s); }, null);
                         cellCup.replace(/(\~[\S]+)/, function (s) { return new SubScriptCup(s); }, null);
-                        //replace bolds and underlines
                         cellCup.replace(/(\*[^*]+\*)/, function (s) { return new BoldCup(s); }, null);
                         cellCup.replace(/(_[^_]+_)/, function (s) { return new UnderlineCup(s); }, null);
-                        //turn on gridlines button if relative containers found inside cellcup
                         if (this.settings.allowGridlines) {
                             var relCounter = function () {
                                 var foundRelativeContainer = false;
@@ -2483,7 +2272,6 @@ var RowHTML = /** @class */ (function () {
                             cellCup.onThisAndChildren(relCounter);
                             var relativeCupFound = relCounter();
                             if (relativeCupFound) {
-                                //add gridlines button
                                 if (!this.cupsWithGridlines) {
                                     this.cupsWithGridlines = [cellCup];
                                     if (true) {
@@ -2503,11 +2291,9 @@ var RowHTML = /** @class */ (function () {
                             }
                             ;
                         }
-                        //ADD TO ROW
                         this._cellCups.push(cellCup);
                     }
                 }
-                //WIDTH
                 if (this._cellCups.length == 1) {
                     this._cellCups[0].class = "fullWidth";
                 }
@@ -2515,7 +2301,7 @@ var RowHTML = /** @class */ (function () {
                     this._cellCups[0].class = "leftHalfWidth";
                     this._cellCups[1].class = "rightHalfWidth";
                 }
-            } //end of if null
+            }
             return this._cellCups;
         },
         enumerable: true,
@@ -2530,38 +2316,30 @@ var RowHTML = /** @class */ (function () {
     });
     return RowHTML;
 }());
-var QuestionHTML = /** @class */ (function (_super) {
+var QuestionHTML = (function (_super) {
     __extends(QuestionHTML, _super);
     function QuestionHTML(row, showTitle, paramSettings) {
         var _this = _super.call(this, row, showTitle, paramSettings) || this;
         _this.solutions = [];
-        //question number
         _this.questionNumberDiv = document.createElement("p");
         _this.questionNumberDiv.className = "questionNumber";
-        //margin contains icon buttons 
         _this.marginDiv.insertBefore(_this.questionNumberDiv, _this.marginDiv.childNodes[0]);
         return _this;
-        //question number is set later
     }
     QuestionHTML.prototype.delete = function () {
         _super.prototype.delete.call(this);
-        //remove solutions
         if (this._solutionDiv) {
             this._solutionDiv.parentNode.removeChild(this._solutionDiv);
         }
-        //remove jumbled solutions
         if (this._jumbleDivs) {
             this._jumbleDivs.forEach(function (j) { return j.parentNode.removeChild(j); });
         }
     };
-    //injects solutions into dollars and input elements
     QuestionHTML.prototype.getInjectorInstance = function () {
         this.solutions = [];
         return this.injector(this.replacedTemplates(), this.solutions, this.settings);
-        //for sudoku this also instantiates replaceSudokuDollar
     };
     Object.defineProperty(QuestionHTML.prototype, "jumbleDivs", {
-        //jumbled solutions getter
         get: function () {
             if (!this._jumbleDivs) {
                 this._jumbleDivs = [];
@@ -2578,7 +2356,6 @@ var QuestionHTML = /** @class */ (function (_super) {
         configurable: true
     });
     Object.defineProperty(QuestionHTML.prototype, "solutionDiv", {
-        //solution div getter
         get: function () {
             if (!this._solutionDiv) {
                 this._solutionDiv = document.createElement("div");
@@ -2591,7 +2368,6 @@ var QuestionHTML = /** @class */ (function (_super) {
         configurable: true
     });
     QuestionHTML.prototype.refreshsolutionDiv = function () {
-        //solutions
         var buffer = "";
         var ret = [];
         for (var i = 0, solution; solution = this.solutions[i]; i++) {
@@ -2613,18 +2389,15 @@ var QuestionHTML = /** @class */ (function (_super) {
         }
         return ret;
     };
-    //list of questiontemplate instances which are generated from comments
     QuestionHTML.prototype.replacedTemplates = function () {
         var comments = this.row.comment.split('\n');
         return comments.map(function (c) { return new questionTemplate(c); });
     };
-    //called from assignment
     QuestionHTML.prototype.setQuestionNumber = function (n) {
         this.questionNum = n;
         this.questionNumberDiv.innerText = "Q" + this.questionNum + ".";
         return this.refreshsolutionDiv();
     };
-    //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
         var currentRadioSet = null;
         var templates = paramTemplates;
@@ -2657,19 +2430,16 @@ var QuestionHTML = /** @class */ (function (_super) {
                         currentRadioSet.add(fieldCup);
                         addSolution(currentRadioSet);
                     }
-                    else { //do not increment with next radios
+                    else {
                         currentRadioSet.add(fieldCup);
                     }
                 }
-                else { //input or select or textarea etc.
+                else {
                     addSolution(fieldCup);
                 }
             }
-            //if dollar is found, do not add a solution but do remove a template and replace the dollar
             if (fieldCup.textReplace != null) {
                 fieldCup.textReplace(/\${2}/g, getTemplateValue);
-                //jumbled solutions getterplace(/\${2}/g, getTemplateValue);
-                //do not add to solutions since the dollar solution is removed during textreplace
             }
         };
     };
@@ -2684,12 +2454,6 @@ var QuestionHTML = /** @class */ (function (_super) {
         get: function () {
             var solutionPlainText = this.solutions.map(function (s, i) { return String.fromCharCode(97 + i) + ". " + s.solutionText; }).join("<br>");
             return "<section>\n            <section>\n            <h1>" + this.row.title + "</h1>\n            <div class=\"dynamic\">" + this.dynamicDiv.innerHTML + "</div>\n            </section>\n            <section>" + solutionPlainText + "</section>\n        </section>";
-            /*
-<table style="border-collapse: collapse; table-layout: fixed; width: 100%">
-            <tr><td colspan="2"><h3>Q${this.questionNum}. ${this.row.title}</h3></td></tr>
-            <tr>${this.cellCups.map(c => c.HTML).join("")}</tr>
-            </table>
-            */
         },
         enumerable: true,
         configurable: true
@@ -2727,11 +2491,10 @@ var QuestionHTML = /** @class */ (function (_super) {
     });
     return QuestionHTML;
 }(RowHTML));
-var TemplateHTML = /** @class */ (function (_super) {
+var TemplateHTML = (function (_super) {
     __extends(TemplateHTML, _super);
     function TemplateHTML(row, showTitle, paramSettings) {
         var _this = _super.call(this, row, showTitle, paramSettings) || this;
-        //refresh button
         if (_this.settings.allowRefresh) {
             var refreshButton = document.createElement("img");
             refreshButton.src = imageData.refresh;
@@ -2744,14 +2507,12 @@ var TemplateHTML = /** @class */ (function (_super) {
     }
     TemplateHTML.prototype.replacedTemplates = function () {
         var comments = this.row.comment.split('\n');
-        //GENERATE TEMPLATES THEN OVERWRITE COMMENTS WITH RECALCULATED VALUES
         var templates = [];
         var paramIndexForRangeEvaluation = this.randomForTemplate.next();
         var customFunctions = {};
         for (var i = 0; i < comments.length; i++) {
             templates.push(new Template(comments[i], templates, this.randomForTemplate, paramIndexForRangeEvaluation, customFunctions));
         }
-        //force calculate
         templates.forEach(function (t) { if (t)
             t.forceCalculate(); });
         for (var t in templates) {
@@ -2760,9 +2521,7 @@ var TemplateHTML = /** @class */ (function (_super) {
             }
         }
         if (this.row.purpose == "sudoku") {
-            //number of dollars
             var numDollars = ((this.row.leftRight.join(" ")).match(/\$\$/g) || []).length;
-            //sudoku only
             var variablesUsed = templates.map(function (t) {
                 if (t)
                     return t.variablesUsed;
@@ -2771,11 +2530,9 @@ var TemplateHTML = /** @class */ (function (_super) {
                     ret.push(false);
                 return ret;
             });
-            //add variables to their own equations
             for (var i = 0, eqn; eqn = variablesUsed[i]; i++) {
                 eqn[i] = true;
             }
-            //DO NOT remove all equations (rows) but trim cols (variables) to num templates
             variablesUsed = variablesUsed.map(function (arr) { return arr.slice(0, templates.length); });
             var variablesToShow = showVariables(variablesUsed, numDollars, this.settings.random);
             var replaceSudokuDollarInjector = function (variablesToShow) {
@@ -2788,7 +2545,6 @@ var TemplateHTML = /** @class */ (function (_super) {
             };
             this.replaceSudokuDollar = replaceSudokuDollarInjector(variablesToShow);
         }
-        //each comment is an equation
         return templates;
     };
     TemplateHTML.prototype.refresh = function () {
@@ -2798,38 +2554,22 @@ var TemplateHTML = /** @class */ (function (_super) {
     };
     return TemplateHTML;
 }(QuestionHTML));
-//takes square grid of rows (equations) with variables as true (columns)
 function showVariables(arr, numDollars, paramRandom) {
-    //automatically show variables (columns) that only appear once (in diagonal)
-    var colsToShow = arr[0].map(function (a) { return false; }); //set all cols to false
+    var colsToShow = arr[0].map(function (a) { return false; });
     for (var rowCol = 0; rowCol < arr[0].length; rowCol++) {
         colsToShow[rowCol] = (arr[rowCol].filter(function (p) { return p; }).length == 1)
             && (arr.filter(function (p) { return p[rowCol]; }).length == 1);
     }
-    //remove equations (rows) with a single true
     arr = arr.filter(function (r) { return r.filter(function (p) { return p; }).length > 1; });
-    //target number hidden variables = num of equations at this point
     var maxColsToShow = colsToShow.length - arr.length;
     var backupArr = arr.map(function (row) { return row.slice(); });
     var backupColsToShow = colsToShow.slice();
     while (arr.length > 0 || maxColsToShow < colsToShow.filter(function (p) { return p; }).length) {
-        //if too may variables shown, reset and try again
         if (maxColsToShow < colsToShow.filter(function (p) { return p; }).length) {
             arr = backupArr.map(function (row) { return row.slice(); });
             colsToShow = backupColsToShow.slice();
         }
         var colsWithATrue = [];
-        //get colsWithATrue from within the hidden
-        /*for (var col = numDollars; col <  arr[0].length; col++) {
-            var hasATrue = false;
-            for (var row = 0; row < arr.length; row++) {
-                hasATrue |= arr[row][col];
-            }
-            if (hasATrue) {
-                colsWithATrue.push(col);
-            }
-        }*/
-        //get cols with a true from within the dollars
         if (colsWithATrue.length == 0) {
             for (var col = 0; col < numDollars; col++) {
                 var hasATrue = false;
@@ -2841,24 +2581,18 @@ function showVariables(arr, numDollars, paramRandom) {
                 }
             }
         }
-        //if no cols then stop
         if (colsWithATrue.length == 0) {
             break;
         }
-        //randomly pick a col to remove
         var colToRemove = colsWithATrue[Math.floor(paramRandom.next(colsWithATrue.length))];
         colsToShow[colToRemove] = true;
-        //set col to false 
         arr.forEach(function (f) { return f[colToRemove] = false; });
-        //if any rows have 1 true, remove that col too since these equations can be solved 
         var rowsWithOneTrue = arr.filter(function (r) { return r.filter(function (p) { return p; }).length == 1; });
         while (rowsWithOneTrue.length > 0) {
             for (var r = 0; r < rowsWithOneTrue.length; r++) {
                 var row2 = rowsWithOneTrue[r];
                 var singleCol = row2.indexOf(true);
-                //set col to false 
                 arr.forEach(function (f) { return f[singleCol] = false; });
-                //remove rows with only one true
                 arr = arr.filter(function (r) { return r.filter(function (p) { return p; }).length > 0; });
             }
             rowsWithOneTrue = arr.filter(function (r) { return r.filter(function (p) { return p; }).length == 1; });
@@ -2867,8 +2601,7 @@ function showVariables(arr, numDollars, paramRandom) {
     return colsToShow;
 }
 var ALLOWABLE_ERROR_FOR_CORRECT_ANSWER = 0.05;
-//DECISION LOGIC
-var Solution = /** @class */ (function () {
+var Solution = (function () {
     function Solution(field, template, settings, allSolutions) {
         this.allSolutions = allSolutions;
         if (template) {
@@ -2877,31 +2610,25 @@ var Solution = /** @class */ (function () {
         this.settings = settings;
         this.markbookIndex = settings.markbookIndex++;
         this.template = template;
-        //        this.template.onError = function(paramSolution) { var s = paramSolution; return function() {s.onTemplateError()} }(this);
         this.field = field;
         this.score = 0;
         this.triggerCalculateFromLateFunction = true;
-        //set false by code() and variable() template functions to avoid infinite loop
         this.elementHasChangedSinceLastChecked = false;
-        this.notYetChecked = true; //used to assign star or tick
-        this.notYetAnswered = true; //used to calculate outof
-        //set cup onResponse
+        this.notYetChecked = true;
+        this.notYetAnswered = true;
         field.onResponse = this.onResponseInjector(this);
     }
-    //called from rowhtml after all new solutions made
     Solution.prototype.importResponses = function () {
         if (this.settings.responses && this.settings.responses[this.markbookIndex]) {
-            this.field.elementValue = this.settings.responses[this.markbookIndex]; //this = field
+            this.field.elementValue = this.settings.responses[this.markbookIndex];
             this.updateScoreAndImage();
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
-            //this.showDecisionImage(); moved to consumeblob
         }
         else {
             if (this.template) {
                 this.template.forceCalculate();
             }
-            //execute the template anyway
         }
     };
     Object.defineProperty(Solution.prototype, "affectsScore", {
@@ -2919,11 +2646,10 @@ var Solution = /** @class */ (function () {
                     return "";
                 }
                 else {
-                    //this will remove too many dps etc.
                     if (this.template instanceof Template) {
                         return calculatedJSONtoViewable(this.template.calculatedValue);
                     }
-                    else { //for questiontemplate
+                    else {
                         return this.template.calculatedValue;
                     }
                 }
@@ -2959,7 +2685,6 @@ var Solution = /** @class */ (function () {
         configurable: true
     });
     Object.defineProperty(Solution.prototype, "outOf", {
-        //depends on template + field
         get: function () {
             if (!this.affectsScore)
                 return 0;
@@ -2975,40 +2700,32 @@ var Solution = /** @class */ (function () {
         this.elementHasChangedSinceLastChecked = false;
         this.notYetChecked = false;
     };
-    //ONRESPONSE - check and store decision, call markbookUpdate
     Solution.prototype.onResponseInjector = function (solution) {
         var s = solution;
         return function () {
             if (this.elementValue != null) {
                 s.updateScoreAndImage();
-                //do not append if not yet checked, student might be trying stuff out
-                //do not append if its a late calculation
                 var doAppend = !s.notYetChecked &&
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
                 var scores = s.settings.scoreGetters ? s.settings.scoreGetters.map(function (f) { return f(); }) : null;
                 if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
-                    s.settings.markbookUpdate(s.markbookIndex, s.field.elementValue, //field.elementValue
-                    s.color, //solution.color
-                    doAppend, scores);
-                    //markbookColumn, response, color, append, scoreOutOf
+                    s.settings.markbookUpdate(s.markbookIndex, s.field.elementValue, s.color, doAppend, scores);
                 }
             }
         };
     };
-    //does not updatemarkbook, does not show image unless showDecisionImage is called
     Solution.prototype.updateScoreAndImage = function () {
         this.elementHasChangedSinceLastChecked = true;
         this.notYetAnswered = false;
         this.color = "White";
         if (this.template) {
-            //check box
             if (this.field instanceof CheckBoxCup) {
                 try {
                     this.score = (this.template.calculatedValue == "true") ? 1 : 0;
                     this.field.elementValue = (this.score == 1);
                 }
-                catch (e) { //only catch code errors
+                catch (e) {
                     if (e instanceof CodeError) {
                         this.field.elementValue = "!";
                         this.field.hoverText = e;
@@ -3018,33 +2735,29 @@ var Solution = /** @class */ (function () {
                     }
                 }
             }
-            //pound
             else if (this.field instanceof PoundCup) {
                 var poundCoerced = this.field;
                 try {
                     var val = this.template.calculatedValue;
                     val = JSON.parse(val);
-                    poundCoerced.elementValue = val.toString();
+                    poundCoerced.elementValue = String(val);
                     poundCoerced.isRed = false;
                 }
-                catch (e) { //only catch code errors
+                catch (e) {
                     if (e instanceof CodeError) {
                         poundCoerced.elementValue = e;
                         poundCoerced.isRed = true;
                     }
                     else {
-                        throw (e);
                     }
                 }
             }
-            //input, combo, radio but only if scoring
             else if (this.affectsScore) {
                 this.score = this.template.isCorrect(this.field.elementValue) ? 1 : 0;
             }
-            else { //calculate anyway
+            else {
                 this.template.forceCalculate();
             }
-            //https://www.quackit.com/css/css_color_codes.cfm
         }
         if (this.affectsScore) {
             if (this.score == 1) {
@@ -3065,7 +2778,7 @@ var Solution = /** @class */ (function () {
     };
     return Solution;
 }());
-var TemplateError = /** @class */ (function (_super) {
+var TemplateError = (function (_super) {
     __extends(TemplateError, _super);
     function TemplateError(message, paramFeedbackToUser, paramIsCritical) {
         var _this = _super.call(this, message) || this;
@@ -3075,7 +2788,7 @@ var TemplateError = /** @class */ (function (_super) {
     }
     return TemplateError;
 }(Error));
-var questionTemplate = /** @class */ (function () {
+var questionTemplate = (function () {
     function questionTemplate(paramText) {
         this._text = paramText;
     }
@@ -3087,7 +2800,6 @@ var questionTemplate = /** @class */ (function () {
         configurable: true
     });
     questionTemplate.prototype.isCorrect = function (value) {
-        //do not turn into JSON
         if (value != null && value != undefined) {
             if (helpers.isNumeric(this.calculatedValue)) {
                 return (helpers.isNumeric(value) &&
@@ -3102,14 +2814,13 @@ var questionTemplate = /** @class */ (function () {
     };
     return questionTemplate;
 }());
-var Template = /** @class */ (function (_super) {
+var Template = (function (_super) {
     __extends(Template, _super);
-    //delimiters
     function Template(paramText, paramAllTemplates, paramRandom, paramIndexForRangeEvaluation, paramCustomFunctions) {
         var _this = _super.call(this, paramText) || this;
         _this.allTemplateComments = paramAllTemplates;
         _this.random = paramRandom;
-        _this.indexForListEvaluation = paramIndexForRangeEvaluation; //ensures that lists are synchronised
+        _this.indexForListEvaluation = paramIndexForRangeEvaluation;
         _this.customFunctions = paramCustomFunctions;
         _this.overflowCounter = 0;
         _this.OVERFLOW_LIMIT = 1000;
@@ -3127,10 +2838,7 @@ var Template = /** @class */ (function (_super) {
         }
     };
     Object.defineProperty(Template.prototype, "calculatedValue", {
-        //called by replacer, forcecalculate, 
-        //evaluateVariable, getSolutionText, 
         get: function () {
-            //eval result is in JSON form
             if (this.errorMessages.length == 0 && this._calculatedValue == "null") {
                 var result = "null";
                 try {
@@ -3138,7 +2846,6 @@ var Template = /** @class */ (function (_super) {
                     result = expr.eval(this);
                 }
                 catch (e) {
-                    //allow code errors to bubble up to solution which uses them to alter decision images etc. 
                     if (e.isCritical) {
                         if (e.feedbackToUser)
                             this.errorMessages.push(e.message);
@@ -3158,7 +2865,6 @@ var Template = /** @class */ (function (_super) {
         return parseFloat(ret);
     };
     Template.prototype.isCorrect = function (value) {
-        //turn value into JSON
         if (this.calculatedValue != null) {
             if (helpers.isNumeric(this.calculatedValue)) {
                 var n = Number(this.calculatedValue);

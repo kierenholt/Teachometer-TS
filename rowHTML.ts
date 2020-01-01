@@ -73,6 +73,10 @@ class RowHTML {
 
             //parse markdown and attach cups to solutions
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
+
+            if (this.solutions) {
+                this.solutions.forEach(s => s.importResponses());
+            }
             
             if (this.errors.length > 0) {
                 var para = document.createElement("p");
