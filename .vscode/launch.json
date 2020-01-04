@@ -20,6 +20,14 @@
             "port": 9222,
             "url": "http://0.0.0.0:8000/sites.html",
             "webRoot": "${workspaceFolder}/out"
+        },
+        {
+            "name": "Attach to testMaker",
+            "type": "chrome",
+            "request": "attach",
+            "port": 9222,
+            "url": "http://0.0.0.0:8000/testMaker.html",
+            "webRoot": "${workspaceFolder}/out"
         }/*,
         {
             "type": "chrome",
