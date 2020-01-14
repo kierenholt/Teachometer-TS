@@ -14,6 +14,7 @@ class Solution {
     notYetAnswered: boolean;
     color: string;
     image: decisionImageEnum;
+    _questionNumber: any;
 
     constructor(field, template, settings, allSolutions) {
 
@@ -42,8 +43,8 @@ class Solution {
 
     //called from rowhtml after all new solutions made
     importResponses() {
-        if (this.settings.responses && this.settings.responses[this.markbookIndex]) {     
-            this.field.elementValue = this.settings.responses[this.markbookIndex]; //this = field
+        if (this.settings.responses && this._questionNumber in this.settings.responses) {     
+            this.field.elementValue = this.settings.responses[this._questionNumber]; //this = field
             this.updateScoreAndImage(); 
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
@@ -61,6 +62,21 @@ class Solution {
     get affectsScore() {
         return !(this.field.disabled || this.template == null || 
             !this.triggerCalculateFromLateFunction || this.field instanceof PoundCup)
+    }
+
+    /**
+     * @returns e.g "1a"
+     */
+    get questionNumber() {
+        return this._questionNumber;
+    }
+
+    /**
+     * @param value e.g. "1a"
+     */
+    set questionNumber(value) { //e.g "1a"
+          this._questionNumber = value;
+          this.importResponses();
     }
 
     get solutionText() {
@@ -123,16 +139,13 @@ class Solution {
                 let doAppend = !s.notYetChecked && 
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                let scores = s.settings.scoreGetters ? s.settings.scoreGetters.map(f => f()): null;
-
-                if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
-                    s.settings.markbookUpdate(
-                        s.markbookIndex, 
-                        s.field.elementValue, //field.elementValue
-                        s.color, //solution.color
-                        doAppend,
-                        scores)
-                    //markbookColumn, response, color, append, scoreOutOf
+                let scores = {};
+                scores[s.questionNumber] = {
+                    "value" : s.field.elementValue,
+                    "color" : s.color,
+                    "append" : doAppend };
+                if (s.settings.markbookUpdate) {
+                    s.settings.markbookUpdate(scores);
                 }
             }
         }

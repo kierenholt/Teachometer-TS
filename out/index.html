@@ -107,8 +107,9 @@ div#buttons {
 	function doJSON() {
 		ret = JSON.stringify(window.assignment.rows);
 		ret = window.helpers.replaceAll(ret,"`","");
-		ret = window.helpers.replaceAll(ret,"	","\\t");
 		ret = window.helpers.replaceAll(ret,"\\","\\\\");
+		ret = window.helpers.replaceAll(ret,"\"","\\" + "\"");
+		ret = window.helpers.replaceAll(ret,"	","\\t");
 		
 		document.getElementById("markbookUpdates").value = ret;
 		}

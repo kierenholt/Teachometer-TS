@@ -74,9 +74,7 @@ class RowHTML {
             //parse markdown and attach cups to solutions
             this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
 
-            if (this.solutions) {
-                this.solutions.forEach(s => s.importResponses());
-            }
+            //responses are imported after change of question number
             
             if (this.errors.length > 0) {
                 var para = document.createElement("p");
@@ -288,7 +286,7 @@ class QuestionHTML extends RowHTML {
     questionNumberDiv: HTMLParagraphElement;
     _solutionDiv: any;
     _jumbleDivs: any;
-    questionNum: string;
+    _questionNumber: any;
     constructor(row, showTitle, paramSettings) {
         super(row, showTitle, paramSettings);
         
@@ -330,7 +328,7 @@ class QuestionHTML extends RowHTML {
                 j.className = "jumbleDivs";
                 this._jumbleDivs.push(j);
             }
-            this.refreshsolutionDiv();
+            this.refreshDivs();
         }
         return this._jumbleDivs;
     }
@@ -340,24 +338,15 @@ class QuestionHTML extends RowHTML {
         if (!this._solutionDiv) {
             this._solutionDiv = document.createElement("div");
             this._solutionDiv.className = "solutions";
-            this.refreshsolutionDiv();
+            this.refreshDivs();
         }
         return this._solutionDiv;
     }
 
-    refreshsolutionDiv() { //needed for question because it updates questionnumber
+    refreshDivs() { 
         //solutions
-        var buffer = "";
-        var ret = []
-        for (var i = 0, solution; solution = this.solutions[i]; i++) {
-            let qnNum = this.questionNum + String.fromCharCode(i + 97) +".";
-            ret.push(qnNum);
-            if (solution.affectsScore) {
-                buffer += qnNum + ` ${solution.solutionText} <br>`;
-            }
-        }
         if (this._solutionDiv) {
-            this._solutionDiv.innerHTML = `<p>${buffer}</p>`;
+            this._solutionDiv.innerHTML = `<p>${this.solutionText}</p>`;
         }
         if (this._jumbleDivs) {
             for (var i = 0, solution; solution = this.solutions[i]; i++) {
@@ -366,7 +355,9 @@ class QuestionHTML extends RowHTML {
                 }
             }
         }
-        return ret;
+        if (this.questionNumberDiv) {
+            this.questionNumberDiv.innerText = `Q${this.questionNumber}.`;
+        }
     }
 
     //list of questiontemplate instances which are generated from comments
@@ -375,13 +366,41 @@ class QuestionHTML extends RowHTML {
         return comments.map(c => new questionTemplate(c));
     }
 
-    //called from assignment
-    setQuestionNumber(n) {
-        this.questionNum = n;
-        this.questionNumberDiv.innerText = `Q${this.questionNum}.`;
-        return this.refreshsolutionDiv();
+    /**
+     * @param number integer
+     */
+    set questionNumber(n) {
+        for (var i = 0, solution; solution = this.solutions[i]; i++) {
+            if (solution.affectsScore) {
+                solution.questionNumber = n.toString() + String.fromCharCode(97+i); //1a 1b etc
+            }
+        }
+        this._questionNumber = n;
+        this.refreshDivs();
     }
     
+    /**
+     * @returns questionNumber e.g. 1
+     */
+    get questionNumber() {
+        return this._questionNumber;
+    }
+
+    /**
+     * @returns array of questionNumbers ["1a","1b","2a"]
+     */
+    get questionNumbers() {
+        return this.solutions.filter(s => s.affectsScore).map(s => s.questionNumber);
+    }
+    
+    /**
+     * @returns "Q1a. 45<br>Q1b. 8032<br>" etc.
+     */
+    get solutionText() {
+        return this.solutions.filter(s => s.affectsScore)
+        .map(s => `Q${s.questionNumber}. ${s.solutionText}`).join("<br>");
+    }
+
     //INJECTS SOLUTIONS INTO EXPRESSION TREE AND REPLACE DOLLARS IN FIELDS
     injector(paramTemplates, paramSolutions, paramSettings)  {
             
@@ -561,7 +580,7 @@ class TemplateHTML extends QuestionHTML{
     refresh() { 
         this._cellCups = null;
         this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
-        this.refreshsolutionDiv();
+        this.refreshDivs();
     }
 }
 
