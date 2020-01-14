@@ -1,297 +1,86 @@
+var TIME_COLUMN = "Time remaining";
+var CHECKS_COLUMN = "Checks remaining";
 var AssignmentHTML = (function () {
-    function AssignmentHTML(internalSettings, markbookSettings) {
+    function AssignmentHTML(settings) {
         this.rowHTMLs = [];
-        this.settings = internalSettings;
+        this.settings = settings;
         this.settings.random = new Random();
-        if (markbookSettings) {
-            this.settings.shuffleQuestions = (markbookSettings["shuffle questions"] == true);
-            this.settings.truncateMarks = Number(markbookSettings["mark limit"]);
-            this.settings.journalMode = (markbookSettings["journal mode"] == true);
-            this.settings.appendToMarkbook = (markbookSettings["append mode"] == true);
-            this.settings.removeHyperlinks = (markbookSettings["remove hyperlinks"] == true);
-            this.settings.markbookUpdate = markbookSettings.markbookUpdate;
-            this.settings.markbookIndex = 0;
-            this.settings.user = markbookSettings.user;
-            this.settings.workbookId = markbookSettings.workbookId;
-            this.settings.sheetName = markbookSettings.sheetName;
-            this.settings.scoreHeaders = markbookSettings["scoreHeaders"];
-            this.settings.scores = markbookSettings["scores"];
-            if (this.settings.scoreHeaders) {
-                var index1 = this.settings.scoreHeaders.indexOf("num checks remaining");
-                if (index1 > -1) {
-                    this.settings.numChecksLeft = Number(this.settings.scores[index1]);
-                }
-                this.settings.scoreGetters = function (paramAsn, scoreHeaders) {
-                    var asn = paramAsn;
-                    var ret = [];
-                    for (var _i = 0, scoreHeaders_1 = scoreHeaders; _i < scoreHeaders_1.length; _i++) {
-                        var header = scoreHeaders_1[_i];
-                        switch (header) {
-                            case "% attempted":
-                                ret.push(function () { return asn.percentAttempted; });
-                                break;
-                            case "% correct":
-                                ret.push(function () { return asn.percentCorrect; });
-                                break;
-                            case "% stars":
-                                ret.push(function () { return asn.percentStars; });
-                                break;
-                            case "clicks away":
-                                ret.push(function () { return asn.settings.clicksAway; });
-                                break;
-                            case "num checks remaining":
-                                ret.push(function () { return asn.settings.numChecksLeft; });
-                                break;
-                            case "time remaining (min)":
-                                ret.push(function () { return asn.settings.timeRemaining; });
-                                break;
-                            default:
-                                throw new Error("score header not recognised");
-                        }
-                    }
-                    return ret;
-                }(this, this.settings.scoreHeaders);
-                var index3 = this.settings.scoreHeaders.indexOf("time remaining");
-                if (index3 > -1) {
-                    this.settings.timeRemaining = Number(this.settings.scores[index3]);
-                    if (this.settings.timeRemaining != 0) {
-                        var timerDiv = document.createElement("div");
-                        timerDiv.className += " timer";
-                        this.settings.questionsDiv.parentElement.appendChild(timerDiv);
-                        this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
-                            var asn = paramAsn;
-                            var countUp = timeLimit == 0;
-                            var target = new Date().getTime() + 1000 * 60 * timeLimit;
-                            var div = paramDiv;
-                            return function () {
-                                var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
-                                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-                                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-                                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
-                                div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
-                                asn.settings.timeRemaining = minutes;
-                                if (distance < 60 * 1000 && !countUp) {
-                                    div.className += " red";
-                                }
-                                if (distance < 0) {
-                                    asn.settings.timeRemaining = 0;
-                                    clearInterval(asn.timerInterval);
-                                    div.innerHTML = "EXPIRED";
-                                    asn.settings.numChecksLeft = 1;
-                                    asn.showAllDecisionImages(false);
-                                }
-                            };
-                        }(this.settings.timeRemaining, timerDiv, this), 900);
-                    }
-                }
-            }
-            if (markbookSettings.responses) {
-                this.settings.responses = markbookSettings.responses;
+        this.settings.shuffleQuestions = (this.settings["shuffle questions"] == true);
+        this.settings.truncateMarks = Number(this.settings["mark limit"]);
+        this.settings.journalMode = (this.settings["journal mode"] == true);
+        this.settings.appendToMarkbook = (this.settings["append mode"] == true);
+        this.settings.removeHyperlinks = (this.settings["remove hyperlinks"] == true);
+        if (this.settings.responses && CHECKS_COLUMN in this.settings.responses) {
+            this.settings.numChecksLeft = Number(this.settings.responses[CHECKS_COLUMN]);
+        }
+        else {
+            this.settings.numChecksLeft = Number(this.settings["checks limit"]);
+        }
+        if (Number(this.settings["time limit"]) > 0) {
+            if (this.settings.responses && this.settings.responses[TIME_COLUMN]) {
+                this.settings.timeRemaining = Number(this.settings.responses[TIME_COLUMN]);
             }
             else {
-                this.settings.responses = {};
+                this.settings.timeRemaining = Number(this.settings["time limit"]);
             }
+            this.startTimer();
+        }
+        this.settings.markbookUpdate = this.settings.markbookUpdate;
+        this.settings.user = this.settings.user;
+        this.settings.workbookId = this.settings.workbookId;
+        this.settings.sheetName = this.settings.sheetName;
+        if (false) {
+            window.onblur = function (paramAsn) {
+                var asn = paramAsn;
+                return function () {
+                    asn.settings.clicksAway++;
+                };
+            }(this);
+            this.settings.clicksAway = Number(this.settings.scores[0]);
+        }
+        if ("question data" in settings) {
+            this.consumeRowsString(settings["question data"]);
         }
     }
-    AssignmentHTML.prototype.addRows = function (paramRows, index) {
-        for (var r = 0, row = void 0; row = paramRows[r]; r++) {
-            var showTitle = true;
-            if (this.rowHTMLs.length > 0) {
-                var previousTitle = this.rowHTMLs[this.rowHTMLs.length - 1].row.title;
-                if (previousTitle == row.title) {
-                    showTitle = false;
+    AssignmentHTML.prototype.startTimer = function () {
+        var timerDiv = document.createElement("div");
+        timerDiv.className += " timer";
+        this.settings.questionsDiv.parentElement.appendChild(timerDiv);
+        this.timerInterval = setInterval(function (timeLimit, paramDiv, paramAsn) {
+            var asn = paramAsn;
+            var countUp = timeLimit == 0;
+            var target = new Date().getTime() + 1000 * 60 * timeLimit;
+            var div = paramDiv;
+            return function () {
+                var distance = (target - new Date().getTime()) * (countUp ? -1 : 1);
+                var hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+                var minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+                var seconds = Math.floor((distance % (1000 * 60)) / 1000);
+                div.innerHTML = hours + "h " + minutes + "m " + seconds + "s ";
+                if (minutes < asn.settings.timeRemaining && minutes >= 0) {
+                    var scores = {};
+                    scores[TIME_COLUMN] = {
+                        "value": minutes,
+                        "append": false
+                    };
+                    if (asn.settings.markbookUpdate) {
+                        asn.settings.markbookUpdate(scores);
+                    }
                 }
-            }
-            var newRowHTML = null;
-            if (row.purpose == "question") {
-                newRowHTML = new QuestionHTML(row, showTitle, this.settings);
-            }
-            else if (row.purpose == "template" || row.purpose == "sudoku") {
-                newRowHTML = new TemplateHTML(row, showTitle, this.settings);
-            }
-            else {
-                newRowHTML = new RowHTML(row, showTitle, this.settings);
-            }
-            newRowHTML.deleteSelf = function (paramAsn, paramRow) {
-                var asn = paramAsn;
-                var row = paramRow;
-                return function () { asn.deleteRows([row]); };
-            }(this, newRowHTML);
-            newRowHTML.duplicateSelf = function (paramAsn, paramRow) {
-                var asn = paramAsn;
-                var row = paramRow;
-                return function () { asn.duplicateRow(row); };
-            }(this, newRowHTML);
-            if (index != undefined && index < this.rowHTMLs.length) {
-                this.rowHTMLs.splice(index + 1, 0, newRowHTML);
-            }
-            else {
-                this.rowHTMLs.push(newRowHTML);
-            }
-            this.insertRowIntoDivs(newRowHTML, index);
-            if (index != undefined) {
-                index++;
-            }
-        }
-        this.updateQuestionNumbersAndMarkbookIndex();
+                asn.settings.timeRemaining = minutes;
+                if (distance < 60 * 1000 && !countUp) {
+                    div.className += " red";
+                }
+                if (distance < 0) {
+                    asn.settings.timeRemaining = 0;
+                    clearInterval(asn.timerInterval);
+                    div.innerHTML = "EXPIRED";
+                    asn.settings.numChecksLeft = 1;
+                    asn.showAllDecisionImages(false);
+                }
+            };
+        }(this.settings.timeRemaining, timerDiv, this), 900);
     };
-    AssignmentHTML.prototype.scroll = function () {
-        this.settings.questionsDiv.lastChild.scrollIntoView();
-    };
-    AssignmentHTML.prototype.insertRowIntoDivs = function (newRowHTML, index) {
-        var _this = this;
-        if (index == undefined) {
-            index = this.rowHTMLs.length;
-        }
-        if (this.settings.questionsDiv.children[index + 1]) {
-            this.settings.questionsDiv.insertBefore(newRowHTML.outerDiv, this.settings.questionsDiv.children[index + 1]);
-        }
-        else {
-            this.settings.questionsDiv.appendChild(newRowHTML.outerDiv);
-        }
-        if (this.settings.solutionsDiv && newRowHTML.solutionDiv) {
-            if (this.settings.solutionsDiv.children[index + 1]) {
-                this.settings.solutionsDiv.insertBefore(newRowHTML.solutionDiv, this.settings.solutionsDiv.children[index + 1]);
-            }
-            else {
-                this.settings.solutionsDiv.appendChild(newRowHTML.solutionDiv);
-            }
-        }
-        if (this.settings.jumbledSolutionsDiv && newRowHTML.jumbleDivs) {
-            newRowHTML.jumbleDivs.forEach(function (s) { return _this.settings.jumbledSolutionsDiv.appendChild(s); });
-        }
-    };
-    AssignmentHTML.prototype.refresh = function () {
-        this.templateHTMLs.forEach(function (r) { return r.refresh(); });
-    };
-    AssignmentHTML.prototype.deleteRows = function (TRHTMLs) {
-        TRHTMLs.forEach(function (r) { return r.delete(); });
-        this.rowHTMLs = this.rowHTMLs.filter(function (r) { return !TRHTMLs.includes(r); });
-        this.updateQuestionNumbersAndMarkbookIndex();
-    };
-    AssignmentHTML.prototype.duplicateRow = function (TRHTML) {
-        var index = this.rowHTMLs.indexOf(TRHTML);
-        this.addRows([TRHTML.row], index);
-        this.updateQuestionNumbersAndMarkbookIndex();
-    };
-    AssignmentHTML.prototype.deleteAll = function () {
-        this.rowHTMLs.forEach(function (r) { return r.delete(false); });
-        this.rowHTMLs = [];
-    };
-    AssignmentHTML.prototype.updateQuestionNumbersAndMarkbookIndex = function () {
-        var _this = this;
-        this._questionNumbers = [];
-        var qn = 1;
-        for (var _i = 0, _a = this.questionHTMLs; _i < _a.length; _i++) {
-            var rowHTML = _a[_i];
-            this._questionNumbers = this._questionNumbers.concat(rowHTML.setQuestionNumber(qn++));
-        }
-        if (this.settings.jumbledSolutionsDiv) {
-            var divs = [];
-            for (var i = 0; i < this.settings.jumbledSolutionsDiv.children.length; i++) {
-                divs.push(this.settings.jumbledSolutionsDiv.children[i]);
-            }
-            while (this.settings.jumbledSolutionsDiv.firstChild) {
-                this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
-            }
-            helpers.shuffle(divs, this.settings.random);
-            divs.forEach(function (d) { return _this.settings.jumbledSolutionsDiv.appendChild(d); });
-        }
-    };
-    Object.defineProperty(AssignmentHTML.prototype, "questionNumbers", {
-        get: function () {
-            return this._questionNumbers;
-        },
-        enumerable: true,
-        configurable: true
-    });
-    AssignmentHTML.prototype.showAllDecisionImages = function (showwarning) {
-        if (this.settings.numChecksLeft == 1 && showwarning) {
-            if (!confirm("This will show your marks, but also prevent you making any further changes. Are you sure?")) {
-                return;
-            }
-        }
-        this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
-        if (this.settings.numChecksLeft != undefined) {
-            this.settings.numChecksLeft--;
-            this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
-                " (" + this.settings.numChecksLeft + " checks remaining)";
-            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
-                this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
-                    " (" + this.settings.numChecksLeft + " checks remaining)";
-            if (this.submitButton) {
-                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
-            }
-        }
-        var scores = this.settings.scoreGetters ? this.settings.scoreGetters.map(function (f) { return f(); }) : null;
-        if (this.settings.markbookUpdate) {
-            this.settings.markbookUpdate(null, null, "white", false, scores);
-        }
-        if (this.settings.numChecksLeft == 0) {
-            if (this.settings.markbookUpdate) {
-                this.settings.markbookUpdate = undefined;
-            }
-            var scoreParagraph = document.createElement("p");
-            scoreParagraph.id = "scoreParagraph";
-            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
-            this.submitButton.parentElement.appendChild(scoreParagraph, this.submitButton);
-            this.submitButton.remove();
-            this.disabled = true;
-        }
-    };
-    Object.defineProperty(AssignmentHTML.prototype, "revealSections", {
-        get: function () {
-            return this.rowHTMLs.map(function (r) { return r.revealSection; }).join("\n");
-        },
-        enumerable: true,
-        configurable: true
-    });
-    AssignmentHTML.prototype.previewInNewWindow = function (settings) {
-        var styleText = "";
-        var css = document.styleSheets[0];
-        if (css)
-            for (var _i = 0, _a = css.cssRules; _i < _a.length; _i++) {
-                var rule = _a[_i];
-                styleText += rule.cssText;
-            }
-        this.previewWindow = window.open("", "preview", "");
-        if (this.previewWindow["assignment"]) {
-            this.previewWindow["assignment"].deleteAll();
-        }
-        else {
-            this.previewWindow["helpers"] = window.helpersMaker();
-            this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
-            this.previewWindow.stop();
-            var newSettings = {};
-            for (var index in this.settings) {
-                newSettings[index] = this.settings[index];
-            }
-            newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
-            this.previewWindow["assignment"] = new AssignmentHTML(newSettings, null);
-        }
-        this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
-    };
-    Object.defineProperty(AssignmentHTML.prototype, "rows", {
-        get: function () {
-            return this.rowHTMLs.map(function (r) { return r.row; });
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(AssignmentHTML.prototype, "questionHTMLs", {
-        get: function () {
-            return this.rowHTMLs.filter(function (r) { return r instanceof QuestionHTML; });
-        },
-        enumerable: true,
-        configurable: true
-    });
-    Object.defineProperty(AssignmentHTML.prototype, "templateHTMLs", {
-        get: function () {
-            return this.rowHTMLs.filter(function (r) { return r instanceof TemplateHTML; });
-        },
-        enumerable: true,
-        configurable: true
-    });
     AssignmentHTML.prototype.consumeRowsString = function (blobString) {
         var seed = undefined;
         if (!this.settings.journalMode) {
@@ -335,38 +124,212 @@ var AssignmentHTML = (function () {
                 }
                 var scoreParagraph = document.createElement("p");
                 scoreParagraph.id = "scoreParagraph";
-                scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + " (" + this.percentCorrect + "%)</h1>";
+                scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + "</h1>";
                 this.settings.questionsDiv.appendChild(scoreParagraph);
                 this.disabled = true;
             }
         }
     };
-    Object.defineProperty(AssignmentHTML.prototype, "percentStars", {
-        get: function () {
-            if (this.outOf == 0) {
-                return 0;
+    AssignmentHTML.prototype.addRows = function (paramRows, index) {
+        var newRowHTMLs = [];
+        for (var r = 0, row = void 0; row = paramRows[r]; r++) {
+            var showTitle = true;
+            if (this.rowHTMLs.length > 0) {
+                var previousTitle = this.rowHTMLs[this.rowHTMLs.length - 1].row.title;
+                if (previousTitle == row.title) {
+                    showTitle = false;
+                }
             }
-            return Math.round(this.rawStars * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
+            var newRowHTML = null;
+            if (row.purpose == "question") {
+                newRowHTML = new QuestionHTML(row, showTitle, this.settings);
+            }
+            else if (row.purpose == "template" || row.purpose == "sudoku") {
+                newRowHTML = new TemplateHTML(row, showTitle, this.settings);
+            }
+            else {
+                newRowHTML = new RowHTML(row, showTitle, this.settings);
+            }
+            newRowHTML.deleteSelf = function (paramAsn, paramRow) {
+                var asn = paramAsn;
+                var row = paramRow;
+                return function () { asn.deleteRows([row]); };
+            }(this, newRowHTML);
+            newRowHTML.duplicateSelf = function (paramAsn, paramRow) {
+                var asn = paramAsn;
+                var row = paramRow;
+                return function () { asn.duplicateRow(row); };
+            }(this, newRowHTML);
+            newRowHTMLs.push(newRowHTML);
+        }
+        if (index != undefined && index < this.rowHTMLs.length) {
+            var end = this.rowHTMLs.splice(index);
+            this.rowHTMLs = this.rowHTMLs.concat(newRowHTMLs).concat(end);
+        }
+        else {
+            this.rowHTMLs = this.rowHTMLs.concat(newRowHTMLs);
+        }
+        this.refreshDivs();
+        this.updateQuestionNumbers();
+    };
+    AssignmentHTML.prototype.scroll = function () {
+        this.settings.questionsDiv.lastChild.scrollIntoView();
+    };
+    AssignmentHTML.prototype.refreshDivs = function () {
+        var _this = this;
+        while (this.settings.questionsDiv.firstChild) {
+            this.settings.questionsDiv.removeChild(this.settings.questionsDiv.firstChild);
+        }
+        while (this.settings.solutionsDiv && this.settings.solutionsDiv.firstChild) {
+            this.settings.solutionsDiv.removeChild(this.settings.solutionsDiv.firstChild);
+        }
+        while (this.settings.jumbledSolutionsDiv && this.settings.jumbledSolutionsDiv.firstChild) {
+            this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
+        }
+        this.rowHTMLs.forEach(function (r) {
+            return _this.settings.questionsDiv.appendChild(r.outerDiv);
+        });
+        if (this.settings.solutionsDiv) {
+            this.rowHTMLs.forEach(function (r) {
+                return _this.settings.solutionsDiv.appendChild(r.solutionDiv);
+            });
+        }
+        if (this.settings.jumbledSolutionsDiv) {
+            this.rowHTMLs.forEach(function (r) {
+                return r.jumbleDivs.forEach(function (s) { return _this.settings.jumbledSolutionsDiv.appendChild(s); });
+            });
+        }
+    };
+    AssignmentHTML.prototype.refresh = function () {
+        this.templateHTMLs.forEach(function (r) { return r.refresh(); });
+    };
+    AssignmentHTML.prototype.deleteRows = function (TRHTMLs) {
+        TRHTMLs.forEach(function (r) { return r.delete(); });
+        this.rowHTMLs = this.rowHTMLs.filter(function (r) { return !TRHTMLs.includes(r); });
+        this.updateQuestionNumbers();
+    };
+    AssignmentHTML.prototype.duplicateRow = function (TRHTML) {
+        var index = this.rowHTMLs.indexOf(TRHTML);
+        this.addRows([TRHTML.row], index);
+        this.updateQuestionNumbers();
+    };
+    AssignmentHTML.prototype.deleteAll = function () {
+        this.rowHTMLs.forEach(function (r) { return r.delete(false); });
+        this.rowHTMLs = [];
+    };
+    AssignmentHTML.prototype.updateQuestionNumbers = function () {
+        var _this = this;
+        this._questionNumbers = [];
+        var qn = 1;
+        for (var _i = 0, _a = this.questionHTMLs; _i < _a.length; _i++) {
+            var rowHTML = _a[_i];
+            rowHTML.questionNumber = qn++;
+        }
+        if (this.settings.jumbledSolutionsDiv) {
+            var divs = [];
+            for (var i = 0; i < this.settings.jumbledSolutionsDiv.children.length; i++) {
+                divs.push(this.settings.jumbledSolutionsDiv.children[i]);
+            }
+            while (this.settings.jumbledSolutionsDiv.firstChild) {
+                this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
+            }
+            helpers.shuffle(divs, this.settings.random);
+            divs.forEach(function (d) { return _this.settings.jumbledSolutionsDiv.appendChild(d); });
+        }
+    };
+    Object.defineProperty(AssignmentHTML.prototype, "questionNumbers", {
+        get: function () {
+            return this.questionHTMLs.map(function (r) { return r.questionNumbers; }).reduce(function (a, b) { return a.concat(b); }, []);
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(AssignmentHTML.prototype, "percentAttempted", {
-        get: function () {
-            if (this.outOf == 0) {
-                return 0;
+    AssignmentHTML.prototype.showAllDecisionImages = function (showwarning) {
+        if (this.settings.numChecksLeft == 1 && showwarning) {
+            if (!confirm("This will show your marks, but also prevent you making any further changes. Are you sure?")) {
+                return;
             }
-            return Math.round(this.rawAttempted * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
+        }
+        this.questionHTMLs.forEach(function (s) { return s.showDecisionImage(); });
+        if (this.settings.numChecksLeft != undefined) {
+            this.settings.numChecksLeft--;
+            this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
+                " (" + this.settings.numChecksLeft + " checks remaining)";
+            var checksLeftText = this.settings.numChecksLeft < 1 ? "" :
+                this.settings.numChecksLeft == 1 ? " (" + this.settings.numChecksLeft + " check remaining)" :
+                    " (" + this.settings.numChecksLeft + " checks remaining)";
+            if (this.submitButton) {
+                this.submitButton.innerText = this.settings.submitButtonText + checksLeftText;
+            }
+        }
+        var scores = {};
+        scores[CHECKS_COLUMN] =
+            { "value": this.settings.numChecksLeft,
+                "append": false };
+        if (this.settings.markbookUpdate) {
+            this.settings.markbookUpdate(scores);
+        }
+        if (this.settings.numChecksLeft == 0) {
+            if (this.settings.markbookUpdate) {
+                this.settings.markbookUpdate = undefined;
+            }
+            var scoreParagraph = document.createElement("p");
+            scoreParagraph.id = "scoreParagraph";
+            scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + "</h1>";
+            this.submitButton.parentElement.appendChild(scoreParagraph, this.submitButton);
+            this.submitButton.remove();
+            this.disabled = true;
+        }
+    };
+    Object.defineProperty(AssignmentHTML.prototype, "revealSections", {
+        get: function () {
+            return this.rowHTMLs.map(function (r) { return r.revealSection; }).join("\n");
         },
         enumerable: true,
         configurable: true
     });
-    Object.defineProperty(AssignmentHTML.prototype, "percentCorrect", {
-        get: function () {
-            if (this.outOf == 0) {
-                return 0;
+    AssignmentHTML.prototype.previewInNewWindow = function (settings) {
+        var styleText = "";
+        var css = document.styleSheets[0];
+        if (css)
+            for (var _i = 0, _a = css.cssRules; _i < _a.length; _i++) {
+                var rule = _a[_i];
+                styleText += rule.cssText;
             }
-            return Math.round(this.rawCorrect * 100 / (this.settings.outOfOnlyQuestionsAttempted ? this.rawAttempted : this.outOf));
+        this.previewWindow = window.open("", "preview", "");
+        if (this.previewWindow["assignment"]) {
+            this.previewWindow["assignment"].deleteAll();
+        }
+        else {
+            this.previewWindow["helpers"] = window.helpersMaker();
+            this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
+            this.previewWindow.stop();
+            var newSettings = {};
+            for (var index in this.settings) {
+                newSettings[index] = this.settings[index];
+            }
+            newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+            this.previewWindow["assignment"] = new AssignmentHTML(newSettings);
+        }
+        this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
+    };
+    Object.defineProperty(AssignmentHTML.prototype, "rows", {
+        get: function () {
+            return this.rowHTMLs.map(function (r) { return r.row; });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "questionHTMLs", {
+        get: function () {
+            return this.rowHTMLs.filter(function (r) { return r instanceof QuestionHTML; });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(AssignmentHTML.prototype, "templateHTMLs", {
+        get: function () {
+            return this.rowHTMLs.filter(function (r) { return r instanceof TemplateHTML; });
         },
         enumerable: true,
         configurable: true
@@ -399,16 +362,26 @@ var AssignmentHTML = (function () {
         enumerable: true,
         configurable: true
     });
+    Object.defineProperty(AssignmentHTML.prototype, "aggregateScoreGetter", {
+        get: function () {
+            return function (paramAsn) {
+                var asn = paramAsn;
+                return function () {
+                    return {
+                        "Correct": { "value": asn.rawCorrect },
+                        "Attempted": { "value": asn.rawAttempted },
+                        "Stars": { "value": asn.rawStars },
+                        "Out of": { "value": asn.outOf }
+                    };
+                };
+            }(this);
+        },
+        enumerable: true,
+        configurable: true
+    });
     AssignmentHTML.prototype.shuffle = function () {
-        var _this = this;
-        while (this.settings.questionsDiv.firstChild) {
-            this.settings.questionsDiv.removeChild(this.settings.questionsDiv.firstChild);
-        }
-        while (this.settings.solutionsDiv && this.settings.solutionsDiv.firstChild) {
-            this.settings.solutionsDiv.removeChild(this.settings.solutionsDiv.firstChild);
-        }
         this.rowHTMLs = helpers.shuffle(this.rowHTMLs, this.settings.random);
-        this.rowHTMLs.forEach(function (r) { return _this.insertRowIntoDivs(r); });
+        this.refreshDivs();
     };
     AssignmentHTML.prototype.truncate = function (n) {
         if (n == undefined) {
@@ -2180,9 +2153,6 @@ var RowHTML = (function () {
         get: function () {
             if (!this._cellCups) {
                 this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
-                if (this.solutions) {
-                    this.solutions.forEach(function (s) { return s.importResponses(); });
-                }
                 if (this.errors.length > 0) {
                     var para = document.createElement("p");
                     para.className = "errorList";
@@ -2364,7 +2334,7 @@ var QuestionHTML = (function (_super) {
                     j.className = "jumbleDivs";
                     this._jumbleDivs.push(j);
                 }
-                this.refreshsolutionDiv();
+                this.refreshDivs();
             }
             return this._jumbleDivs;
         },
@@ -2376,25 +2346,16 @@ var QuestionHTML = (function (_super) {
             if (!this._solutionDiv) {
                 this._solutionDiv = document.createElement("div");
                 this._solutionDiv.className = "solutions";
-                this.refreshsolutionDiv();
+                this.refreshDivs();
             }
             return this._solutionDiv;
         },
         enumerable: true,
         configurable: true
     });
-    QuestionHTML.prototype.refreshsolutionDiv = function () {
-        var buffer = "";
-        var ret = [];
-        for (var i = 0, solution; solution = this.solutions[i]; i++) {
-            var qnNum = this.questionNum + String.fromCharCode(i + 97) + ".";
-            ret.push(qnNum);
-            if (solution.affectsScore) {
-                buffer += qnNum + (" " + solution.solutionText + " <br>");
-            }
-        }
+    QuestionHTML.prototype.refreshDivs = function () {
         if (this._solutionDiv) {
-            this._solutionDiv.innerHTML = "<p>" + buffer + "</p>";
+            this._solutionDiv.innerHTML = "<p>" + this.solutionText + "</p>";
         }
         if (this._jumbleDivs) {
             for (var i = 0, solution; solution = this.solutions[i]; i++) {
@@ -2403,17 +2364,45 @@ var QuestionHTML = (function (_super) {
                 }
             }
         }
-        return ret;
+        if (this.questionNumberDiv) {
+            this.questionNumberDiv.innerText = "Q" + this.questionNumber + ".";
+        }
     };
     QuestionHTML.prototype.replacedTemplates = function () {
         var comments = this.row.comment.split('\n');
         return comments.map(function (c) { return new questionTemplate(c); });
     };
-    QuestionHTML.prototype.setQuestionNumber = function (n) {
-        this.questionNum = n;
-        this.questionNumberDiv.innerText = "Q" + this.questionNum + ".";
-        return this.refreshsolutionDiv();
-    };
+    Object.defineProperty(QuestionHTML.prototype, "questionNumber", {
+        get: function () {
+            return this._questionNumber;
+        },
+        set: function (n) {
+            for (var i = 0, solution; solution = this.solutions[i]; i++) {
+                if (solution.affectsScore) {
+                    solution.questionNumber = n.toString() + String.fromCharCode(97 + i);
+                }
+            }
+            this._questionNumber = n;
+            this.refreshDivs();
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(QuestionHTML.prototype, "questionNumbers", {
+        get: function () {
+            return this.solutions.filter(function (s) { return s.affectsScore; }).map(function (s) { return s.questionNumber; });
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(QuestionHTML.prototype, "solutionText", {
+        get: function () {
+            return this.solutions.filter(function (s) { return s.affectsScore; })
+                .map(function (s) { return "Q" + s.questionNumber + ". " + s.solutionText; }).join("<br>");
+        },
+        enumerable: true,
+        configurable: true
+    });
     QuestionHTML.prototype.injector = function (paramTemplates, paramSolutions, paramSettings) {
         var currentRadioSet = null;
         var templates = paramTemplates;
@@ -2566,7 +2555,7 @@ var TemplateHTML = (function (_super) {
     TemplateHTML.prototype.refresh = function () {
         this._cellCups = null;
         this.dynamicDiv.innerHTML = this.cellCups.map(function (c) { return c.HTML; }).join("");
-        this.refreshsolutionDiv();
+        this.refreshDivs();
     };
     return TemplateHTML;
 }(QuestionHTML));
@@ -2635,8 +2624,8 @@ var Solution = (function () {
         field.onResponse = this.onResponseInjector(this);
     }
     Solution.prototype.importResponses = function () {
-        if (this.settings.responses && this.settings.responses[this.markbookIndex]) {
-            this.field.elementValue = this.settings.responses[this.markbookIndex];
+        if (this.settings.responses && this._questionNumber in this.settings.responses) {
+            this.field.elementValue = this.settings.responses[this._questionNumber];
             this.updateScoreAndImage();
             this.notYetChecked = false;
             this.elementHasChangedSinceLastChecked = true;
@@ -2651,6 +2640,17 @@ var Solution = (function () {
         get: function () {
             return !(this.field.disabled || this.template == null ||
                 !this.triggerCalculateFromLateFunction || this.field instanceof PoundCup);
+        },
+        enumerable: true,
+        configurable: true
+    });
+    Object.defineProperty(Solution.prototype, "questionNumber", {
+        get: function () {
+            return this._questionNumber;
+        },
+        set: function (value) {
+            this._questionNumber = value;
+            this.importResponses();
         },
         enumerable: true,
         configurable: true
@@ -2724,9 +2724,14 @@ var Solution = (function () {
                 var doAppend = !s.notYetChecked &&
                     s.triggerCalculateFromLateFunction &&
                     s.settings.appendToMarkbook;
-                var scores = s.settings.scoreGetters ? s.settings.scoreGetters.map(function (f) { return f(); }) : null;
-                if (s.settings.markbookUpdate && helpers.isNumeric(s.markbookIndex)) {
-                    s.settings.markbookUpdate(s.markbookIndex, s.field.elementValue, s.color, doAppend, scores);
+                var scores = {};
+                scores[s.questionNumber] = {
+                    "value": s.field.elementValue,
+                    "color": s.color,
+                    "append": doAppend
+                };
+                if (s.settings.markbookUpdate) {
+                    s.settings.markbookUpdate(scores);
                 }
             }
         };
