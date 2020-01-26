@@ -25,10 +25,6 @@ var AssignmentHTML = (function () {
             }
             this.startTimer();
         }
-        this.settings.markbookUpdate = this.settings.markbookUpdate;
-        this.settings.user = this.settings.user;
-        this.settings.workbookId = this.settings.workbookId;
-        this.settings.sheetName = this.settings.sheetName;
         if (false) {
             window.onblur = function (paramAsn) {
                 var asn = paramAsn;
@@ -190,14 +186,16 @@ var AssignmentHTML = (function () {
             return _this.settings.questionsDiv.appendChild(r.outerDiv);
         });
         if (this.settings.solutionsDiv) {
-            this.rowHTMLs.forEach(function (r) {
-                return _this.settings.solutionsDiv.appendChild(r.solutionDiv);
-            });
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv);
+            }
         }
         if (this.settings.jumbledSolutionsDiv) {
-            this.rowHTMLs.forEach(function (r) {
-                return r.jumbleDivs.forEach(function (s) { return _this.settings.jumbledSolutionsDiv.appendChild(s); });
-            });
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                for (var j = 0; j < this.questionHTMLs[i].jumbleDivs.length; j++) {
+                    this.settings.jumbledSolutionsDiv.appendChild(this.questionHTMLs[i].jumbleDivs[j]);
+                }
+            }
         }
     };
     AssignmentHTML.prototype.refresh = function () {

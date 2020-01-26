@@ -42,14 +42,7 @@ class AssignmentHTML {
                 this.settings.timeRemaining = Number(this.settings["time limit"]);
             }
             this.startTimer();
-        }
-
-        this.settings.markbookUpdate = this.settings.markbookUpdate;
-
-        this.settings.user = this.settings.user;
-        this.settings.workbookId = this.settings.workbookId;
-        this.settings.sheetName = this.settings.sheetName;
-                    
+        }                    
 
         //Number of clicks away
         if (false) {
@@ -245,14 +238,16 @@ class AssignmentHTML {
             this.settings.questionsDiv.appendChild(r.outerDiv)
             );
         if (this.settings.solutionsDiv) {
-            this.rowHTMLs.forEach(r => 
-                this.settings.solutionsDiv.appendChild(r.solutionDiv)
-            );
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv)
+            }
         }
         if (this.settings.jumbledSolutionsDiv) {
-            this.rowHTMLs.forEach(r => 
-                r.jumbleDivs.forEach(s => this.settings.jumbledSolutionsDiv.appendChild(s))
-            );
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                for (var j = 0; j < this.questionHTMLs[i].jumbleDivs.length; j++) {
+                    this.settings.jumbledSolutionsDiv.appendChild(this.questionHTMLs[i].jumbleDivs[j])
+                }
+            }
         }
 
     }

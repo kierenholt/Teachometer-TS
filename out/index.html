@@ -119,8 +119,18 @@ div#buttons {
 					[{
 						"purpose" : "question", 
 						"leftRight" : ["left ___","right"],
-						"title" : " title ", 
+						"title" : " question ", 
 						"comment" : "4"
+					}]);
+	}
+
+	function addNewRow2() {
+		window.assignment.addRows(
+					[{
+						"purpose" : "notes", 
+						"leftRight" : ["left ___","right"],
+						"title" : " notes", 
+						"comment" : ""
 					}]);
 	}
 
@@ -364,7 +374,8 @@ c + 2
 	<button id=button type="button" onclick="doJSON()">show rows JSON</button> 
 	<button id=button type="button" onclick="window.assignment.refresh()">refresh</button> 
 	<button id=button type="button" onclick="window.assignment.deleteAll()">clear All</button> 
-	<button id=button type="button" onclick="addNewRow()">add new row</button>
+	<button id=button type="button" onclick="addNewRow()">add question</button>
+	<button id=button type="button" onclick="addNewRow2()">add notes</button>
 	<button id=button type="button" onclick="window.assignment.shuffle();window.assignment.updateQuestionNumbersAndMarkbookIndex();">shuffle</button>
 	<button id=button type="button" onclick="window.assignment.truncate()">truncate 2</button>
 	<button id=button type="button" onclick="window.assignment.showAllDecisionImages()">check answers</button>
