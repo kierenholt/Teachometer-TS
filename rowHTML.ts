@@ -127,7 +127,10 @@ class RowHTML {
                 if (markdown) {
                     let cellCup = new DivCup(markdown);
 
-                //STRUCTURAL CUPS
+                //BLOCK LEVEL CUPS
+
+                    //replace rollovers
+                    cellCup.replace(/(\?{3,}[^\?]*\?{3,})/, (s) => { return new RolloverCup(s); }, null);
 
                     //replace code
                     cellCup.replace(/(`{3,}[^`]*`{3,})/, (s) => { return new CodeCup(s); }, null);                

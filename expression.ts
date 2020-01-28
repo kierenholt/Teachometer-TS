@@ -253,7 +253,6 @@ class SimpleExpression implements IExpression {
         }
         
         //replace -- with +
-        buffer = helpers.replaceAll(buffer," ","");
         buffer = helpers.replaceAll(buffer,"\t","");
         //if (buffer[0] == '"') {return buffer;}
         

@@ -778,6 +778,18 @@ var CupContainer = (function (_super) {
     });
     return CupContainer;
 }(Cup));
+var RolloverCup = (function (_super) {
+    __extends(RolloverCup, _super);
+    function RolloverCup(str) {
+        var _this = this;
+        str = helpers.trimChar(str, "?");
+        _this = _super.call(this, str) || this;
+        _this.attributes["class"] = "rollover";
+        _this.children = [new ChunkCup(str)];
+        return _this;
+    }
+    return RolloverCup;
+}(CupContainer));
 var CodeCup = (function (_super) {
     __extends(CodeCup, _super);
     function CodeCup(str) {
@@ -1481,7 +1493,6 @@ var SimpleExpression = (function () {
         if (helpers.IsNullOrWhiteSpace(buffer)) {
             return "";
         }
-        buffer = helpers.replaceAll(buffer, " ", "");
         buffer = helpers.replaceAll(buffer, "\t", "");
         buffer = helpers.replaceAll(buffer, "--", "+");
         var evaluated = eval(buffer);
@@ -2203,6 +2214,7 @@ var RowHTML = (function () {
                     var markdown = _a[_i];
                     if (markdown) {
                         var cellCup = new DivCup(markdown);
+                        cellCup.replace(/(\?{3,}[^\?]*\?{3,})/, function (s) { return new RolloverCup(s); }, null);
                         cellCup.replace(/(`{3,}[^`]*`{3,})/, function (s) { return new CodeCup(s); }, null);
                         cellCup.replace(/(?:^|\n)([\|¦](?:[^\n]|\n\|)*)/, function (s) { return new TableCup(s); }, null);
                         cellCup.replace(/(?:^|\n)(@\[[0-9]+,[0-9]+\]\([^)]*\))/, function (s) { return new RelativePositionCup(s); }, null);

@@ -156,7 +156,22 @@ div#buttons {
 	
 
 	<table id="tests" hidden>
-<tr>
+
+		<tr><td>notes</td><td>
+			???
+			code
+			goes here
+				indent
+					indent
+			![image](https://i.imgur.com/XsHuvZd.png)
+			???
+			</td>
+			<td>right </td>
+			<td>code needs to respect white space</td>
+			<td></td></tr>
+
+	
+		<tr>
 	<td>template</td>
 	<td>Travelling only right and down, how many routes from A to B?
 
@@ -374,7 +389,7 @@ c + 2
 	<button id=button type="button" onclick="doJSON()">show rows JSON</button> 
 	<button id=button type="button" onclick="window.assignment.refresh()">refresh</button> 
 	<button id=button type="button" onclick="window.assignment.deleteAll()">clear All</button> 
-	<button id=button type="button" onclick="addNewRow()">add question</button>
+	<button id=button type="button" onclick="assignment.addRows([assignment.rows[0]])">add question</button>
 	<button id=button type="button" onclick="addNewRow2()">add notes</button>
 	<button id=button type="button" onclick="window.assignment.shuffle();window.assignment.updateQuestionNumbersAndMarkbookIndex();">shuffle</button>
 	<button id=button type="button" onclick="window.assignment.truncate()">truncate 2</button>

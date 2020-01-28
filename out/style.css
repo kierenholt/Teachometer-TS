@@ -167,6 +167,23 @@ table.fraction > tbody > tr:first-child > td {
   border-width: 1px;
 }
 
+/* ROLLOVERS */
+
+div.rollover:not(:hover) {
+  color: transparent;
+  background: repeating-linear-gradient(
+  45deg,
+  #fff,
+  #fff 10px,
+  #aaa 10px,
+  #aaa 20px
+  );
+}
+
+div.rollover:not(:hover) img {
+  opacity: 0;
+}
+
 /*** IMAGES ***/
 img {
   /*background-color:#fff; interupts the teachometer logo button*/
