@@ -87,7 +87,9 @@ class Solution {
             else { 
                 //this will remove too many dps etc.
                 if (this.template instanceof Template) {
-                    return calculatedJSONtoViewable(this.template.calculatedValue); 
+                    var commentIndex = this.template._text.lastIndexOf("//");
+                    var comment = (commentIndex == -1) ? "" : " (" + this.template._text.substring(commentIndex + 2) + ")"; //the bit after //
+                    return calculatedJSONtoViewable(this.template.calculatedValue) + comment; 
                 }
                 else { //for questiontemplate
                     return this.template.calculatedValue; 
@@ -120,9 +122,9 @@ class Solution {
     showDecisionImage() {
         if (this.affectsScore && this.elementHasChangedSinceLastChecked) {
             this.field.decisionImage = this.image;
+            this.elementHasChangedSinceLastChecked = false;
+            this.notYetChecked = false;
         }
-        this.elementHasChangedSinceLastChecked = false;
-        this.notYetChecked = false;
     }
     
 //ONRESPONSE - check and store decision, call markbookUpdate
@@ -220,6 +222,18 @@ class Solution {
             this.color = this.image == decisionImageEnum.Star ? "LimeGreen" :
                     this.image == decisionImageEnum.Tick ? "LightGreen" :
                     this.image == decisionImageEnum.Cross ? "LightSalmon" : "Salmon";
+                    
+        } 
+
+        //if first response then check immediately - not applicable in test mode though
+        if (this.notYetChecked && this.settings.numChecksLeft < 0) {
+            this.showDecisionImage();
+        }
+        else {
+            if (this.settings.showUseCheckButtonMessage !== false) {
+                window.alert("To check an answer after the first attempt, you must use the 'check answers button' at the bottom of the page.");
+                this.settings.showUseCheckButtonMessage = false;
+            }
         }
     }
 }

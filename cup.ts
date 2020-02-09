@@ -33,6 +33,8 @@ class ImageCup extends Cup { // ![]()
   comment: any; 
   source: any;
   width: number;
+  domain: any;
+
   constructor(str) {
     super(str);
 
@@ -46,6 +48,7 @@ class ImageCup extends Cup { // ![]()
       this.attributes["style"] = `position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%`;
       this.attributes["src"] = this.source;
       this.attributes["alt"] = this.comment;
+      this.domain = helpers.getDomainFromUrl(this.source);
   }
 
   
@@ -63,8 +66,17 @@ class ImageCup extends Cup { // ![]()
     this.comment = this.comment.replace(patternMakeItGlobal, replacer);
     this.attributes["src"] = this.source;
     this.attributes["alt"] = this.comment;
-
+    this.domain = helpers.getDomainFromUrl(this.source);
   }
+
+  //https://www.easybib.com/guides/forums/topic/q-cite-image-found-online-search-engine-google-images/
+    //overloads HTML getter in order to insert image citation
+  get HTML() { 
+    return `<${this.tagName} ${this.joinedAttributes} >${this.innerHTML}</${this.tagName}>
+      <cite>${this.comment} Digital image taken from <a href=${this.source}>${this.domain}</a></cite>.
+      `; 
+  }
+
 }
 
 
@@ -468,7 +480,7 @@ class FieldCup extends Cup implements Field {
 
   set disabled(value) { 
     this._element.disabled = value;
-    if (this._decisionElement != null) this._decisionElement.hidden = value;  
+    //if (this._decisionElement != null) this._decisionElement.hidden = value;  do not hide the decision when disabled
   }
   get disabled() { return this._element.disabled; }
 

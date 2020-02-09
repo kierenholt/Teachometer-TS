@@ -75,15 +75,12 @@ div#buttons {
             "showRowTitles": true,
             "markbookUpdate": false,
 			"outOfOnlyQuestionsAttempted": true,
-			"appendToMarkbook": false
+			"appendToMarkbook": false,			
+			"checks limit" : -1
 			};
 
-		var markbookSettings = {
-			"scoreHeaders": "",
-			"scores": ""
-		};
 			
-		window.assignment = new AssignmentHTML(internalSettings, markbookSettings);
+		window.assignment = new AssignmentHTML(internalSettings);
 
 		var rows = [];
 		for (let i = 0, row; row = inputTable.rows[i]; i++) {
@@ -97,7 +94,6 @@ div#buttons {
 				);
 		}
 		window.assignment.addRows(rows,false);
-		
 	};
 	
 	function doReveal() {
@@ -157,6 +153,17 @@ div#buttons {
 
 	<table id="tests" hidden>
 
+		<tr><td>template</td><td>
+			100 roughly = ___
+			100 exactly = ___
+			</td>
+			<td>right </td>
+			<td>exact checking if in quotes</td>
+			<td>100
+"100"
+			</td></tr>
+
+
 		<tr><td>notes</td><td>
 			???
 			code
@@ -167,7 +174,7 @@ div#buttons {
 			???
 			</td>
 			<td>right </td>
-			<td>code needs to respect white space</td>
+			<td>rollover block</td>
 			<td></td></tr>
 
 	
@@ -180,7 +187,7 @@ div#buttons {
 	
 [https://www.youtube.com/watch?v=zvX66uUfF68](https://www.youtube.com/watch?v=zvX66uUfF68)</td>
 <td>Routes</td>
-<td>20,11,18,11,19
+<td>20,11,18,11,19 //A COMMENT
 "https://i.imgur.com/8od3b5h.png","https://i.imgur.com/eD28E5w.png","https://i.imgur.com/XsHuvZd.png","https://i.imgur.com/7PsvZgj.png","https://i.imgur.com/wgQUWUj.png"</td></tr>
 
 		<tr><td>notes</td>

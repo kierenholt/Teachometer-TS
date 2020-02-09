@@ -347,8 +347,9 @@ class AssignmentHTML {
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
             scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf}</h1>`;
-            this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
-                        
+            if (this.submitButton.parentElement) {
+                this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
+            }
             this.submitButton.remove();
             this.disabled = true;
         }
@@ -381,11 +382,9 @@ ${styleText}
 </body>
 `);
                 this.previewWindow.stop();
-                let newSettings = {};
-                for (let index in this.settings) {newSettings[index] = this.settings[index];}
-                newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+                settings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
 
-                this.previewWindow["assignment"] = new AssignmentHTML(newSettings);
+                this.previewWindow["assignment"] = new AssignmentHTML(settings);
             }
             this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     }

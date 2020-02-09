@@ -123,6 +123,12 @@ var helpersMaker = function() {
       return ret;
     }
 
+    var getDomainFromUrl = function(url) {
+      var a = document.createElement('a');
+      a.setAttribute('href', url);
+      return a.hostname;
+    }
+
     return {
         CombineHashCodes: CombineHashCodes,
         IsNullOrEmpty: IsNullOrEmpty,
@@ -134,7 +140,8 @@ var helpersMaker = function() {
         stripQuotes: stripQuotes,
         trimChar: trimChar,
         isNumeric: isNumeric,
-        descendants: descendants
+        descendants: descendants,
+        getDomainFromUrl: getDomainFromUrl
       };
 
 };
