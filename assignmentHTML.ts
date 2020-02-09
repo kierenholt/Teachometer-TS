@@ -42,14 +42,7 @@ class AssignmentHTML {
                 this.settings.timeRemaining = Number(this.settings["time limit"]);
             }
             this.startTimer();
-        }
-
-        this.settings.markbookUpdate = this.settings.markbookUpdate;
-
-        this.settings.user = this.settings.user;
-        this.settings.workbookId = this.settings.workbookId;
-        this.settings.sheetName = this.settings.sheetName;
-                    
+        }                    
 
         //Number of clicks away
         if (false) {
@@ -245,14 +238,16 @@ class AssignmentHTML {
             this.settings.questionsDiv.appendChild(r.outerDiv)
             );
         if (this.settings.solutionsDiv) {
-            this.rowHTMLs.forEach(r => 
-                this.settings.solutionsDiv.appendChild(r.solutionDiv)
-            );
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv)
+            }
         }
         if (this.settings.jumbledSolutionsDiv) {
-            this.rowHTMLs.forEach(r => 
-                r.jumbleDivs.forEach(s => this.settings.jumbledSolutionsDiv.appendChild(s))
-            );
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                for (var j = 0; j < this.questionHTMLs[i].jumbleDivs.length; j++) {
+                    this.settings.jumbledSolutionsDiv.appendChild(this.questionHTMLs[i].jumbleDivs[j])
+                }
+            }
         }
 
     }
@@ -352,8 +347,9 @@ class AssignmentHTML {
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
             scoreParagraph.innerHTML = `<h1>FINAL SCORE: ${this.rawCorrect} out of ${this.outOf}</h1>`;
-            this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
-                        
+            if (this.submitButton.parentElement) {
+                this.submitButton.parentElement.appendChild(scoreParagraph,this.submitButton);
+            }
             this.submitButton.remove();
             this.disabled = true;
         }
@@ -386,11 +382,9 @@ ${styleText}
 </body>
 `);
                 this.previewWindow.stop();
-                let newSettings = {};
-                for (let index in this.settings) {newSettings[index] = this.settings[index];}
-                newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+                settings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
 
-                this.previewWindow["assignment"] = new AssignmentHTML(newSettings);
+                this.previewWindow["assignment"] = new AssignmentHTML(settings);
             }
             this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     }

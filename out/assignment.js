@@ -25,10 +25,6 @@ var AssignmentHTML = (function () {
             }
             this.startTimer();
         }
-        this.settings.markbookUpdate = this.settings.markbookUpdate;
-        this.settings.user = this.settings.user;
-        this.settings.workbookId = this.settings.workbookId;
-        this.settings.sheetName = this.settings.sheetName;
         if (false) {
             window.onblur = function (paramAsn) {
                 var asn = paramAsn;
@@ -190,14 +186,16 @@ var AssignmentHTML = (function () {
             return _this.settings.questionsDiv.appendChild(r.outerDiv);
         });
         if (this.settings.solutionsDiv) {
-            this.rowHTMLs.forEach(function (r) {
-                return _this.settings.solutionsDiv.appendChild(r.solutionDiv);
-            });
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv);
+            }
         }
         if (this.settings.jumbledSolutionsDiv) {
-            this.rowHTMLs.forEach(function (r) {
-                return r.jumbleDivs.forEach(function (s) { return _this.settings.jumbledSolutionsDiv.appendChild(s); });
-            });
+            for (var i = 0; i < this.questionHTMLs.length; i++) {
+                for (var j = 0; j < this.questionHTMLs[i].jumbleDivs.length; j++) {
+                    this.settings.jumbledSolutionsDiv.appendChild(this.questionHTMLs[i].jumbleDivs[j]);
+                }
+            }
         }
     };
     AssignmentHTML.prototype.refresh = function () {
@@ -276,7 +274,9 @@ var AssignmentHTML = (function () {
             var scoreParagraph = document.createElement("p");
             scoreParagraph.id = "scoreParagraph";
             scoreParagraph.innerHTML = "<h1>FINAL SCORE: " + this.rawCorrect + " out of " + this.outOf + "</h1>";
-            this.submitButton.parentElement.appendChild(scoreParagraph, this.submitButton);
+            if (this.submitButton.parentElement) {
+                this.submitButton.parentElement.appendChild(scoreParagraph, this.submitButton);
+            }
             this.submitButton.remove();
             this.disabled = true;
         }
@@ -304,12 +304,8 @@ var AssignmentHTML = (function () {
             this.previewWindow["helpers"] = window.helpersMaker();
             this.previewWindow.document.write("\n<head>\n<style>\n" + styleText + "\n</style>\n</head>\n<body>\n<div id=\"questionsDiv\"></div>\n</body>\n");
             this.previewWindow.stop();
-            var newSettings = {};
-            for (var index in this.settings) {
-                newSettings[index] = this.settings[index];
-            }
-            newSettings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
-            this.previewWindow["assignment"] = new AssignmentHTML(newSettings);
+            settings["questionsDiv"] = this.previewWindow.document.getElementById("questionsDiv");
+            this.previewWindow["assignment"] = new AssignmentHTML(settings);
         }
         this.previewWindow["assignment"].consumeRowsString(JSON.stringify(this.rows));
     };
@@ -547,6 +543,7 @@ var ImageCup = (function (_super) {
         _this.attributes["style"] = "position: relative; left:" + (50 - _this.width / 2) + "%; width:" + _this.width + "%";
         _this.attributes["src"] = _this.source;
         _this.attributes["alt"] = _this.comment;
+        _this.domain = helpers.getDomainFromUrl(_this.source);
         return _this;
     }
     ImageCup.prototype.textReplace = function (patternMakeItGlobal, getTemplateValue) {
@@ -557,7 +554,15 @@ var ImageCup = (function (_super) {
         this.comment = this.comment.replace(patternMakeItGlobal, replacer);
         this.attributes["src"] = this.source;
         this.attributes["alt"] = this.comment;
+        this.domain = helpers.getDomainFromUrl(this.source);
     };
+    Object.defineProperty(ImageCup.prototype, "HTML", {
+        get: function () {
+            return "<" + this.tagName + " " + this.joinedAttributes + " >" + this.innerHTML + "</" + this.tagName + ">\n      <cite>" + this.comment + " Digital image taken from <a href=" + this.source + ">" + this.domain + "</a></cite>.\n      ";
+        },
+        enumerable: true,
+        configurable: true
+    });
     return ImageCup;
 }(Cup));
 var AnchorCup = (function (_super) {
@@ -780,6 +785,18 @@ var CupContainer = (function (_super) {
     });
     return CupContainer;
 }(Cup));
+var RolloverCup = (function (_super) {
+    __extends(RolloverCup, _super);
+    function RolloverCup(str) {
+        var _this = this;
+        str = helpers.trimChar(str, "?");
+        _this = _super.call(this, str) || this;
+        _this.attributes["class"] = "rollover";
+        _this.children = [new ChunkCup(str)];
+        return _this;
+    }
+    return RolloverCup;
+}(CupContainer));
 var CodeCup = (function (_super) {
     __extends(CodeCup, _super);
     function CodeCup(str) {
@@ -955,8 +972,6 @@ var FieldCup = (function (_super) {
         get: function () { return this._element.disabled; },
         set: function (value) {
             this._element.disabled = value;
-            if (this._decisionElement != null)
-                this._decisionElement.hidden = value;
         },
         enumerable: true,
         configurable: true
@@ -1483,7 +1498,6 @@ var SimpleExpression = (function () {
         if (helpers.IsNullOrWhiteSpace(buffer)) {
             return "";
         }
-        buffer = helpers.replaceAll(buffer, " ", "");
         buffer = helpers.replaceAll(buffer, "\t", "");
         buffer = helpers.replaceAll(buffer, "--", "+");
         var evaluated = eval(buffer);
@@ -2069,6 +2083,11 @@ var helpersMaker = function () {
         }
         return ret;
     };
+    var getDomainFromUrl = function (url) {
+        var a = document.createElement('a');
+        a.setAttribute('href', url);
+        return a.hostname;
+    };
     return {
         CombineHashCodes: CombineHashCodes,
         IsNullOrEmpty: IsNullOrEmpty,
@@ -2080,7 +2099,8 @@ var helpersMaker = function () {
         stripQuotes: stripQuotes,
         trimChar: trimChar,
         isNumeric: isNumeric,
-        descendants: descendants
+        descendants: descendants,
+        getDomainFromUrl: getDomainFromUrl
     };
 };
 var helpers = helpersMaker();
@@ -2205,6 +2225,7 @@ var RowHTML = (function () {
                     var markdown = _a[_i];
                     if (markdown) {
                         var cellCup = new DivCup(markdown);
+                        cellCup.replace(/(\?{3,}[^\?]*\?{3,})/, function (s) { return new RolloverCup(s); }, null);
                         cellCup.replace(/(`{3,}[^`]*`{3,})/, function (s) { return new CodeCup(s); }, null);
                         cellCup.replace(/(?:^|\n)([\|¦](?:[^\n]|\n\|)*)/, function (s) { return new TableCup(s); }, null);
                         cellCup.replace(/(?:^|\n)(@\[[0-9]+,[0-9]+\]\([^)]*\))/, function (s) { return new RelativePositionCup(s); }, null);
@@ -2663,7 +2684,9 @@ var Solution = (function () {
                 }
                 else {
                     if (this.template instanceof Template) {
-                        return calculatedJSONtoViewable(this.template.calculatedValue);
+                        var commentIndex = this.template._text.lastIndexOf("//");
+                        var comment = (commentIndex == -1) ? "" : " (" + this.template._text.substring(commentIndex + 2) + ")";
+                        return calculatedJSONtoViewable(this.template.calculatedValue) + comment;
                     }
                     else {
                         return this.template.calculatedValue;
@@ -2712,9 +2735,9 @@ var Solution = (function () {
     Solution.prototype.showDecisionImage = function () {
         if (this.affectsScore && this.elementHasChangedSinceLastChecked) {
             this.field.decisionImage = this.image;
+            this.elementHasChangedSinceLastChecked = false;
+            this.notYetChecked = false;
         }
-        this.elementHasChangedSinceLastChecked = false;
-        this.notYetChecked = false;
     };
     Solution.prototype.onResponseInjector = function (solution) {
         var s = solution;
@@ -2795,6 +2818,15 @@ var Solution = (function () {
             this.color = this.image == decisionImageEnum.Star ? "LimeGreen" :
                 this.image == decisionImageEnum.Tick ? "LightGreen" :
                     this.image == decisionImageEnum.Cross ? "LightSalmon" : "Salmon";
+        }
+        if (this.notYetChecked && this.settings.numChecksLeft < 0) {
+            this.showDecisionImage();
+        }
+        else {
+            if (this.settings.showUseCheckButtonMessage !== false) {
+                window.alert("To check an answer after the first attempt, you must use the 'check answers button' at the bottom of the page.");
+                this.settings.showUseCheckButtonMessage = false;
+            }
         }
     };
     return Solution;
@@ -2892,7 +2924,15 @@ var Template = (function (_super) {
                 return (helpers.isNumeric(value) &&
                     Math.abs(value - n) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER * n));
             }
-            return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
+            else {
+                if (helpers.isNumeric(helpers.stripQuotes(this.calculatedValue))) {
+                    var n = Number(helpers.stripQuotes(this.calculatedValue));
+                    if (helpers.isNumeric(value) && value == n) {
+                        return true;
+                    }
+                }
+                return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
+            }
         }
         return false;
     };

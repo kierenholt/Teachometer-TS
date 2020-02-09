@@ -31,7 +31,7 @@ class questionTemplate {
         return false;
     }
 
-    forceCalculate()  { //used for variablesUsed
+    forceCalculate()  { //used for variables Used
         var dummy = this.calculatedValue;
     }
 }
@@ -104,12 +104,23 @@ class Template extends questionTemplate {
     isCorrect(value) {
         //turn value into JSON
         if (this.calculatedValue != null) {
+            //if solution is numeric then compare within 5%
             if (helpers.isNumeric(this.calculatedValue)) {
                 let n = Number(this.calculatedValue);
                 return (helpers.isNumeric(value) && 
                     Math.abs(value-n) <= Math.abs(ALLOWABLE_ERROR_FOR_CORRECT_ANSWER*n));
             }
-            return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
+            else {
+                //if it is a numeric in quotes (strip the quotes) - exact comparison
+                if (helpers.isNumeric(helpers.stripQuotes(this.calculatedValue))) {
+                    let n = Number(helpers.stripQuotes(this.calculatedValue));
+                    if (helpers.isNumeric(value) && value == n) {
+                        return true;
+                    }
+                }
+                //compare nonnumerics with lowercase
+                return safeStringify(value.toLowerCase()) == this.calculatedValue.toLowerCase();
+            }
         }
         return false;
     }

@@ -75,15 +75,12 @@ div#buttons {
             "showRowTitles": true,
             "markbookUpdate": false,
 			"outOfOnlyQuestionsAttempted": true,
-			"appendToMarkbook": false
+			"appendToMarkbook": false,			
+			"checks limit" : -1
 			};
 
-		var markbookSettings = {
-			"scoreHeaders": "",
-			"scores": ""
-		};
 			
-		window.assignment = new AssignmentHTML(internalSettings, markbookSettings);
+		window.assignment = new AssignmentHTML(internalSettings);
 
 		var rows = [];
 		for (let i = 0, row; row = inputTable.rows[i]; i++) {
@@ -97,7 +94,6 @@ div#buttons {
 				);
 		}
 		window.assignment.addRows(rows,false);
-		
 	};
 	
 	function doReveal() {
@@ -119,8 +115,18 @@ div#buttons {
 					[{
 						"purpose" : "question", 
 						"leftRight" : ["left ___","right"],
-						"title" : " title ", 
+						"title" : " question ", 
 						"comment" : "4"
+					}]);
+	}
+
+	function addNewRow2() {
+		window.assignment.addRows(
+					[{
+						"purpose" : "notes", 
+						"leftRight" : ["left ___","right"],
+						"title" : " notes", 
+						"comment" : ""
 					}]);
 	}
 
@@ -146,7 +152,33 @@ div#buttons {
 	
 
 	<table id="tests" hidden>
-<tr>
+
+		<tr><td>template</td><td>
+			100 roughly = ___
+			100 exactly = ___
+			</td>
+			<td>right </td>
+			<td>exact checking if in quotes</td>
+			<td>100
+"100"
+			</td></tr>
+
+
+		<tr><td>notes</td><td>
+			???
+			code
+			goes here
+				indent
+					indent
+			![image](https://i.imgur.com/XsHuvZd.png)
+			???
+			</td>
+			<td>right </td>
+			<td>rollover block</td>
+			<td></td></tr>
+
+	
+		<tr>
 	<td>template</td>
 	<td>Travelling only right and down, how many routes from A to B?
 
@@ -155,7 +187,7 @@ div#buttons {
 	
 [https://www.youtube.com/watch?v=zvX66uUfF68](https://www.youtube.com/watch?v=zvX66uUfF68)</td>
 <td>Routes</td>
-<td>20,11,18,11,19
+<td>20,11,18,11,19 //A COMMENT
 "https://i.imgur.com/8od3b5h.png","https://i.imgur.com/eD28E5w.png","https://i.imgur.com/XsHuvZd.png","https://i.imgur.com/7PsvZgj.png","https://i.imgur.com/wgQUWUj.png"</td></tr>
 
 		<tr><td>notes</td>
@@ -364,7 +396,8 @@ c + 2
 	<button id=button type="button" onclick="doJSON()">show rows JSON</button> 
 	<button id=button type="button" onclick="window.assignment.refresh()">refresh</button> 
 	<button id=button type="button" onclick="window.assignment.deleteAll()">clear All</button> 
-	<button id=button type="button" onclick="addNewRow()">add new row</button>
+	<button id=button type="button" onclick="assignment.addRows([assignment.rows[0]])">add question</button>
+	<button id=button type="button" onclick="addNewRow2()">add notes</button>
 	<button id=button type="button" onclick="window.assignment.shuffle();window.assignment.updateQuestionNumbersAndMarkbookIndex();">shuffle</button>
 	<button id=button type="button" onclick="window.assignment.truncate()">truncate 2</button>
 	<button id=button type="button" onclick="window.assignment.showAllDecisionImages()">check answers</button>

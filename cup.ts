@@ -24,15 +24,17 @@ class Cup {
   get HTML() { return `<${this.tagName} ${this.joinedAttributes} >${this.innerHTML}</${this.tagName}>` }
 }
 
-class BulletCup extends Cup {
+class BulletCup extends Cup { // *
   constructor(str) {super(str);}
   get HTML() {return "<li>"}
 }
 
-class ImageCup extends Cup {
-  comment: any;
+class ImageCup extends Cup { // ![]()
+  comment: any; 
   source: any;
   width: number;
+  domain: any;
+
   constructor(str) {
     super(str);
 
@@ -46,6 +48,7 @@ class ImageCup extends Cup {
       this.attributes["style"] = `position: relative; left:${(50 - this.width / 2)}%; width:${this.width}%`;
       this.attributes["src"] = this.source;
       this.attributes["alt"] = this.comment;
+      this.domain = helpers.getDomainFromUrl(this.source);
   }
 
   
@@ -63,12 +66,21 @@ class ImageCup extends Cup {
     this.comment = this.comment.replace(patternMakeItGlobal, replacer);
     this.attributes["src"] = this.source;
     this.attributes["alt"] = this.comment;
-
+    this.domain = helpers.getDomainFromUrl(this.source);
   }
+
+  //https://www.easybib.com/guides/forums/topic/q-cite-image-found-online-search-engine-google-images/
+    //overloads HTML getter in order to insert image citation
+  get HTML() { 
+    return `<${this.tagName} ${this.joinedAttributes} >${this.innerHTML}</${this.tagName}>
+      <cite>${this.comment} Digital image taken from <a href=${this.source}>${this.domain}</a></cite>.
+      `; 
+  }
+
 }
 
 
-class AnchorCup extends Cup {
+class AnchorCup extends Cup { //[]()
   text: any;
   url: any;
   constructor(str) {
@@ -137,7 +149,7 @@ class FractionCup extends Cup {
 
 
 
-class ChunkCup extends Cup {
+class ChunkCup extends Cup { 
 
   constructor(str) {
     super(str);
@@ -179,7 +191,8 @@ class ChunkCup extends Cup {
   }
 }
 
-class UnderlineCup extends ChunkCup {
+
+class UnderlineCup extends ChunkCup { // * *
   constructor(str) {
     super(str.substring(1,str.length-1));
     this.tagName = "u";
@@ -195,7 +208,7 @@ class BoldCup extends ChunkCup {
   get thisConstructor() { return (s) => new BoldCup(s); };
 }
 
-class SuperScriptCup extends ChunkCup {
+class SuperScriptCup extends ChunkCup { //^ SUPERSCRIPT
   constructor(str) {
     super(str.replace("^", ""));
     this.tagName = "sup";
@@ -203,7 +216,7 @@ class SuperScriptCup extends ChunkCup {
   get thisConstructor() { return (s) => new SuperScriptCup(s); };
 }
 
-class SubScriptCup extends ChunkCup {
+class SubScriptCup extends ChunkCup { //~ subscript
   constructor(str) {
     super(str.replace("~", ""));
     this.tagName = "sub";
@@ -211,7 +224,7 @@ class SubScriptCup extends ChunkCup {
   get thisConstructor() { return (s) => new SubScriptCup(s); };
 }
 
-class TitleCup extends ChunkCup {
+class TitleCup extends ChunkCup { //# TITLE
   constructor(str) {
     super(str.replace("#", ""));
     this.tagName = "h1";
@@ -219,7 +232,7 @@ class TitleCup extends ChunkCup {
   get thisConstructor() { return (s) => new TitleCup(s); };
 }
 
-class CupContainer extends Cup {
+class CupContainer extends Cup { 
   children: any;
   constructor(str) { 
     super(str); 
@@ -261,8 +274,19 @@ class CupContainer extends Cup {
 }
 
 
+
+class RolloverCup extends CupContainer {  // ???
+  children: ChunkCup[]; //this is necessary
+  constructor(str) {
+    str = helpers.trimChar(str,"?");
+    super(str);
+    this.attributes["class"] = "rollover";
+    this.children = [new ChunkCup(str)];
+  }
+}
+
 ///does not replace chunks or dollars
-class CodeCup extends CupContainer {
+class CodeCup extends CupContainer { // ```
   children: ChunkCup[];
   constructor(str) {
     str = helpers.trimChar(str,"`");
@@ -365,7 +389,7 @@ class DivCup extends CupContainer {
 }
 
 
-class TableCup extends CupContainer {
+class TableCup extends CupContainer { // | 
   hasBorder: any;
   //children are rows
 
@@ -456,7 +480,7 @@ class FieldCup extends Cup implements Field {
 
   set disabled(value) { 
     this._element.disabled = value;
-    if (this._decisionElement != null) this._decisionElement.hidden = value;  
+    //if (this._decisionElement != null) this._decisionElement.hidden = value;  do not hide the decision when disabled
   }
   get disabled() { return this._element.disabled; }
 
