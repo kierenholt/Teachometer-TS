@@ -44,6 +44,7 @@ class Solution {
     //called from rowhtml after all new solutions made
     importResponses() {
         if (this.settings.responses && this._questionNumber in this.settings.responses) {     
+            this.settings.showUseCheckButtonMessage = false;
             this.field.elementValue = this.settings.responses[this._questionNumber]; //this = field
             this.updateScoreAndImage(); 
             this.notYetChecked = false;
@@ -230,7 +231,7 @@ class Solution {
             this.showDecisionImage();
         }
         else {
-            if (this.settings.showUseCheckButtonMessage !== false) {
+            if (!this.triggerCalculateFromLateFunction && this.settings.showUseCheckButtonMessage !== false) {
                 window.alert("To check an answer after the first attempt, you must use the 'check answers button' at the bottom of the page.");
                 this.settings.showUseCheckButtonMessage = false;
             }

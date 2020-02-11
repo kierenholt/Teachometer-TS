@@ -234,9 +234,20 @@ class AssignmentHTML {
         }
         
         //redo divs
-        this.rowHTMLs.forEach(r => 
-            this.settings.questionsDiv.appendChild(r.outerDiv)
+        if (this.settings.revealMode) { //add sections to reveal
+            this.rowHTMLs.forEach(function(r) { 
+                var sec = document.createElement("section");
+                sec.appendChild(r.outerDiv);
+                r.settings.questionsDiv.appendChild(sec);
+            });
+        }
+        else { //default behaviour
+            this.rowHTMLs.forEach(r => 
+                r.settings.questionsDiv.appendChild(r.outerDiv)
             );
+        }
+
+        
         if (this.settings.solutionsDiv) {
             for (var i = 0; i < this.questionHTMLs.length; i++) {
                 this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv)

@@ -172,7 +172,6 @@ var AssignmentHTML = (function () {
         this.settings.questionsDiv.lastChild.scrollIntoView();
     };
     AssignmentHTML.prototype.refreshDivs = function () {
-        var _this = this;
         while (this.settings.questionsDiv.firstChild) {
             this.settings.questionsDiv.removeChild(this.settings.questionsDiv.firstChild);
         }
@@ -182,9 +181,18 @@ var AssignmentHTML = (function () {
         while (this.settings.jumbledSolutionsDiv && this.settings.jumbledSolutionsDiv.firstChild) {
             this.settings.jumbledSolutionsDiv.removeChild(this.settings.jumbledSolutionsDiv.firstChild);
         }
-        this.rowHTMLs.forEach(function (r) {
-            return _this.settings.questionsDiv.appendChild(r.outerDiv);
-        });
+        if (this.settings.revealMode) {
+            this.rowHTMLs.forEach(function (r) {
+                var sec = document.createElement("section");
+                sec.appendChild(r.outerDiv);
+                r.settings.questionsDiv.appendChild(sec);
+            });
+        }
+        else {
+            this.rowHTMLs.forEach(function (r) {
+                return r.settings.questionsDiv.appendChild(r.outerDiv);
+            });
+        }
         if (this.settings.solutionsDiv) {
             for (var i = 0; i < this.questionHTMLs.length; i++) {
                 this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv);
@@ -558,7 +566,8 @@ var ImageCup = (function (_super) {
     };
     Object.defineProperty(ImageCup.prototype, "HTML", {
         get: function () {
-            return "<" + this.tagName + " " + this.joinedAttributes + " >" + this.innerHTML + "</" + this.tagName + ">\n      <cite>" + this.comment + " Digital image taken from <a href=" + this.source + ">" + this.domain + "</a></cite>.\n      ";
+            var cite = this.domain == "i.imgur.com" ? "" : "<cite>" + this.comment + " Digital image taken from <a href=" + this.source + ">" + this.domain + "</a>";
+            return "<" + this.tagName + " " + this.joinedAttributes + " >" + this.innerHTML + "</" + this.tagName + ">\n      " + cite + "</cite>.\n      ";
         },
         enumerable: true,
         configurable: true
@@ -2646,6 +2655,7 @@ var Solution = (function () {
     }
     Solution.prototype.importResponses = function () {
         if (this.settings.responses && this._questionNumber in this.settings.responses) {
+            this.settings.showUseCheckButtonMessage = false;
             this.field.elementValue = this.settings.responses[this._questionNumber];
             this.updateScoreAndImage();
             this.notYetChecked = false;
@@ -2823,7 +2833,7 @@ var Solution = (function () {
             this.showDecisionImage();
         }
         else {
-            if (this.settings.showUseCheckButtonMessage !== false) {
+            if (!this.triggerCalculateFromLateFunction && this.settings.showUseCheckButtonMessage !== false) {
                 window.alert("To check an answer after the first attempt, you must use the 'check answers button' at the bottom of the page.");
                 this.settings.showUseCheckButtonMessage = false;
             }

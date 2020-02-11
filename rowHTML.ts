@@ -68,7 +68,7 @@ class RowHTML {
         }
     }
 
-    get outerDiv() { //called after constructor because parsing cellcups must happen first
+    get outerDiv() { //called after constructor because parsing mrkdown into cellcups must happen first
         if (!this._cellCups) {
 
             //parse markdown and attach cups to solutions
