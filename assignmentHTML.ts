@@ -129,7 +129,7 @@ class AssignmentHTML {
         
 
         //must be before disabled = true
-        if (this.settings.numChecksLeft <= 0) { //show results
+        if (this.settings.numChecksLeft == 0) { //show results
             this.questionHTMLs.forEach(s => s.showDecisionImage());
         }
 
@@ -173,8 +173,8 @@ class AssignmentHTML {
         for (let r = 0, row; row = paramRows[r]; r++) {
             //FILL TITLE ROWS
             let showTitle = true;
-            if (this.rowHTMLs.length > 0) {
-                let previousTitle = this.rowHTMLs[this.rowHTMLs.length - 1].row.title;
+            if (newRowHTMLs.length > 0) {
+                let previousTitle = newRowHTMLs[newRowHTMLs.length - 1].row.title;
                 if (previousTitle == row.title) {
                     showTitle = false;
                 }
@@ -194,7 +194,10 @@ class AssignmentHTML {
 
             //self delete and duplicate
             newRowHTML.deleteSelf = function(paramAsn,paramRow) {
-                var asn = paramAsn; var row = paramRow; return function() {asn.deleteRows([row])};
+                var asn = paramAsn; var row = paramRow; return function() {
+                    asn.deleteRows([row]);
+                    asn.updateQuestionNumbers();
+                };
             }(this,newRowHTML);
             newRowHTML.duplicateSelf = function(paramAsn,paramRow) {
                 var asn = paramAsn; var row = paramRow; return function() {asn.duplicateRow(row)};
@@ -234,9 +237,20 @@ class AssignmentHTML {
         }
         
         //redo divs
-        this.rowHTMLs.forEach(r => 
-            this.settings.questionsDiv.appendChild(r.outerDiv)
+        if (this.settings.revealMode) { //add sections to reveal
+            this.rowHTMLs.forEach(function(r) { 
+                var sec = document.createElement("section");
+                sec.appendChild(r.outerDiv);
+                r.settings.questionsDiv.appendChild(sec);
+            });
+        }
+        else { //default behaviour
+            this.rowHTMLs.forEach(r => 
+                r.settings.questionsDiv.appendChild(r.outerDiv)
             );
+        }
+
+        
         if (this.settings.solutionsDiv) {
             for (var i = 0; i < this.questionHTMLs.length; i++) {
                 this.settings.solutionsDiv.appendChild(this.questionHTMLs[i].solutionDiv)
@@ -261,7 +275,7 @@ class AssignmentHTML {
     deleteRows(TRHTMLs) {
         TRHTMLs.forEach(r => r.delete());
         this.rowHTMLs = this.rowHTMLs.filter(r => !TRHTMLs.includes(r));
-        this.updateQuestionNumbers();
+        //this.updateQuestionNumbers(); not ALL deleteRows require question numbers updating e.g. from truncate
     }
 
     //also called from a button
@@ -447,6 +461,7 @@ ${styleText}
             n  = prompt("enter number of marks you want left over","10");
         }
         let i = 0;
+        //find question which runs over the mark limit
         while (n >= this.questionHTMLs[i].solutions.length && this.questionHTMLs[i]) {
             n -= this.questionHTMLs[i].solutions.length;
             i++;
@@ -460,13 +475,6 @@ ${styleText}
         }
         if (n > 0) { i++; }
         this.deleteRows(this.questionHTMLs.slice(i));
-        
-        /*** QUESTIONS
-
-        let n  = prompt("enter number of questions you want left over","10")
-        if ((helpers.isNumeric(n)) {
-            this.deleteRows(this.rowHTMLs.slice(n));
-        }*/
     }
 
     set disabled(value) {

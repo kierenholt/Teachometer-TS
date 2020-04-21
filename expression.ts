@@ -75,6 +75,8 @@ function roundToSF(n,d) {
 } 
 
 function calculatedJSONtoViewable(ret) {
+    if (ret === "false") { return "false"; }
+    if (ret === "true") { return "true"; }
     ret = JSON.parse(ret);
     if (typeof(ret) == "string") {return helpers.stripQuotes(ret);}
     if (typeof(ret) == "number") { //round it a bit to prevent 54.9999999999
@@ -88,6 +90,23 @@ function calculatedJSONtoViewable(ret) {
     }
     if (ret)  { return ret.toString(); }
 }
+
+function compareobjects(A,B) {
+    if (A === undefined || B === undefined) {
+      return A === undefined && B === undefined;
+    }
+    if (A instanceof Array || B instanceof Array) {
+      if (A instanceof Array && B instanceof Array) {
+        return (A.length == B.length) && A.every(function(e, i) {
+          return compareobjects(e,B[i]);
+        });
+      }
+      else {
+        return false;
+      }
+    }
+    return A == B;
+  }
 
 //takes in string which may not be strict JSON e.g. missing quotes
 function safeStringify(str) {
@@ -386,39 +405,6 @@ class ArrayExpression implements IExpression {
 }
 
 
-/* FUNCTION NAMES
-        "maxlength",
-        "padleftzeroes",
-        "padrightzeroes",
-        "includes",
-        "abs",
-        "mean",
-        "median",
-        "mode",
-        "max",
-        "min",
-        "if",
-        "exponent",
-        "mantissa",
-        "HCF",
-        "coprime",
-        "floor (math)",
-        "ceil (math)",
-        "roundtodp",
-        "pow (math)",
-        "includesign",
-        "includeoppsign",
-        "sind",
-        "cosd",
-        "tand",
-        "choose",
-        "toexponential",
-        "normalcdf",
-        "code",
-        "variable"
-
- */
-
 
 //returns all types of variables
 class FunctionExpression implements IExpression {
@@ -493,6 +479,11 @@ class FunctionExpression implements IExpression {
             return JSON.stringify(asExponent.substr(0,Eindex));
         }
 
+        if (this.functionName == "tostandardform") {
+            let ret = evaluatedParameters[0];
+            return JSON.stringify(ret.toExponential().replace("e"," x 10^").replace("+",""));
+        }
+
         //RETURNS BOOLEAN
         if (this.functionName == "includes") {
             var ret =  evaluatedParameters[0].toString().includes(evaluatedParameters[1]);
@@ -500,7 +491,6 @@ class FunctionExpression implements IExpression {
         }
 
         if (this.functionName == "maxlength") {
-
             //if string
             if (evaluatedParameters[0][0] == '"') {
                 return `"${evaluatedParameters[0].substr(1, evaluatedParameters[1])}"`;
@@ -677,11 +667,6 @@ class FunctionExpression implements IExpression {
             return JSON.stringify(ret);
         }
 
-        if (this.functionName == "toexponential") {
-            let ret = evaluatedParameters[0];
-            return JSON.stringify(ret.toExponential());
-        }
-
         if (this.functionName == "includesign") {
             let sign = evaluatedParameters[0] < 0 ? "-" : "+";
             let ret =  `"${sign} ${Math.abs(evaluatedParameters[0]).toString()}"`;
@@ -755,8 +740,8 @@ class FunctionExpression implements IExpression {
 
         if (this.functionName == "large") {
             var l = evaluatedParameters.length;
-            var index2 = l - evaluatedParameters[l-1] - 1;
-            let ret = evaluatedParameters.slice(0,l-1).sort()[index2];
+            var index2 = l - evaluatedParameters[0];
+            let ret = evaluatedParameters.slice(1).sort()[index2];
             return JSON.stringify(ret);
         }
         
@@ -802,6 +787,12 @@ class FunctionExpression implements IExpression {
         
         if (this.functionName == "lcm") {
             let ret = lcm(evaluatedParameters);
+            return JSON.stringify(ret);
+        }
+
+
+        if (this.functionName == "compareobjects") {
+            let ret = compareobjects(evaluatedParameters[0],evaluatedParameters[1]);
             return JSON.stringify(ret);
         }
         

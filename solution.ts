@@ -9,12 +9,12 @@ class Solution {
     field: Field;
     score: number;
     triggerCalculateFromLateFunction: boolean;
-    elementHasChangedSinceLastChecked: boolean;
     notYetChecked: boolean;
     notYetAnswered: boolean;
     color: string;
     image: decisionImageEnum;
     _questionNumber: any;
+    _lastCheckedElementValue: any;
 
     constructor(field, template, settings, allSolutions) {
 
@@ -32,7 +32,6 @@ class Solution {
         this.triggerCalculateFromLateFunction = true; 
         //set false by code() and variable() template functions to avoid infinite loop
 
-        this.elementHasChangedSinceLastChecked = false;
         this.notYetChecked = true; //used to assign star or tick
         this.notYetAnswered = true; //used to calculate outof
 
@@ -44,12 +43,10 @@ class Solution {
     //called from rowhtml after all new solutions made
     importResponses() {
         if (this.settings.responses && this._questionNumber in this.settings.responses) {     
+            this.settings.showUseCheckButtonMessage = false;
             this.field.elementValue = this.settings.responses[this._questionNumber]; //this = field
             this.updateScoreAndImage(); 
             this.notYetChecked = false;
-            this.elementHasChangedSinceLastChecked = true;
-            
-            //this.showDecisionImage(); moved to consumeblob
         }
         else {
             if (this.template) {
@@ -119,19 +116,24 @@ class Solution {
         return 1;
     }
 
+    //updates image - the check answers button does this, also first entered response does this
     showDecisionImage() {
-        if (this.affectsScore && this.elementHasChangedSinceLastChecked) {
+        if (this.field.elementValue != "" && this.affectsScore && this.elementHasChangedSinceLastChecked) {
             this.field.decisionImage = this.image;
-            this.elementHasChangedSinceLastChecked = false;
+            this._lastCheckedElementValue = this.field.elementValue;
             this.notYetChecked = false;
         }
+    }
+
+    get elementHasChangedSinceLastChecked() {
+        return this.field.elementValue != this._lastCheckedElementValue;
     }
     
 //ONRESPONSE - check and store decision, call markbookUpdate
     onResponseInjector(solution) {
         let s = solution;
         return function() { //called by field
-            if (this.elementValue != null) {
+            if (this.elementValue != null && this.elementValue != "") {
                 
                 s.updateScoreAndImage();
                 
@@ -155,7 +157,6 @@ class Solution {
 
     //does not updatemarkbook, does not show image unless showDecisionImage is called
     updateScoreAndImage() {
-        this.elementHasChangedSinceLastChecked = true;
         this.notYetAnswered = false;
 
         this.color = "White";
@@ -230,9 +231,12 @@ class Solution {
             this.showDecisionImage();
         }
         else {
-            if (this.settings.showUseCheckButtonMessage !== false) {
+            if (!this.triggerCalculateFromLateFunction && this.settings.showUseCheckButtonMessage !== false) {
                 window.alert("To check an answer after the first attempt, you must use the 'check answers button' at the bottom of the page.");
                 this.settings.showUseCheckButtonMessage = false;
+            }
+            if (this.elementHasChangedSinceLastChecked) {
+                this.field.decisionImage = decisionImageEnum.Hourglass;
             }
         }
     }

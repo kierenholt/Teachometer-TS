@@ -72,8 +72,9 @@ class ImageCup extends Cup { // ![]()
   //https://www.easybib.com/guides/forums/topic/q-cite-image-found-online-search-engine-google-images/
     //overloads HTML getter in order to insert image citation
   get HTML() { 
+    var cite = this.domain == "i.imgur.com"  ? "" : `<cite>${this.comment} Digital image taken from <a href=${this.source}>${this.domain}</a>`;
     return `<${this.tagName} ${this.joinedAttributes} >${this.innerHTML}</${this.tagName}>
-      <cite>${this.comment} Digital image taken from <a href=${this.source}>${this.domain}</a></cite>.
+      ${cite}</cite>.
       `; 
   }
 

@@ -70,11 +70,9 @@ div#buttons {
             "allowRowDelete" : true,
 			"allowRefresh" : true,
 			"allowGridlines": true,
-            "submitOnlyOnce" : false,
             "submitButtonText" : "check answers",
             "showRowTitles": true,
             "markbookUpdate": false,
-			"outOfOnlyQuestionsAttempted": true,
 			"appendToMarkbook": false,			
 			"checks limit" : -1
 			};
@@ -153,6 +151,53 @@ div#buttons {
 
 	<table id="tests" hidden>
 
+		<tr><td>template</td><td>Given a string (parameter 1) return true if it is the weekend
+
+			_code_
+			
+			_____________________
+			
+			</td><td>
+				_enter custom parameters here_
+				
+				addOne(__) => ££
+				
+				addOne(3) => ££
+				
+				addOne(3) == 4 []
+	
+			</td>
+			<td>code</td>
+			<td>code("addOne")
+variable("B")
+addOne(B)
+addOne(3)
+addOne(3) == 4
+			</td></tr>
+
+
+		<tr><td>template</td><td>
+			$$
+			</td>
+			<td>right </td>
+			<td>false returns as undefined</td>
+			<td>5 == 4
+			</td></tr>
+
+		<tr><td>template</td><td>
+			$$
+			$$
+			equality $$
+			compareobjects $$
+			</td>
+			<td>right </td>
+			<td>toExponential</td>
+			<td>[2,3]
+[2,4]
+a==b
+compareobjects(a,b)
+			</td></tr>
+
 		<tr><td>template</td><td>
 			100 roughly = ___
 			100 exactly = ___
@@ -162,7 +207,6 @@ div#buttons {
 			<td>100
 "100"
 			</td></tr>
-
 
 		<tr><td>notes</td><td>
 			???
