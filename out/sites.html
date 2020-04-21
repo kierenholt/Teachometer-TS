@@ -11,31 +11,23 @@
     function init() {
 		
 
-        //settings
-		//var settingsString = <?=settingsString?>; //NO QUOTES!!
-        //alert("settingsString: "+settingsString);
-		//settings = JSON.parse(settingsString);
       var settings = {
         "questionsDiv": document.getElementById("questionsDiv"),
         "allowRowDelete" : false,
         "allowRefresh" : false,
-        "submitOnlyOnce" : false,
         "submitButtonText" : "check answers",
         "showRowTitles" : true,
-        "allowGridlines" : true,
+        "allowGridlines" : false,
         "url" : "url2",
         "author" : "author2", 
-        "score attempted questions only":"ON",
-        "shuffle": true,
-        "truncate": -1,
-        "checks limit": 1,
-        "time limit": 10,
-        "total mark limit": -1,
-        "allow refresh": true,
-        "append stored responses": false
+        "shuffle questions": false,
+        "journal mode": true,
+        "append mode": false,
+        "remove hyperlinks": false,
+        "mark limit": -1,
+        "checks limit": -1,
+        "time limit": -1
       };
-
-        
       settings.responses = {"1a": 3, "Time remaining":1};
 
         //rows
@@ -70,7 +62,6 @@ markbookColumn:${workbookId} response:${sheetName}  scores: ${JSON.stringify(sco
               settings.sheetName,
               settings.user,
               assignment.aggregateScoreGetter);
-
     }
 
 </script>

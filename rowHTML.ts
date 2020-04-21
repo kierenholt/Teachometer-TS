@@ -346,6 +346,9 @@ class QuestionHTML extends RowHTML {
         return this._solutionDiv;
     }
 
+    /**
+     * refreshes the contents of solution & jumbled & questionnumber divs
+     */
     refreshDivs() { 
         //solutions
         if (this._solutionDiv) {
@@ -580,10 +583,14 @@ class TemplateHTML extends QuestionHTML{
 
 
         
+    /**
+     * sets cellcups to zero and re-initialises
+     */
     refresh() { 
         this._cellCups = null;
         this.dynamicDiv.innerHTML  = this.cellCups.map(c => c.HTML).join("");
-        this.refreshDivs();
+        
+        this.questionNumber = this._questionNumber; //also refreshes the divs
     }
 }
 
