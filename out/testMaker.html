@@ -97,7 +97,7 @@ var decryptedText = aesjs.utils.utf8.fromBytes(decryptedBytes);
 		window.assignment = new AssignmentHTML(internalSettings,markbookSettings);
         //window.assignment.addRows(rows); does not show submit button
         
-        if (parameters["shuffle"] && parameters["shuffle"] == true) {rows = helpers.shuffle(rows, new Random());} //shuffle
+        if (parameters["shuffle"] && parameters["shuffle"] == true) {Settings.assignment.shuffle();} //shuffle
         
         if (parameters["year"] && parameters["year"].length > 0) {
           rows = rows.filter(function(r) { return parameters["year"].includes(r.year);  });

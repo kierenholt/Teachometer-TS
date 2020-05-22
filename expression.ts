@@ -1,3 +1,76 @@
+class ExpressionError extends Error {
+    feedbackToUser: any;
+    isCritical: any;
+    constructor(message,paramFeedbackToUser,paramIsCritical) {
+        super(message);
+        this.feedbackToUser = paramFeedbackToUser;
+        this.isCritical = paramIsCritical;
+    }
+} 
+
+
+abstract class IExpression {
+    _value: any;
+    i: number;
+    variablesUsed = {};
+    constructor(i) {
+        this.i = i;
+        for (let j = 0; j < 26; j++) {
+            this.variablesUsed[helpers.lowerCaseLetterFromIndex(j)] = false; 
+        }
+    }
+
+    getValue(injector: ExpressionEngine) {
+        if (this._value == undefined) {
+            this._value = this.eval(injector);
+        }
+        return this._value;
+    }
+
+    abstract eval(injector: ExpressionEngine);
+
+
+    //REPLACE VARIABLES
+    replaceVariables(s, injector: ExpressionEngine) {
+        let buffer = "";
+        for (let i = 0; i < s.length; i++) {
+            if (isAlpha(s[i]) &&
+                (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !helpers.isNumeric(s[i - 1]))
+                )
+                {//allow abcdfgh OR e if previous char was NOT numeric i.e. not 5e)
+                    if (s[i] in injector.allVariablesAndFunctions) {
+                        this.variablesUsed[s[i]] = true;
+                        let val = injector.allVariablesAndFunctions[s[i]];
+                        if (val instanceof IExpression) {
+                            buffer += JSONtoEval(val.getValue(injector));
+                        }
+                        else if (typeof(val) == "string") {
+                            buffer += JSONtoEval(val);
+                        }
+                        else if (val == undefined) {
+                            throw new ExpressionError(`variable "${s[i]}" is undefined`,true,false);
+                        }
+                        else {
+                            throw new ExpressionError(`variable "${s[i]}" not found`,true,true);
+                        }
+                    }
+                    else {
+                        throw new ExpressionError(`variable "${s[i]}" not found`,true,true);
+                    }
+            }
+            else if (s[i] == 'π') {
+                buffer += "3.14159265359";
+            }
+            else {
+                buffer += s[i];
+            }
+        }
+        return buffer;
+    }
+}
+
+//#region helpers
+
 function alphaIndex(str) { //lowercase only!!!
     if (isLowerAlpha(str)) { return str.charCodeAt(0) - 97; }
     if (isUpperAlpha(str)) { return str.charCodeAt(0) - 65; }
@@ -74,23 +147,25 @@ function roundToSF(n,d) {
     return Math.round(n*Math.pow(10,d-biggestTen))/Math.pow(10,d-biggestTen);
 } 
 
-function calculatedJSONtoViewable(ret) {
+//formats JSON for solution text
+function JSONtoViewable(ret): string {
+    if (ret == undefined) { return "undefined"; }
     if (ret === "false") { return "false"; }
     if (ret === "true") { return "true"; }
     ret = JSON.parse(ret);
     if (typeof(ret) == "string") {return helpers.stripQuotes(ret);}
-    if (typeof(ret) == "number") { //round it a bit to prevent 54.9999999999
+    if (typeof(ret) == "number") { //round it a bit to prevent 54.9999999999 etc.
         if (ret%1 == 0) {
             return ret.toString();
         }
         else {
-            ret = parseFloat(ret.toPrecision(12));
-            return ret.toString();
+            return helpers.removeCrazySigFigs(ret);
         }
     }
     if (ret)  { return ret.toString(); }
 }
 
+//used in iscorrect function to compare arrays etc.
 function compareobjects(A,B) {
     if (A === undefined || B === undefined) {
       return A === undefined && B === undefined;
@@ -108,21 +183,20 @@ function compareobjects(A,B) {
     return A == B;
   }
 
-//takes in string which may not be strict JSON e.g. missing quotes
-function safeStringify(str) {
-    let ret = undefined;
-    try {
-        let obj = JSON.parse(str);
-        ret = JSON.stringify(obj);
-    }
-    catch (e) { //not in JSON so it needs quotes
-        ret = `"${str}"`;
-    }
-    return ret;
-}
 
+//formats calculated JSON for insertion into eval strings (buffer += etc,)
 function JSONtoEval(str) {
-    let obj = JSON.parse(str);
+    if (str == "" || str == undefined) {
+        return "null";
+    } //e.g. if a variable is bound to empty textbox, then empty string will be evalled  
+    let obj = undefined;
+    try {
+        obj = JSON.parse(str);
+    }
+    catch (e) { 
+        //within replaceVariables
+        throw new ExpressionError("unable to parse JSON: " + str, true, false);
+    }
     if (typeof(obj) == "string") {
         return str;
     }
@@ -131,53 +205,11 @@ function JSONtoEval(str) {
     return str;
     //.toString() causes problems with arrays [2] -> "2"
 }
+//#endregion 
 
 
-//REPLACE VARIABLES
-function replaceVariables(s, injector) {
-    let buffer = "";
-    for (let i = 0; i < s.length; i++) {
-        if (isLowerAlpha(s[i]) && 
-            (s.length == 1 || s[i].toLowerCase() != "e" || i == 0 || !helpers.isNumeric(s[i - 1]))
-            ) {//allow abcdfgh OR e if previous char was NOT numeric i.e. not 5e)
-                let index = alphaIndex(s[i]);
-                if (index < injector.allTemplateComments.length) {
-                    injector.variablesUsed[index] = true;
-                    let val = injector.allTemplateComments[index].calculatedValue; 
-                    buffer += JSONtoEval(val);
-                }
-                else {
-                    throw new TemplateError(`variable "${s[i]}" does not exist`,true,true);
-                }
-        }
-        //CHECK FOR CUSTOM VARIABLES
-        else if (s[i] in injector.customFunctions) {
-                if (injector.customFunctions[s[i]]) {
-                    buffer += JSONtoEval(injector.customFunctions[s[i]]); 
-                }
-                else {
-                    throw new TemplateError(`variable has not yet been defined`,false,false); //not critical
-                }
-        }
 
-        else if (s[i] == 'π') {
-            buffer += "3.14159265359";
-        }
-        else {
-            buffer += s[i];
-        }
-    }
-    return buffer;
-}
-
-
-interface IExpression {
-eval(injector: any);
-i: number;
-}
-
-
-function toExpressionTree(s, i, commaIsTerminator?):IExpression {
+function toExpressionTree(s, i, commaIsTerminator?): IExpression {
     //PARSES s (the comment) into tree of expression objects
     let children = [];
 
@@ -204,12 +236,12 @@ function toExpressionTree(s, i, commaIsTerminator?):IExpression {
             i = expr.i;
         }
         else if (i + 1 < s.length && s.substr(i, 2) == "..") {
-            if (buffer.length + children.length == 0) { throw new TemplateError("Range expression missing something before ..",true,true);}
+            if (buffer.length + children.length == 0) { throw new ExpressionError("Range expression missing something before ..",true,true);}
             children.push(buffer);
             return new RangeExpression(new SimpleExpression(children,i), s, i);
         }
         else if (s[i] == ",") {
-            if (buffer.length + children.length == 0) { throw new TemplateError("List expression missing something before ,",true,true);}
+            if (buffer.length + children.length == 0) { throw new ExpressionError("List expression missing something before ,",true,true);}
             children.push(buffer);
             return new ListExpression(new SimpleExpression(children,i), s, i);
         }
@@ -241,17 +273,16 @@ function toExpressionTree(s, i, commaIsTerminator?):IExpression {
 }
 
 //brackets could contain a single expression or a range,list etc.
-class SimpleExpression implements IExpression {
+class SimpleExpression extends IExpression {
     children: IExpression[];
-    i: any; //i must be char after first bracket
 
     constructor(children, i) {
+        super(i);
         this.children = children;
-        this.i = i;
     }
 
     ///EVAL
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
         if (this.children.length == 1 && typeof(this.children[0]) != "string" ) {
             return this.children[0].eval(injector);
@@ -260,14 +291,14 @@ class SimpleExpression implements IExpression {
         let buffer = ""; 
         for (let i = 0, expr; expr = this.children[i]; i++) {
             if (typeof(expr) == "string") {
-                buffer += replaceVariables(expr,injector);
+                buffer += this.replaceVariables(expr,injector);
             }
             else {
                 buffer += JSONtoEval(expr.eval(injector));
             }
         };
 
-        if (helpers.IsNullOrWhiteSpace(buffer)) {
+        if (helpers.IsStringNullOrWhiteSpace(buffer)) {
             return "";
         }
         
@@ -284,11 +315,11 @@ class SimpleExpression implements IExpression {
     }
 }
 
-class QuoteExpression implements IExpression {
-    i: any;
+class QuoteExpression extends IExpression {
     s: string;
 
     constructor(s,i) {
+        super(i);
         i++; //skip first quote
 
         this.s  = "";
@@ -299,18 +330,18 @@ class QuoteExpression implements IExpression {
         this.i = i;
     }
 
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
         return `"${this.s}"`;
     }
 }
 
-class RangeExpression implements IExpression {
+class RangeExpression extends IExpression {
     minExpr: IExpression;
     maxExpr: IExpression;
-    i: any;
 
     constructor(firstBuffer:IExpression, s, i) {
+        super(i);
         this.minExpr = firstBuffer;
         this.maxExpr = toExpressionTree(s, i+2);
         this.i = this.maxExpr.i;
@@ -318,7 +349,7 @@ class RangeExpression implements IExpression {
 
     ///EVAL
     //always returns number
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
         let decimalmin = Number(this.minExpr.eval(injector));
         let decimalmax = Number(this.maxExpr.eval(injector));
@@ -337,11 +368,11 @@ class RangeExpression implements IExpression {
 }
 
 
-class ListExpression implements IExpression {
+class ListExpression extends IExpression {
     options: IExpression[];
-    i: any;
 
     constructor(firstBuffer:IExpression, s, i) {
+        super(i);
         this.options = [];
         if (firstBuffer != null) {
             this.options.push(firstBuffer);
@@ -358,13 +389,13 @@ class ListExpression implements IExpression {
                 i = expr.i;
             }
             else {
-                throw new TemplateError("bad list",true,true);
+                throw new ExpressionError("bad list",true,true);
             }
         }
         this.i = i;
     }
     ///EVAL
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
         let randomIndex = injector.indexForListEvaluation % this.options.length;
         let evaluated = this.options[randomIndex].eval(injector);
@@ -372,11 +403,11 @@ class ListExpression implements IExpression {
     }
 }
 
-class ArrayExpression implements IExpression {
-    i: any;
+class ArrayExpression extends IExpression {
     options: any[];
 
     constructor(s, i) {
+        super(i);
         this.options = [];
 
         while (i < s.length && s[i] != ']'
@@ -390,14 +421,14 @@ class ArrayExpression implements IExpression {
                 i = expr.i;
             }
             else {
-                throw new TemplateError("bad array",true,true);
+                throw new ExpressionError("bad array",true,true);
             }
         }
         this.i = i;
     }
 
     ///EVAL
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
         let evaluated = "["+this.options.map(o => o.eval(injector)).join()+"]";
         return evaluated;
@@ -407,13 +438,13 @@ class ArrayExpression implements IExpression {
 
 
 //returns all types of variables
-class FunctionExpression implements IExpression {
-    i: any;
+class FunctionExpression extends IExpression {
     functionName: string;
     functionNamePreserveCase: string;
     list: ListExpression;
 
     constructor(s, i) {
+        super(i);
         this.functionName = "";
         this.functionNamePreserveCase = "";
         while (i < s.length && 
@@ -433,7 +464,7 @@ class FunctionExpression implements IExpression {
                 this.eval = function(injector) { return false; }
             }
             else {
-                throw new TemplateError("string without following bracket",true,true);
+                throw new ExpressionError("string without following bracket",true,true);
             }
         }
         else {
@@ -444,7 +475,7 @@ class FunctionExpression implements IExpression {
     }
         
         ///EVAL
-    eval(injector) {
+    eval(injector: ExpressionEngine) {
         injector.count();
 
         //if must be called before all options are evaluated
@@ -465,7 +496,6 @@ class FunctionExpression implements IExpression {
                     return JSON.parse(f); 
                 }
             );
-
 
         if (this.functionName == "exponent") {
             let asExponent = evaluatedParameters[0].toExponential();
@@ -548,7 +578,7 @@ class FunctionExpression implements IExpression {
             let sum = evaluatedParameters.reduce(function(acc, val) { return acc + val; });
             let ret =  sum/evaluatedParameters.length;
             return JSON.stringify(ret);
-            }
+        }
 
         if (this.functionName == "median") {
             evaluatedParameters.sort();
@@ -562,7 +592,6 @@ class FunctionExpression implements IExpression {
             }
             return JSON.stringify(ret);
         }
-
 
         if (this.functionName == "lowerquartile") {
             evaluatedParameters.sort();
@@ -640,7 +669,7 @@ class FunctionExpression implements IExpression {
         if (this.functionName == "coprime") {
             let denom = evaluatedParameters[0];
             if (denom < 2) {
-                throw new TemplateError("no smaller coprime number exists for "+denom,true,true);
+                throw new ExpressionError("no smaller coprime number exists for "+denom,true,true);
             }
             let guess = injector.random.next(denom-1) + 1;
             while (HCF(denom, guess) > 1) {
@@ -777,11 +806,10 @@ class FunctionExpression implements IExpression {
             return JSON.stringify(ret);
         }
 
-
         if (this.functionName == "sgn") {
             let ret = 0;
             if (evaluatedParameters[0] < 0) { ret = -1; }
-            if (evaluatedParameters[0] > 0) { ret = 1; }                return JSON.stringify(ret);
+            if (evaluatedParameters[0] > 0) { ret = 1; }
             return JSON.stringify(ret);
         }
         
@@ -790,78 +818,14 @@ class FunctionExpression implements IExpression {
             return JSON.stringify(ret);
         }
 
-
         if (this.functionName == "compareobjects") {
             let ret = compareobjects(evaluatedParameters[0],evaluatedParameters[1]);
             return JSON.stringify(ret);
         }
         
-
-        //CREATE CUSTOM FUNCTION
-        if (this.functionName == "code") {
-            //if text is entered
-            let JSName = helpers.stripQuotes(evaluatedParameters[0]);
-            injector.customFunctions[JSName] = null;
-            let DEFAULTCODE = `function ${JSName}() {
-
-    //your code goes here
-
-    }`;
-            if (injector.allSolutions) {
-                let thisSolution = injector.allSolutions.filter(s => s.template == injector);
-                if (thisSolution.length == 1) {
-                    thisSolution[0].triggerCalculateFromLateFunction = false;
-                    let code = thisSolution[0].field.elementValue;
-                    //DEFAULT CODE EXCEPT FOR CONSOLE
-                    if (code == "" && JSName != "console") { //first time
-                        thisSolution[0].field.elementValue = DEFAULTCODE;
-                    }
-                    else { //user has entered code
-                        if (code != DEFAULTCODE) {
-                            injector.customFunctions[JSName] = new JSFunction(code, JSName);
-                            
-
-                            //code has been entered so this counts as answer
-                            injector.allSolutions.filter(s => s.triggerCalculateFromLateFunction).forEach(function(s) 
-                            {
-                                s.template._calculatedValue = "null";
-                                s.field.onResponse(); //includes score update
-                            });
-                        }
-                    }
-                }
-            }
-            return "null";
-        }
         //CALL CUSTOM CODE FUNCTION 
-        if (injector.customFunctions[this.functionNamePreserveCase] instanceof JSFunction) {
-            return injector.customFunctions[this.functionNamePreserveCase].execute(evaluatedParameters); //already in JSON
-        }
-
-        //ASSIGN VALUE TO CUSTOM VARIABLE
-        if (this.functionName == "variable") {
-            let JSName = helpers.stripQuotes(evaluatedParameters[0]);
-            injector.customFunctions[JSName] = null;
-            if (injector.allSolutions == undefined) {throw new TemplateError("allSolutions not found on template",false,false);} 
-            let thisSolution = injector.allSolutions.filter(s => s.template == injector);
-            if (thisSolution.length != 1) {throw new Error("number of matching solutions != 1");} 
-            thisSolution[0].triggerCalculateFromLateFunction = false;
-            if (thisSolution[0].field.elementValue) {
-                //store variable in template.customfunctions
-                injector.customFunctions[JSName] = safeStringify(thisSolution[0].field.elementValue); //needs to be in JSON before going in to template
-                //if the value is not null, then update any dependent calculatedvalues using
-                injector.allSolutions.filter(s => s.triggerCalculateFromLateFunction).forEach(function(s) 
-                {
-                    s.template._calculatedValue = "null";
-                    s.field.onResponse(); //includes score update
-                });
-            }
-                
-            return "null";
-        }
-        
-        if (injector.customFunctions[this.functionNamePreserveCase] === null) {
-            throw new TemplateError(`custom function with name "${this.functionNamePreserveCase}" not defined`,false,false);
+        if (injector.allVariablesAndFunctions[this.functionName] instanceof JSFunction) {
+            return injector.allVariablesAndFunctions[this.functionName].execute(evaluatedParameters); //already in JSON
         }
 
         //try Math
@@ -870,6 +834,6 @@ class FunctionExpression implements IExpression {
             return JSON.stringify(ret);
         }
 
-        return "null";
+        throw new ExpressionError(`custom function with name "${this.functionNamePreserveCase}" not defined`,false,false);
     }   
 }

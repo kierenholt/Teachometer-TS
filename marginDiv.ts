@@ -1,0 +1,75 @@
+
+class MarginDiv extends Container {
+    parent: QuestionDiv;
+    constructor(parent, questionNumberLogic: QuestionNumberLogic, questionLogic: QuestionLogic) {
+        super(parent,"div");
+        this.classes.push("margin");
+        this.classes.push("greyBackground");
+        
+        //question number
+        if (questionNumberLogic) {
+            let questionNumberDiv = new Container(this,"div",["Q",questionNumberLogic.createSpan(this)]);
+            questionNumberDiv.addClass("questionNumber");
+            this.appendChildElement(questionNumberDiv);
+        }
+
+        //delete button
+        if (this.settings.allowRowDelete) {
+            let deleteButton = new Icon(this,IconName.trash);
+            deleteButton.setEvent("onclick", questionLogic.destroy.bind(questionLogic));
+            deleteButton.addClass("deleteButton").addClass("hideOnPrint");
+            this.appendChildElement(deleteButton);
+        }
+
+        //duplicate button
+        if (this.settings.allowRowDuplicate) {
+            let duplicateButton = new Icon(this,IconName.duplicate);
+            duplicateButton.setEvent("onclick",
+                function(ql, assignment) { 
+                    var ql = ql;
+                    var assignment = assignment;
+                    return () => { assignment.duplicateRow(ql);}
+                }(questionLogic, this.settings.assignment)
+                );
+            duplicateButton.addClass("duplicateButton").addClass("hideOnPrint");
+            this.appendChildElement(duplicateButton);
+        }
+
+        //refresh button
+        let refreshButton = new Icon(this,IconName.refresh);
+        refreshButton.setEvent("onclick",
+            function(ql) { 
+                var ql = ql;
+                return () => { questionLogic.commentLogic.generateNewDollars();}
+            }(questionLogic)
+            );
+            refreshButton.addClass("refreshButton").addClass("hideOnPrint");
+        this.appendChildElement(refreshButton);
+
+        //gridlines button
+        if (parent.contentDiv.gridlines.length > 0) {
+            let gridlinesButton = new Icon(this,IconName.grid);
+            gridlinesButton.setEvent("onclick",
+                function(contentDiv) { 
+                    var contentDiv = contentDiv;
+                    return () => { contentDiv.toggleGridlines();}
+                }(parent.contentDiv)
+                );
+            gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint");
+            this.appendChildElement(gridlinesButton);
+        }
+
+        //spotlight button
+        //hideAllQuestionsButOne
+        let spotlightButton = new Icon(this,IconName.pin);
+        spotlightButton.setEvent("onclick",
+            function(ql) { 
+                var ql = ql;
+                return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql);}
+            }(questionLogic)
+            );
+            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
+        this.appendChildElement(spotlightButton);
+
+    }
+}

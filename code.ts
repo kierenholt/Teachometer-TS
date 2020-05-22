@@ -1,9 +1,3 @@
-class CodeError extends Error {
-    constructor(message) {
-        super(message);
-    }
-}
-
 class JSFunction {
     interpreter: any;
     error: any;
@@ -14,17 +8,16 @@ class JSFunction {
         try {
             this.interpreter = new Interpreter(code);
         }
-        catch(error) {
-            this.error = error; //don't throw it until code is executed
+        catch(e) { //re-throw to be caught by expression.ts
+            throw new ExpressionError("Error: Bad code. \n Detail:  " + (e as Error).message,true,false);  
         }
         this.code = code;
         this.JSName = JSName;
         this.cache = {};
     }
 
-    execute(parameters) { //parameters are currently js objects
+    execute(parameters) { //parameters are JSON format
         //https://neil.fraser.name/software/JS-Interpreter/docs.html
-        if (this.error) { throw new CodeError(this.error); }
         
         let joinedParameters = parameters.map(a => JSON.stringify(a)).join();
         if (joinedParameters in this.cache) {
@@ -36,20 +29,19 @@ class JSFunction {
               ${this.JSName}(${joinedParameters});`);
         }
 
+        var i = 100000; //counts up to 9998 using a while loop....?
         try {
-            var i = 100000; //counts up to 9998 using a while loop....?
             while (i-- && this.interpreter.step()) {
                 //console.log(i);
             }
         }
-        catch (e) {
-            throw (e);
-            this.interpreter = new Interpreter(this.code);
+        catch (e) { //re-throw to be caught at expression.ts 
+            throw new ExpressionError("Error:code did not execute completely\n Detail:  " + (e as Error).message,true,false);  
         }
+
         if (i == -1) {
-            throw new CodeError("your code contains an infinite loop");            
+            throw new ExpressionError("Error: Code contains an infinite loop",true,false);            
         }
-        //this.interpreter.run(); //MAY FALL INTO AN INFINITE LOOP
 
         //array is returned as object
         var evaluated = undefined;
@@ -66,7 +58,15 @@ class JSFunction {
             evaluated = JSON.stringify(this.interpreter.value);
         }
         this.cache[joinedParameters] = evaluated;
-        return evaluated;                    
+        return evaluated;
+    }
 
+    static generateDefaultCode(functionName) {
+        if (functionName == "console") { return ""; }
+        return `function ${functionName}() {
+
+//your code goes here
+        
+}`;
     }
 }

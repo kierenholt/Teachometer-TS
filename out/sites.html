@@ -38,32 +38,6 @@
     window.assignment = new AssignmentHTML(settings);
     
         //markbookupdate
-          var markbookUpdateInjector = function(paramworkbookId, paramsheetName, paramuser, paramaggregateScoreGetter) {
-            var workbookId = paramworkbookId;
-            var sheetName = paramsheetName;
-            var user = paramuser;
-            var aggregateScoreGetter = paramaggregateScoreGetter;
-        
-            return function(scores) {
-              var aggScores = aggregateScoreGetter();
-              for (var key in aggScores) {
-                  scores[key] = aggScores[key];
-              }
-              //google.script.run.writeToSheet(workbookId, sheetName, user, scores);
-              
-              let shortstr = (`
-markbookColumn:${workbookId} response:${sheetName}  scores: ${JSON.stringify(scores)}`);
-              //alert(str);
-              document.getElementById("feedback").value += shortstr;
-            };
-        };
-          settings.markbookUpdate = markbookUpdateInjector(
-              settings.workbookId,
-              settings.sheetName,
-              settings.user,
-              assignment.aggregateScoreGetter);
-    }
-
 </script>
 
 </head>

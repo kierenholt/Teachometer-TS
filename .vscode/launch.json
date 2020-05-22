@@ -4,21 +4,20 @@
     // For more information, visit: https://go.microsoft.com/fwlink/?linkid=830387
     "version": "0.2.0",
     "configurations": [
-
         {
-            "name": "Attach to index",
+            "name": "Attach to lesson",
             "type": "chrome",
             "request": "attach",
             "port": 9222,
-            "url": "http://0.0.0.0:8000/index.html",
+            "url": "http://0.0.0.0:8000/lesson.html",
             "webRoot": "${workspaceFolder}/out"
         },
         {
-            "name": "Attach to sites",
+            "name": "Attach to builder",
             "type": "chrome",
             "request": "attach",
             "port": 9222,
-            "url": "http://0.0.0.0:8000/sites.html",
+            "url": "http://0.0.0.0:8000/builder.html",
             "webRoot": "${workspaceFolder}/out"
         },
         {

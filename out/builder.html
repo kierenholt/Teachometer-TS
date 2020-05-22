@@ -1,0 +1,256 @@
+<html>
+<head> 
+	<meta charset="UTF-8"> 
+	<link id="style" rel="stylesheet" type="text/css" href="assignment.css">
+		
+	<script src="assignment.js"></script>
+	<script async src="acorn_interpreter.js"></script>
+
+
+<script>
+	function doStuff()  {
+		let notesData = [
+			{
+				"title":"blank both",
+				"leftRight": ["", ""],
+				"purpose": "notes"
+			},{
+				"title":"code block with line numbers?",
+				"leftRight": ["```line1\nline2\nline3\n```", ""],
+				"purpose": "notes"
+			},{
+				"title":"table with empty cells too",
+				"leftRight": ["|||\n|a|b|c\n|x|y|z\n|||\nFIRST ROW\n???\n line 2", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"combo",
+				"leftRight": ["{a/b/c}", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"rollover",
+				"leftRight": ["???\n hidden stuff\n???\n", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"radio",
+				"leftRight": ["A. blue\nB. green\nC. orange D. another", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"bullet",
+				"leftRight": ["* a bullet\n* another bullet\n not a * bullet", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"line break",
+				"leftRight": ["\n a line break\n another line break\nanother line break", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"basic fraction",
+				"leftRight": ["~[top A.](bottom^2)", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"link",
+				"leftRight": ["[google](www.google.co.uk)", ""],
+				"purpose": "notes"
+			},
+			{ //index 10
+				"title":"image",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)", "![Imgur](https://i.imgur.com/SMh0hnf.gif)"],
+				"purpose": "notes"
+			},
+			{
+				"title":"textarea",
+				"leftRight": ["______________________________________","2"],
+				"purpose": "notes"
+			},
+			{
+				"title":"relative position",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)\n@[50,50](RELATIVE)","="],
+				"purpose": "notes"
+			}
+			];
+		let simpleQuestionData = [
+			{ //question with no title
+				"title":"",
+				"leftRight": ["aubergines are __",""],
+				"purpose": "question",
+				"comment": "purple"
+			},
+			{
+				"title":"simple input question",
+				"leftRight": ["the sky is __",""],
+				"purpose": "question",
+				"comment": "blue"
+			},
+			{
+				"title":"simple combo question",
+				"leftRight": ["cheese is {red/green/blue/yellow}",""],
+				"purpose": "question",
+				"comment": "yellow"
+			},
+			{
+				"title":"simple textarea question",
+				"leftRight": ["a tomato is ____________________________________________",""],
+				"purpose": "question",
+				"comment": "red"
+			},
+			{
+				"title":"simple radio question",
+				"leftRight": ["grass is A. red B. green C. blue",""],
+				"purpose": "question",
+				"comment": "B"
+			},
+			{ //index 5
+				"title":"lots of inputs",
+				"leftRight": ["1 2 3 4 5 __ __ __ __ __",""],
+				"purpose": "question",
+				"comment": "6\n7\n8\n9\n10"
+			}
+		]
+		let templateQuestionData = [
+			{
+				"title":"simple template",
+				"leftRight": ["$$ + 3 = ___",""],
+				"purpose": "template",
+				"comment": "10..20\na+3"
+			},
+			{
+				"title":"check for crazy sig figs in question",
+				"leftRight": ["$$*0.1 = ___",""],
+				"purpose": "template",
+				"comment": "2..9\n0.1*a"
+			},
+			{
+				"title":"image template",
+				"leftRight": ["$$",""],
+				"purpose": "template",
+				"comment": '"![]("+("https://i.imgur.com/fj7Wmk3.png","https://i.imgur.com/aT6WzPT.gif","https://i.imgur.com/Gzu17kk.png")+")"'
+			},
+			{
+				"title":"adding strings template",
+				"leftRight": ["$$ + 00 = $$",""],
+				"purpose": "template",
+				"comment": '"a","b","c"\na+"00"'
+			},
+			{ //index 4
+				"title":"template with check box",
+				"leftRight": ["1 + 2 = __ []",""],
+				"purpose": "template",
+				"comment": 'variable("A")\nA == 3'
+			},
+			{ //index 5
+				"title":"template to check string",
+				"leftRight": ["$$ {bigger than/less than/equal to} $$",""],
+				"purpose": "template",
+				"comment": '1..20\nif(a>c,"bigger than",if(a==c,"equal to","less than"))\n1..20'
+			},
+		];
+		let jsfunctionData = [{
+				"title":"basic code test with no score",
+				"leftRight": ["code ____________________________________\nfunction() => $$",""],
+				"purpose": "template",
+				"comment": 'code("five")\nfive()'
+			},{
+				"title":"code test with one parameter",
+				"leftRight": ["code ____________________________________\nfive(___) => $$",""],
+				"purpose": "template",
+				"comment": 'code("five")\nvariable("B")\nfive(B)'
+			},{ //index 2
+				"title":"code test with one parameter one check",
+				"leftRight": ['plus 5 code ____________________________________\nTEST plusFive(___) => $$','plusFive(3) => $$ \n does it equal 8? []'],
+				"purpose": "template",
+				"comment": 'code("plusFive")\nvariable("B")\nplusFive(B)\nplusFive(3)\nplusFive(3)==8'
+			},
+			{
+				"title":"console test",
+				"leftRight": ["____________________________________\noutput: $$",""],
+				"purpose": "template",
+				"comment": 'code("console")\nconsole()'
+			}
+		]
+		let templateErrorData = [{
+				"title":"infinite loop error test",
+				"leftRight": ["$$ $$",""],
+				"purpose": "template",
+				"comment": "2..3\na+b"
+			}
+		]
+		let sudokuData = [{
+				"title":"basic sudoku",
+				"leftRight": ["$$ $$ $$ $$ $$",""],
+				"purpose": "sudoku",
+				"comment": "2..3\na+1\nb+1\nc+1\nd+1"
+			}
+		]
+
+
+		var builderSettings = new Settings({
+			appendMode: false,	
+			endTime: null,
+			initialChecksRemaining: -1,
+			presentMode: false,
+			questionJSON: null,
+
+			removeHyperlinks: false,
+			responses: null,
+			shuffleQuestions: false,
+			startTime: new Date(),
+			title: "",
+
+			truncateMarks: -1,
+				
+			allowGridlines : false,
+			allowRowDelete : true,
+			allowRowDuplicate: true,
+			allowRefresh: true,
+		});
+		
+		window.assignment = new Assignment(document.getElementById("assignment"),builderSettings);
+		
+		//test1
+		createButton("refresh",()=>window.assignment.regenerateAllQuestions());
+		createButton("append random Row",() => {
+				assignment.addRowsFromData([templateQuestionData[new Random().next(templateQuestionData.length)]])
+		});
+		createButton("remove row at index 0",()=> assignment.questionsDiv._childNodes[0].destroy());
+		createButton("create Icon after index 0",()=> createIconAfter(assignment.questionsDiv._childNodes[0], 2));
+		createButton("builder shuffle",()=> assignment.shuffle(true)); //like the shuffle button in builder
+		createButton("truncate",()=> assignment.truncate());
+		createButton("delete All",()=> assignment.deleteAll());
+		createButton("preview in new window",()=> assignment.previewInNewWindow());
+		createButton("show current question JSON",()=> document.getElementById("textArea1").value = JSON.stringify(assignment.currentQuestionData));
+		createButton("import JSON",()=> {
+			var rows = JSON.parse(document.getElementById("textArea1").value);
+			assignment.addRowsFromData(rows);
+		});
+		createButton("present in new window",() => assignment.presentInNewWindow());
+		
+
+	};
+
+	function createButton(innerText, onclick) {
+		let b = document.createElement("button");
+		b.onclick = onclick;
+		b.innerText = innerText;
+		document.getElementById("buttons").appendChild(b);
+	}
+</script>
+
+</head>
+<body onload="doStuff()">
+
+	<div id="buttons" class="hideOnPrint">
+
+	<br>
+	<textarea style="display: block" rows=10 cols=10 id="textArea1" ></textarea>
+	</div>
+
+<div id="assignment" style="margin: 0;"></div>
+
+</body>
+</html>
