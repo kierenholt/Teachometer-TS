@@ -43,8 +43,8 @@ class ScoreLogic  {
     setCorrect(isCorrect: boolean) {
         this._score = isCorrect ? 1 : 0;
 
-        if ((this.attempted == 0 || this.settings.presentMode) &&
-            this.settings.initialChecksRemaining < 0) { //do not postpone if first attempt
+        if ((this.attempted == 0 && this.settings.initialChecksRemaining < 0)
+            || this.settings.instantChecking) { //do not postpone if first attempt
             this.setImage();
         }
         else { //postpone

@@ -42,14 +42,14 @@ class SubmitButtonAndFinalScoreLogic {
             numChecks + " checks remaining";
     }
 
-    //button onclick
+    //button onclick - only check with server if checks are limited
     onCheckButton() {
-        if (this.settings.checkRequest) {
+        if (this.settings.initialChecksRemaining >= 0) {
             this.button.setAttribute("disabled",true);
             let onRetry = (data) => { 
                 this.button.innerHTML = "connection error....retrying";
             };
-            this.settings.checkRequest(this.checkCallback.bind(this), onRetry.bind(this));
+            Connection.instance.checkRequest(this.checkCallback.bind(this), onRetry.bind(this));
         }
         else {
             //unlimited checks

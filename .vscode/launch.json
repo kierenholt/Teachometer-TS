@@ -10,7 +10,7 @@
             "request": "attach",
             "port": 9222,
             "url": "http://0.0.0.0:8000/lesson.html",
-            "webRoot": "${workspaceFolder}/out"
+            "webRoot": "${workspaceFolder}"
         },
         {
             "name": "Attach to builder",
@@ -18,7 +18,7 @@
             "request": "attach",
             "port": 9222,
             "url": "http://0.0.0.0:8000/builder.html",
-            "webRoot": "${workspaceFolder}/out"
+            "webRoot": "${workspaceFolder}"
         },
         {
             "name": "Attach to testMaker",
@@ -26,7 +26,7 @@
             "request": "attach",
             "port": 9222,
             "url": "http://0.0.0.0:8000/testMaker.html",
-            "webRoot": "${workspaceFolder}/out"
+            "webRoot": "${workspaceFolder}"
         }/*,
         {
             "type": "chrome",

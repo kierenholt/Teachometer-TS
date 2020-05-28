@@ -9,7 +9,6 @@ interface RowData {
 
 class Assignment extends Container {
     questionsDiv: Container;
-    questionLogics: QuestionLogic[] = [];
     solutionsDiv: Container;
     jumbledSolutionsDiv: Container;
 
@@ -23,11 +22,14 @@ class Assignment extends Container {
         this._element = div; //must come first
         this.settings = settingsObj;
         this.settings.assignment = this;
+
         if (this.settings.title) window.document.title = this.settings.title;
         
         //divs
         this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
-        if (!this.settings.presentMode) { this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv"); }
+        if (this.settings.showSolutions) { 
+            this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv"); 
+        }
         //this.jumbledSolutionsDiv = new Container(this, "div").addClass("jumbledSolutionsDiv");
 
         //if question data included in settings
@@ -51,16 +53,24 @@ class Assignment extends Container {
         }
         else {
             //submit button and sheet timer
-            this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
-            this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
-            
             this._childNodes = [];
-            if (this.settings.title) this._childNodes.push(new HeadingCup(this, this.settings.title));
-            this._childNodes.push(this.questionsDiv, this.submitButtonDiv);
+            //student picker - teacher only
+            if (this.settings.studentPicker) {
+                this._childNodes.push(this.settings.studentPicker.createCombo(this));
+            }   
+            this._childNodes.push(this.questionsDiv);   
+            //submit button      
+            if (!this.settings.instantChecking) {
+                this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
+                this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
+                this._childNodes.push(this.submitButtonDiv);
+            }
+            //solutions
             if (this.solutionsDiv) {
                 this._childNodes.push(new HeadingCup(this,"solutions"));
                 this._childNodes.push(this.solutionsDiv);
             }
+            //timer
             if (this.settings.timerLogic) {
                 this._childNodes.push(this.settings.timerLogic.createDiv(this));
             }
@@ -77,9 +87,10 @@ class Assignment extends Container {
             let QL = new QuestionLogic(row, this.settings);
             let QD = QL.createQuestionDiv(this.questionsDiv);
             this.questionsDiv.appendChildElement(QD);
-            let SD = QL.createSolutionDiv(this.solutionsDiv);
-            this.solutionsDiv.appendChildElement(SD);
-            this.questionLogics.push(QL);
+            if (this.solutionsDiv) {
+                let SD = QL.createSolutionDiv(this.solutionsDiv);
+                this.solutionsDiv.appendChildElement(SD);
+            }
         }
     }
     
@@ -88,22 +99,30 @@ class Assignment extends Container {
         let newQD = newQL.createQuestionDiv(this.questionsDiv);
         this.questionsDiv.appendChildElement(newQD, QL.questionDiv);
         let newSD = newQL.createSolutionDiv(this.questionsDiv);
-        this.solutionsDiv.appendChildElement(newSD, QL.solutionDiv);
+        if (this.solutionsDiv) this.solutionsDiv.appendChildElement(newSD, QL.solutionDiv);
     }
 
 
     shuffle(shuffleQuestionNumbers) {
         let seed = this.settings.random.next();
         this.questionsDiv.shuffleChildren(new Random(seed));
-        this.solutionsDiv.shuffleChildren(new Random(seed));
+        if (this.solutionsDiv) this.solutionsDiv.shuffleChildren(new Random(seed));
         if (shuffleQuestionNumbers) {
             helpers.shuffleInPlace(QuestionNumberLogic.instances,new Random(seed));
             QuestionNumberLogic.instances.forEach(q => q.refreshSpans());
         }
     }
 
+    //resets questions according to question logic order (only relevant in lesson mode)
+    resetQuestionOrder() {
+        for (let ql of QuestionLogic.readOnlyInstances) {
+            this.questionsDiv.appendChildElement(ql.questionDiv);
+            if (this.solutionsDiv) this.solutionsDiv.appendChildElement(ql.solutionDiv);
+        }
+    }
+
     deleteAll() {
-        this.questionLogics.forEach(ql => ql.destroy());
+        QuestionLogic.readOnlyInstances.forEach(ql => ql.destroy());
     }
     
     scroll() {
@@ -116,19 +135,19 @@ class Assignment extends Container {
         }
         let i = 0;
         //find question which runs over the mark limit
-        while (this.questionLogics[i] && n >= helpers.lengthOfObject(this.questionLogics[i].commentLogic.scoreLogicsWithCommentLetters) ) {
-            n -= helpers.lengthOfObject(this.questionLogics[i].commentLogic.scoreLogicsWithCommentLetters);
+        while (QuestionLogic.readOnlyInstances[i] && n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters) ) {
+            n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
             i++;
         }
         //trim surplus solutions from this question
-        let lastQn = this.questionLogics[i];
+        let lastQn = QuestionLogic.readOnlyInstances[i];
         if (lastQn) {
             let scoreLogics: ScoreLogic[] = helpers.getValuesFromObject(lastQn.commentLogic.scoreLogicsWithCommentLetters);
             if (n > 0) {
                 lastQn.commentLogic.truncate(scoreLogics.length - n);
             }
             if (n > 0) { i++; }
-            this.questionLogics.slice(i).forEach(ql => ql.destroy());
+            QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
         }
     }
     
@@ -143,9 +162,9 @@ class Assignment extends Container {
 <head>
 
     <meta charset="UTF-8"> 
-    <link id="style" rel="stylesheet" type="text/css" href="assignment.css">
-    <script src="assignment.js"></script>
-    <script async src="acorn_interpreter.js"></script>
+    <link id="style" rel="stylesheet" type="text/css" href="https://www.teachometer.co.uk/user/css/assignment.css">
+    <script src="https://www.teachometer.co.uk/user/js/assignment.min.js"></script>
+    <script async src="https://www.teachometer.co.uk/user/js/acorn_interpreter.js"></script>
 
 </head>
 
@@ -155,27 +174,10 @@ class Assignment extends Container {
 
         function init() {
             var previewSettings = {
-                appendMode: false,
-                endTime: null,
-                initialChecksRemaining : -1,
-                presentMode: false,
-                questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))},
-
-                removeHyperlinks: false,
-                responses: null,
-                shuffleQuestions: false,
-                startTime: new Date(),
-                title: "",
-
-                truncateMarks: -1,
-                
-                allowGridlines : true,
-                allowRowDelete : true,
-                allowRowDuplicate: true,
-                allowRefresh: true,
+                questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))}
             };
 
-        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(previewSettings));
+        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(previewSettings,4));
         }
     </script>
 </body>
@@ -191,10 +193,10 @@ class Assignment extends Container {
 <head>
 
     <meta charset="UTF-8"> 
-    <link id="style" rel="stylesheet" type="text/css" href="reveal.css">
-    <script src="assignment.js"></script>
-    <script src="reveal.js"></script>
-    <script async src="acorn_interpreter.js"></script>
+    <link id="style" rel="stylesheet" type="text/css" href="https://www.teachometer.co.uk/user/css/reveal.css">
+    <script src="https://www.teachometer.co.uk/user/js/assignment.min.js"></script>
+    <script src="https://www.teachometer.co.uk/user/js/reveal.min.js"></script>
+    <script async src="https://www.teachometer.co.uk/user/js/acorn_interpreter.js"></script>
 
 </head>
 
@@ -204,27 +206,10 @@ class Assignment extends Container {
 
         function init() {
             var revealSettings = {
-                appendMode: false,
-                endTime: null,
-                initialChecksRemaining : -1,
-                presentMode: true,
                 questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))},
-
-                removeHyperlinks: false,
-                responses: null,
-                shuffleQuestions: false,
-                startTime: new Date(),
-                title: "",
-
-                truncateMarks: -1,
-                
-                allowGridlines : false,
-                allowRowDelete : false,
-                allowRowDuplicate: false,
-                allowRefresh: false,
             };
 
-        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings));
+        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings,3));
         }
     </script>
 </body>
@@ -234,12 +219,13 @@ class Assignment extends Container {
 
     }
 
+    //columnHeaders
     get questionNumbers() { //to populate the marksheet
-        return this.questionLogics.reduce((a, b) => a.concat(b.questionNumbers), []);
+        return QuestionLogic.readOnlyInstances.reduce((a, b) => a.concat(b.columnHeaders), []);
     }
 
     get currentQuestionData() {
-        return this.questionLogics.map(ql => ql.rowData);
+        return QuestionLogic.readOnlyInstances.map(ql => ql.rowData);
     }
 }
 

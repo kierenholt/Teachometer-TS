@@ -30,7 +30,15 @@
         {
             "label": "python_server",
             "type": "shell",
-            "command": "cd out\npython3 -m http.server 8000",
+            "command": "python3 -m http.server 8000",
+            "args": [],
+            "group": "build",
+            "problemMatcher": []
+        },        
+        {
+            "label": "php_server",
+            "type": "shell",
+            "command": "php -S localhost:8000 -t ~/Documents/Teachometer/code/",
             "args": [],
             "group": "build",
             "problemMatcher": []

@@ -1,5 +1,4 @@
 class SheetManager {
-    settings: Settings;
     numberOfFieldsWithQuestionTitles = {};
     columnHeadersWithFieldUIDs = {};
     scoresToSendBuffer = {} ;
@@ -8,22 +7,25 @@ class SheetManager {
     timerInterval: number = null;
     endTime: Date;
 
-    constructor(settings: Settings) {
-        this.settings = settings;
+    constructor() {
     }
 
-    registerField(valueField: ValueField, columnHeaderFirstPart: string, jsFunctionName?: string) {
+    //register fields even if writetosheet is null, for the columnheaders
+    registerField(valueField: ValueField, 
+            columnHeaderFirstPart: string, jsFunctionName?: string) {
         if (!(columnHeaderFirstPart in this.numberOfFieldsWithQuestionTitles)) {
             this.numberOfFieldsWithQuestionTitles[columnHeaderFirstPart] = 0;
         }
+
+        //columnheader is questionnumber + letter or function name 
         let letter = jsFunctionName ? jsFunctionName : helpers.lowerCaseLetterFromIndex(
             this.numberOfFieldsWithQuestionTitles[columnHeaderFirstPart]++);
         let columnHeader = columnHeaderFirstPart + "." + letter;
         this.columnHeadersWithFieldUIDs[valueField.UID] = columnHeader;
 
         //get value from marksheet responses if it exists
-        if (this.settings.responses && columnHeader in this.settings.responses) {
-            valueField.setValue(this.settings.responses[columnHeader]);
+        if (Settings.instance.responses && columnHeader in Settings.instance.responses) {
+            valueField.setValue(Settings.instance.responses[columnHeader]);
         }
     }
 
@@ -35,14 +37,14 @@ class SheetManager {
                     this.scoresToSendBuffer[columnHeader] = {
                         value: scoreLogic.iconAsString,
                         color: scoreLogic.color,
-                        append: this.settings.appendMode
+                        append: Settings.instance.appendMode
                     };                    
                 }
                 else {
                     this.scoresToSendBuffer[columnHeader] = {
                         value: field.getValue(),
                         color: scoreLogic.color,
-                        append: this.settings.appendMode
+                        append: Settings.instance.appendMode
                     };
                 }
             }
@@ -50,7 +52,7 @@ class SheetManager {
                 this.scoresToSendBuffer[columnHeader] = {
                     value: field.getValue(),
                     color: "white",
-                    append: this.settings.appendMode
+                    append: Settings.instance.appendMode
                 };
             }
         }
@@ -62,17 +64,15 @@ class SheetManager {
     }
 
     attemptToSend() {
-        let merged = helpers.mergeObjects(this.settings.totalScores,this.scoresToSendBuffer);
-        let success = this.settings.writeToSheet(merged);
-        if (success) { 
+        let merged = helpers.mergeObjects(Settings.instance.totalScores,this.scoresToSendBuffer);
+        let onSuccess = (data) => { 
             this.scoresToSendBuffer = {}; //clean buffer
             this.span.innerHTML = "";
         }
-        else {
-            if (this.timerInterval == null) {
-                this.startCountDown();
-            }
-        }
+        let onRetry = (data) => { 
+            this.span.innerHTML = "connection error....retrying";
+        };
+        Connection.instance.writeToSheet(onSuccess.bind(this), onRetry.bind(this), merged);
     }
 
     createCountdownDiv(parent): Span {
@@ -83,31 +83,4 @@ class SheetManager {
         return this.div;
     }
 
-    startCountDown() {
-        let d = new Date();
-        this.endTime = new Date(d.valueOf() + 10000);
-        this.timerInterval = setInterval(function(sheetManager: SheetManager) {
-            
-            var sheetManager = sheetManager;
-            //REPEATS EVERY 0.9 SECONDS
-            return function() {
-                    sheetManager.span.innerHTML = sheetManager.timerText;
-                    if (sheetManager.isElapsed) { 
-                        sheetManager.span.innerHTML = "retrying...";
-                        clearInterval(sheetManager.timerInterval);
-                        sheetManager.timerInterval = null; 
-                        sheetManager.attemptToSend();
-                    }
-                };
-        }(this), 900);
-    }
-
-    get timerText(): string {
-        var secondsLeft = Math.floor((this.endTime.valueOf() - new Date().valueOf()) / 1000);
-        return `Connection error: retrying in ${secondsLeft} seconds `;
-    }
-
-    get isElapsed() : boolean { 
-        return this.endTime.valueOf() < new Date().valueOf();
-    }
 }

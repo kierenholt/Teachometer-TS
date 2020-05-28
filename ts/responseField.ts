@@ -16,9 +16,9 @@ interface SetImageField {
 interface ValueField {
     setValue(value:string);
     getValue(): string;
-    UID: string;
     setErrorText(value: string);
     resetError();
+    UID: string;
 }
 
 
@@ -27,7 +27,7 @@ class ComboCup extends Container implements ClickAwayField, ValueField, SetImage
     errorText: Span;
     constructor(parent: Container, childNodes, decisionImage: Icon, span: Span) { 
         super(parent, "select",childNodes); 
-        this.replace(ComboCup.optionReplacer);
+        this.replace(ComboCup.optionReplacer); //pass a slash delimited string 
         this._decisionImage = decisionImage;
         this.errorText = span;
         this.errorText.addClass("errorText");
@@ -43,7 +43,13 @@ class ComboCup extends Container implements ClickAwayField, ValueField, SetImage
 
     setOnClickAway(func: any) { this.setEvent("onchange",func); }
     getValue() { return this.getAttribute("value"); }
-    setValue(value: string) { this.setAttribute("value",value); }
+    setValue(value: string) { 
+        this.setAttribute("value",value);
+        let found = this._childNodes.filter(ch => ch._innerText == value);
+        if (found.length > 0) {
+            found[0].setAttribute("selected",true);
+        } 
+    }
     setDecisionImage(value: IconName) { this._decisionImage.setIconName(value); }
     setErrorText(value) { 
         this.errorText.innerHTML = value;

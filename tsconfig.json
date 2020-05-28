@@ -4,7 +4,7 @@
       //"module": "commonjs",
       "module": "none",
       //"outDir": "out",
-      "outFile": "out/assignment.js",
+      "outFile": "js/assignment.js",
       "sourceMap": true,
       "removeComments": true
     },

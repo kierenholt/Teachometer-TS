@@ -47,7 +47,7 @@ class TimerLogic {
     get timerText() {
         if (this.isElapsed) { return "TIME EXPIRED"; }
         // get total seconds between the times
-        var delta = Math.abs(this.endTime.valueOf() - new Date().valueOf()) / 1000;
+        var delta = Math.abs(Number(this.endTime) - Number(new Date())) / 1000;
 
         // calculate (and subtract) whole days
         var days = Math.floor(delta / 86400);
@@ -72,6 +72,6 @@ class TimerLogic {
     }
 
     get isElapsed() {
-        return this.endTime.valueOf() < new Date().valueOf();
+        return Number(this.endTime) < Number(new Date());
     }
 }

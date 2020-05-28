@@ -30,6 +30,7 @@ class CommentLogic {
     //clickaway fields only trigger recalculate
     constructor(comment: string, valueFields: ValueField[], 
         purpose: string, questionLogic: QuestionLogic) {
+
         this.questionLogic = questionLogic;
         this.settings = questionLogic.settings;
         CommentLogic.instances.push(this);
@@ -92,6 +93,7 @@ class CommentLogic {
                 v instanceof RadioSet) {
                 this.inputsWithCommentLetters[commentLetter] = v; //assign comment letter
 
+                //register with sheetmanager
                 if (this.settings.sheetManager ) {
                     if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
                         //code does not have a scorelogic letter so use functionName
@@ -173,7 +175,7 @@ class CommentLogic {
 
     //refresh button does this
     generateNewDollars() {
-        this.seed = new Random(this.seed).next();
+        this.seed = Settings.instance.random.next();
         let outputValues = this.calculate(this.getInputValues());
         if (outputValues) {
             this.updateDollars(outputValues);
@@ -195,7 +197,7 @@ class CommentLogic {
             this.updateDollars(outputValues);
             this.sendToScoreLogics(inputValues, outputValues); //only updated if values have changed
 
-            if (this.settings.sheetManager) { this.sendToSheetManager(inputValues); }
+            if (Settings.instance.sendScoresToMarksheet)  { this.sendToSheetManager(inputValues); }
             this.pastInputValuesWithLetters = inputValues;
         }
     }
@@ -376,10 +378,5 @@ class CommentLogic {
             this.scoreLogicsWithCommentLetters[key].destroy();
         }
         helpers.removeFromArray(CommentLogic.instances,this);
-    }
-
-    //for question numbers 1a 2a 2b etc.
-    get numAbleScoreLogics() {
-        return helpers.getValuesFromObject(this.scoreLogicsWithCommentLetters).length; 
     }
 }

@@ -8,7 +8,7 @@ class MarginDiv extends Container {
         
         //question number
         if (questionNumberLogic) {
-            let questionNumberDiv = new Container(this,"div",["Q",questionNumberLogic.createSpan(this)]);
+            let questionNumberDiv = new Container(this,"div",[questionNumberLogic.createSpan(this)]);
             questionNumberDiv.addClass("questionNumber");
             this.appendChildElement(questionNumberDiv);
         }

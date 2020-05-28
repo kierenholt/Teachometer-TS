@@ -65,11 +65,11 @@ var helpersMaker = function() {
     }
 
     var IsStringNullOrEmpty = function(str) {
-      return (str == undefined || str == null || str.length === 0 || !str.trim());
+      return (str == undefined || str == null || typeof(str) != "string" || str.length === 0 || !str.trim());
     };
     
     var IsStringNullOrWhiteSpace = function(str) {
-        return str == undefined || str == null || str == "" || str.trim().length == 0;
+        return str == undefined || str == null || typeof(str) != "string" || str == "" || str.trim().length == 0;
     }
 
     
@@ -187,66 +187,6 @@ var helpersMaker = function() {
       return ret;
     }
 
-  //Usage: sendObject(object,(data) => console.log(data));
-  var sendRequestAndFail = function(url, object, onSuccess, onFail?) {
-    var queryString = "?";
-    for (var key in object) {
-      queryString += key + "=" + encodeURIComponent(object[key]) + "&";
-    }
-    let scriptElement = document.createElement("script");
-    scriptElement.type = 'text/javascript';
-    scriptElement.onerror = function (scriptElement, onFail) {
-      var scriptElement = scriptElement;
-      return (data) => {
-        if (onFail) onFail(data);
-        document.body.removeChild(scriptElement);
-      }
-    }(scriptElement, onFail);
-    let random = Math.random().toString().substring(2);
-    window["callback"] = function (scriptElement, onSuccess) {
-      var scriptElement = scriptElement;
-      var onSuccess = onSuccess;
-      return (data) => {
-        onSuccess(data);
-        document.body.removeChild(scriptElement);
-      };
-    }(scriptElement, onSuccess);
-    scriptElement.src = url + queryString + "prefix=callback";
-    document.body.appendChild(scriptElement);
-  }
-
-  //Usage: sendObject(object,(data) => console.log(data));
-    var sendRequestAndRetry = function(url, object, onSuccess, onRetry?) {
-      var queryString = "?";
-      for (var key in object) {
-        queryString += key + "=" + encodeURIComponent(object[key]) + "&";
-      }
-      let scriptElement = document.createElement("script");
-      scriptElement.type = 'text/javascript';
-      scriptElement.onerror = function (url, object, onSuccess, scriptElement, onRetry) {
-        var url = url;
-        var object = object;
-        var onSuccess = onSuccess;
-        var scriptElement = scriptElement;
-        var onRetry = onRetry;
-        return (data) => {
-          if (onRetry) onRetry(data);
-          document.body.removeChild(scriptElement);
-          setTimeout(() => helpers.sendRequestAndRetry(url, object, onSuccess, onRetry), 1000);
-        }
-      }(url, object, onSuccess, scriptElement, onRetry);
-      let random = Math.random().toString().substring(2);
-      window["callback"] = function (scriptElement, onSuccess) {
-        var scriptElement = scriptElement;
-        var onSuccess = onSuccess;
-        return (data) => {
-          onSuccess(data);
-          document.body.removeChild(scriptElement);
-        };
-      }(scriptElement, onSuccess);
-      scriptElement.src = url + queryString + "prefix=callback";
-      document.body.appendChild(scriptElement);
-    }
       
     return {
         objToHash: objToHash,
@@ -271,9 +211,7 @@ var helpersMaker = function() {
         lengthOfObject: lengthOfObject, 
         getValuesFromObject: getValuesFromObject,
         getKeysFromObject: getKeysFromObject,
-        mergeObjects: mergeObjects,
-        sendRequestAndRetry: sendRequestAndRetry,
-        sendRequestAndFail: sendRequestAndFail
+        mergeObjects: mergeObjects
       };
 
 };

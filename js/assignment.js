@@ -460,14 +460,13 @@ class GridLines extends Container {
 class Assignment extends Container {
     constructor(div, settingsObj) {
         super(null, "div");
-        this.questionLogics = [];
         this._element = div;
         this.settings = settingsObj;
         this.settings.assignment = this;
         if (this.settings.title)
             window.document.title = this.settings.title;
         this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
-        if (!this.settings.presentMode) {
+        if (this.settings.showSolutions) {
             this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv");
         }
         if (this.settings.questionJSON) {
@@ -488,12 +487,16 @@ class Assignment extends Container {
             window["Reveal"].initialize({ transition: 'linear' });
         }
         else {
-            this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
-            this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
             this._childNodes = [];
-            if (this.settings.title)
-                this._childNodes.push(new HeadingCup(this, this.settings.title));
-            this._childNodes.push(this.questionsDiv, this.submitButtonDiv);
+            if (this.settings.studentPicker) {
+                this._childNodes.push(this.settings.studentPicker.createCombo(this));
+            }
+            this._childNodes.push(this.questionsDiv);
+            if (!this.settings.instantChecking) {
+                this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
+                this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
+                this._childNodes.push(this.submitButtonDiv);
+            }
             if (this.solutionsDiv) {
                 this._childNodes.push(new HeadingCup(this, "solutions"));
                 this._childNodes.push(this.solutionsDiv);
@@ -512,9 +515,10 @@ class Assignment extends Container {
             let QL = new QuestionLogic(row, this.settings);
             let QD = QL.createQuestionDiv(this.questionsDiv);
             this.questionsDiv.appendChildElement(QD);
-            let SD = QL.createSolutionDiv(this.solutionsDiv);
-            this.solutionsDiv.appendChildElement(SD);
-            this.questionLogics.push(QL);
+            if (this.solutionsDiv) {
+                let SD = QL.createSolutionDiv(this.solutionsDiv);
+                this.solutionsDiv.appendChildElement(SD);
+            }
         }
     }
     duplicateRow(QL) {
@@ -522,19 +526,28 @@ class Assignment extends Container {
         let newQD = newQL.createQuestionDiv(this.questionsDiv);
         this.questionsDiv.appendChildElement(newQD, QL.questionDiv);
         let newSD = newQL.createSolutionDiv(this.questionsDiv);
-        this.solutionsDiv.appendChildElement(newSD, QL.solutionDiv);
+        if (this.solutionsDiv)
+            this.solutionsDiv.appendChildElement(newSD, QL.solutionDiv);
     }
     shuffle(shuffleQuestionNumbers) {
         let seed = this.settings.random.next();
         this.questionsDiv.shuffleChildren(new Random(seed));
-        this.solutionsDiv.shuffleChildren(new Random(seed));
+        if (this.solutionsDiv)
+            this.solutionsDiv.shuffleChildren(new Random(seed));
         if (shuffleQuestionNumbers) {
             helpers.shuffleInPlace(QuestionNumberLogic.instances, new Random(seed));
             QuestionNumberLogic.instances.forEach(q => q.refreshSpans());
         }
     }
+    resetQuestionOrder() {
+        for (let ql of QuestionLogic.readOnlyInstances) {
+            this.questionsDiv.appendChildElement(ql.questionDiv);
+            if (this.solutionsDiv)
+                this.solutionsDiv.appendChildElement(ql.solutionDiv);
+        }
+    }
     deleteAll() {
-        this.questionLogics.forEach(ql => ql.destroy());
+        QuestionLogic.readOnlyInstances.forEach(ql => ql.destroy());
     }
     scroll() {
         this.questionsDiv._element.lastElementChild.scrollIntoView();
@@ -544,11 +557,11 @@ class Assignment extends Container {
             n = prompt("enter number of marks you want left over", "10");
         }
         let i = 0;
-        while (this.questionLogics[i] && n >= helpers.lengthOfObject(this.questionLogics[i].commentLogic.scoreLogicsWithCommentLetters)) {
-            n -= helpers.lengthOfObject(this.questionLogics[i].commentLogic.scoreLogicsWithCommentLetters);
+        while (QuestionLogic.readOnlyInstances[i] && n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters)) {
+            n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
             i++;
         }
-        let lastQn = this.questionLogics[i];
+        let lastQn = QuestionLogic.readOnlyInstances[i];
         if (lastQn) {
             let scoreLogics = helpers.getValuesFromObject(lastQn.commentLogic.scoreLogicsWithCommentLetters);
             if (n > 0) {
@@ -557,7 +570,7 @@ class Assignment extends Container {
             if (n > 0) {
                 i++;
             }
-            this.questionLogics.slice(i).forEach(ql => ql.destroy());
+            QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
         }
     }
     regenerateAllQuestions() {
@@ -570,9 +583,9 @@ class Assignment extends Container {
 <head>
 
     <meta charset="UTF-8"> 
-    <link id="style" rel="stylesheet" type="text/css" href="assignment.css">
-    <script src="assignment.js"></script>
-    <script async src="acorn_interpreter.js"></script>
+    <link id="style" rel="stylesheet" type="text/css" href="https://www.teachometer.co.uk/user/css/assignment.css">
+    <script src="https://www.teachometer.co.uk/user/js/assignment.min.js"></script>
+    <script async src="https://www.teachometer.co.uk/user/js/acorn_interpreter.js"></script>
 
 </head>
 
@@ -582,27 +595,10 @@ class Assignment extends Container {
 
         function init() {
             var previewSettings = {
-                appendMode: false,
-                endTime: null,
-                initialChecksRemaining : -1,
-                presentMode: false,
-                questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))},
-
-                removeHyperlinks: false,
-                responses: null,
-                shuffleQuestions: false,
-                startTime: new Date(),
-                title: "",
-
-                truncateMarks: -1,
-                
-                allowGridlines : true,
-                allowRowDelete : true,
-                allowRowDuplicate: true,
-                allowRefresh: true,
+                questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))}
             };
 
-        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(previewSettings));
+        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(previewSettings,4));
         }
     </script>
 </body>
@@ -617,10 +613,10 @@ class Assignment extends Container {
 <head>
 
     <meta charset="UTF-8"> 
-    <link id="style" rel="stylesheet" type="text/css" href="reveal.css">
-    <script src="assignment.js"></script>
-    <script src="reveal.js"></script>
-    <script async src="acorn_interpreter.js"></script>
+    <link id="style" rel="stylesheet" type="text/css" href="https://www.teachometer.co.uk/user/css/reveal.css">
+    <script src="https://www.teachometer.co.uk/user/js/assignment.min.js"></script>
+    <script src="https://www.teachometer.co.uk/user/js/reveal.min.js"></script>
+    <script async src="https://www.teachometer.co.uk/user/js/acorn_interpreter.js"></script>
 
 </head>
 
@@ -630,27 +626,10 @@ class Assignment extends Container {
 
         function init() {
             var revealSettings = {
-                appendMode: false,
-                endTime: null,
-                initialChecksRemaining : -1,
-                presentMode: true,
                 questionJSON: ${JSON.stringify(JSON.stringify(this.currentQuestionData))},
-
-                removeHyperlinks: false,
-                responses: null,
-                shuffleQuestions: false,
-                startTime: new Date(),
-                title: "",
-
-                truncateMarks: -1,
-                
-                allowGridlines : false,
-                allowRowDelete : false,
-                allowRowDuplicate: false,
-                allowRefresh: false,
             };
 
-        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings));
+        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings,3));
         }
     </script>
 </body>
@@ -659,10 +638,10 @@ class Assignment extends Container {
         previewWindow.document.close();
     }
     get questionNumbers() {
-        return this.questionLogics.reduce((a, b) => a.concat(b.questionNumbers), []);
+        return QuestionLogic.readOnlyInstances.reduce((a, b) => a.concat(b.columnHeaders), []);
     }
     get currentQuestionData() {
-        return this.questionLogics.map(ql => ql.rowData);
+        return QuestionLogic.readOnlyInstances.map(ql => ql.rowData);
     }
 }
 class JSFunction {
@@ -849,7 +828,7 @@ class CommentLogic {
         }
     }
     generateNewDollars() {
-        this.seed = new Random(this.seed).next();
+        this.seed = Settings.instance.random.next();
         let outputValues = this.calculate(this.getInputValues());
         if (outputValues) {
             this.updateDollars(outputValues);
@@ -869,7 +848,7 @@ class CommentLogic {
         if (outputValues) {
             this.updateDollars(outputValues);
             this.sendToScoreLogics(inputValues, outputValues);
-            if (this.settings.sheetManager) {
+            if (Settings.instance.sendScoresToMarksheet) {
                 this.sendToSheetManager(inputValues);
             }
             this.pastInputValuesWithLetters = inputValues;
@@ -1024,11 +1003,103 @@ class CommentLogic {
         }
         helpers.removeFromArray(CommentLogic.instances, this);
     }
-    get numAbleScoreLogics() {
-        return helpers.getValuesFromObject(this.scoreLogicsWithCommentLetters).length;
-    }
 }
 CommentLogic.instances = [];
+class Connection {
+    constructor(url, user, workbookSheetString) {
+        Connection.instance = this;
+        this.url = url;
+        this.user = user;
+        this.workbookSheetString = workbookSheetString;
+    }
+    getMarkbookSettings(onSuccess, onFail, userOverride) {
+        var data = {
+            action: "getMarkbookSettings",
+            workbookSheetString: this.workbookSheetString,
+            user: userOverride ? userOverride : this.user
+        };
+        this.sendRequestAndFail(this.url, data, onSuccess, onFail);
+    }
+    checkRequest(onSuccess, onRetry) {
+        var object = {
+            "action": "checkRequest",
+            "workbookSheetString": this.workbookSheetString,
+            "user": this.user,
+            "startTime": Number(Settings.instance.startTime)
+        };
+        this.sendRequestAndRetry(this.url, object, onSuccess, onRetry);
+    }
+    writeToSheet(scores, onSuccess, onRetry) {
+        var object = {
+            "action": "writeToSheet",
+            "workbookSheetString": this.workbookSheetString,
+            "user": this.user,
+            "startTime": Number(Settings.instance.startTime),
+            "scores": JSON.stringify(scores)
+        };
+        this.sendRequestAndRetry(this.url, object, onSuccess, onRetry);
+    }
+    sendRequestAndFail(url, object, onSuccess, onFail) {
+        var queryString = "?";
+        for (var key in object) {
+            queryString += key + "=" + encodeURIComponent(object[key]) + "&";
+        }
+        let scriptElement = document.createElement("script");
+        scriptElement.type = 'text/javascript';
+        scriptElement.onerror = function (scriptElement, onFail) {
+            var onFail = onFail;
+            var scriptElement = scriptElement;
+            return (data) => {
+                if (onFail)
+                    onFail(data);
+                document.body.removeChild(scriptElement);
+            };
+        }(scriptElement, onFail);
+        let random = Math.random().toString().substring(2);
+        window["callback"] = function (scriptElement, onSuccess) {
+            var scriptElement = scriptElement;
+            var onSuccess = onSuccess;
+            return (data) => {
+                onSuccess(data);
+                document.body.removeChild(scriptElement);
+            };
+        }(scriptElement, onSuccess);
+        scriptElement.src = url + queryString + "prefix=callback";
+        document.body.appendChild(scriptElement);
+    }
+    sendRequestAndRetry(url, object, onSuccess, onRetry) {
+        var queryString = "?";
+        for (var key in object) {
+            queryString += key + "=" + encodeURIComponent(object[key]) + "&";
+        }
+        let scriptElement = document.createElement("script");
+        scriptElement.type = 'text/javascript';
+        scriptElement.onerror = function (connection, object, onSuccess, scriptElement, onRetry) {
+            var connection = connection;
+            var object = object;
+            var onSuccess = onSuccess;
+            var scriptElement = scriptElement;
+            var onRetry = onRetry;
+            return (data) => {
+                if (onRetry)
+                    onRetry(data);
+                document.body.removeChild(scriptElement);
+                setTimeout(() => connection.sendRequestAndRetry(url, object, onSuccess, onRetry), 1000);
+            };
+        }(this, object, onSuccess, scriptElement, onRetry);
+        let random = Math.random().toString().substring(2);
+        window["callback"] = function (scriptElement, onSuccess) {
+            var scriptElement = scriptElement;
+            var onSuccess = onSuccess;
+            return (data) => {
+                onSuccess(data);
+                document.body.removeChild(scriptElement);
+            };
+        }(scriptElement, onSuccess);
+        scriptElement.src = url + queryString + "prefix=callback";
+        document.body.appendChild(scriptElement);
+    }
+}
 class ContentDiv extends Container {
     constructor(parent, questionTitleLogic, leftRightMarkdown) {
         super(parent, "div");
@@ -2183,10 +2254,10 @@ var helpersMaker = function () {
         return str.substring(i, j + 1);
     };
     var IsStringNullOrEmpty = function (str) {
-        return (str == undefined || str == null || str.length === 0 || !str.trim());
+        return (str == undefined || str == null || typeof (str) != "string" || str.length === 0 || !str.trim());
     };
     var IsStringNullOrWhiteSpace = function (str) {
-        return str == undefined || str == null || str == "" || str.trim().length == 0;
+        return str == undefined || str == null || typeof (str) != "string" || str == "" || str.trim().length == 0;
     };
     var startsWith = function (a, ai, b, bi) {
         if (ai == 0 && bi != 0) {
@@ -2290,65 +2361,6 @@ var helpersMaker = function () {
         }
         return ret;
     };
-    var sendRequestAndFail = function (url, object, onSuccess, onFail) {
-        var queryString = "?";
-        for (var key in object) {
-            queryString += key + "=" + encodeURIComponent(object[key]) + "&";
-        }
-        let scriptElement = document.createElement("script");
-        scriptElement.type = 'text/javascript';
-        scriptElement.onerror = function (scriptElement, onFail) {
-            var scriptElement = scriptElement;
-            return (data) => {
-                if (onFail)
-                    onFail(data);
-                document.body.removeChild(scriptElement);
-            };
-        }(scriptElement, onFail);
-        let random = Math.random().toString().substring(2);
-        window["callback"] = function (scriptElement, onSuccess) {
-            var scriptElement = scriptElement;
-            var onSuccess = onSuccess;
-            return (data) => {
-                onSuccess(data);
-                document.body.removeChild(scriptElement);
-            };
-        }(scriptElement, onSuccess);
-        scriptElement.src = url + queryString + "prefix=callback";
-        document.body.appendChild(scriptElement);
-    };
-    var sendRequestAndRetry = function (url, object, onSuccess, onRetry) {
-        var queryString = "?";
-        for (var key in object) {
-            queryString += key + "=" + encodeURIComponent(object[key]) + "&";
-        }
-        let scriptElement = document.createElement("script");
-        scriptElement.type = 'text/javascript';
-        scriptElement.onerror = function (url, object, onSuccess, scriptElement, onRetry) {
-            var url = url;
-            var object = object;
-            var onSuccess = onSuccess;
-            var scriptElement = scriptElement;
-            var onRetry = onRetry;
-            return (data) => {
-                if (onRetry)
-                    onRetry(data);
-                document.body.removeChild(scriptElement);
-                setTimeout(() => helpers.sendRequestAndRetry(url, object, onSuccess, onRetry), 1000);
-            };
-        }(url, object, onSuccess, scriptElement, onRetry);
-        let random = Math.random().toString().substring(2);
-        window["callback"] = function (scriptElement, onSuccess) {
-            var scriptElement = scriptElement;
-            var onSuccess = onSuccess;
-            return (data) => {
-                onSuccess(data);
-                document.body.removeChild(scriptElement);
-            };
-        }(scriptElement, onSuccess);
-        scriptElement.src = url + queryString + "prefix=callback";
-        document.body.appendChild(scriptElement);
-    };
     return {
         objToHash: objToHash,
         IsStringNullOrEmpty: IsStringNullOrEmpty,
@@ -2372,9 +2384,7 @@ var helpersMaker = function () {
         lengthOfObject: lengthOfObject,
         getValuesFromObject: getValuesFromObject,
         getKeysFromObject: getKeysFromObject,
-        mergeObjects: mergeObjects,
-        sendRequestAndRetry: sendRequestAndRetry,
-        sendRequestAndFail: sendRequestAndFail
+        mergeObjects: mergeObjects
     };
 };
 var helpers = helpersMaker();
@@ -2461,7 +2471,7 @@ class MarginDiv extends Container {
         this.classes.push("margin");
         this.classes.push("greyBackground");
         if (questionNumberLogic) {
-            let questionNumberDiv = new Container(this, "div", ["Q", questionNumberLogic.createSpan(this)]);
+            let questionNumberDiv = new Container(this, "div", [questionNumberLogic.createSpan(this)]);
             questionNumberDiv.addClass("questionNumber");
             this.appendChildElement(questionNumberDiv);
         }
@@ -2510,10 +2520,13 @@ class QuestionLogic {
     constructor(rowData, settings, after) {
         this.rowData = rowData;
         this.settings = settings;
-        QuestionLogic.unorderedInstances.push(this);
-        this.questionNumberLogic = new QuestionNumberLogic(this.settings, after ? after.questionNumberLogic : null);
+        this.questionNumberLogic = new QuestionNumberLogic(this.settings, !this.isQuestionOrTemplateOrSudoku, this, after ? after.questionNumberLogic : null);
         this.questionTitleLogic = new QuestionTitleLogic(this.rowData.title, this.settings, after ? after.questionTitleLogic : null);
     }
+    static get readOnlyInstances() {
+        return QuestionNumberLogic.instances.map(qnl => qnl.questionLogic);
+    }
+    ;
     createQuestionDiv(parent) {
         if (this.settings.presentMode) {
             this.questionDiv = new SectionDiv(parent, this.questionTitleLogic, this.questionNumberLogic, this.rowData.leftRight, this);
@@ -2543,24 +2556,29 @@ class QuestionLogic {
         if (this.solutionDiv) {
             this.solutionDiv.destroy();
         }
-        helpers.removeFromArray(QuestionLogic.unorderedInstances, this);
     }
-    get questionNumbers() {
+    get columnHeaders() {
         let ret = [];
-        for (let i = 0; i < this.commentLogic.numAbleScoreLogics; i++) {
-            ret.push(this.questionNumberLogic.number + helpers.lowerCaseLetterFromIndex(i));
+        if (this.commentLogic) {
+            for (let letter in this.commentLogic.inputsWithCommentLetters) {
+                let field = this.commentLogic.inputsWithCommentLetters[letter];
+                let columnHeader = this.settings.sheetManager.columnHeadersWithFieldUIDs[field.UID];
+                if (columnHeader) {
+                    ret.push(columnHeader);
+                }
+            }
         }
         return ret;
     }
     static toggleHideAllQuestionsButOne(questionLogic) {
         if (questionLogic.questionDiv.classes.indexOf("displayBlock") != -1) {
-            QuestionLogic.unorderedInstances.forEach(ql => {
+            QuestionLogic.readOnlyInstances.forEach(ql => {
                 ql.questionDiv.removeClass("displayNone");
                 ql.questionDiv.removeClass("displayBlock");
             });
         }
         else {
-            QuestionLogic.unorderedInstances.filter(ql => ql != questionLogic).forEach(ql2 => {
+            QuestionLogic.readOnlyInstances.filter(ql => ql != questionLogic).forEach(ql2 => {
                 ql2.questionDiv.addClass("displayNone");
                 ql2.questionDiv.removeClass("displayBlock");
             });
@@ -2570,7 +2588,6 @@ class QuestionLogic {
     }
 }
 QuestionLogic.purposesWithQuestionNumber = ["question", "sudoku", "template"];
-QuestionLogic.unorderedInstances = [];
 class IQuestionOrSectionDiv extends Container {
 }
 class QuestionDiv extends IQuestionOrSectionDiv {
@@ -2591,9 +2608,11 @@ class SectionDiv extends IQuestionOrSectionDiv {
     }
 }
 class QuestionNumberLogic {
-    constructor(settings, after) {
+    constructor(settings, isBlank, questionLogic, after) {
         this.spans = [];
         this.settings = settings;
+        this.isBlank = isBlank;
+        this.questionLogic = questionLogic;
         if (after) {
             helpers.insertAfter(QuestionNumberLogic.instances, after, this);
             QuestionNumberLogic.instances.forEach(qn => qn.refreshSpans());
@@ -2607,20 +2626,23 @@ class QuestionNumberLogic {
         return QuestionNumberLogic.instances[index + 1];
     }
     get number() {
+        if (this.isBlank)
+            throw "blank question number being called!";
         let index = QuestionNumberLogic.instances.indexOf(this);
-        return index + 1;
+        let numBlanks = QuestionNumberLogic.instances.slice(0, index).filter(ql => ql.isBlank).length;
+        return index + 1 - numBlanks;
     }
     get prev() {
         let index = QuestionNumberLogic.instances.indexOf(this);
         return QuestionNumberLogic.instances[index - 1];
     }
     createSpan(parent) {
-        var span = new Span(parent, this.number.toString());
+        var span = new Span(parent, this.isBlank ? "" : "Q" + this.number.toString());
         this.spans.push(span);
         return span;
     }
     refreshSpans() {
-        this.spans.forEach(span => span.innerHTML = this.number.toString());
+        this.spans.forEach(span => span.innerHTML = this.isBlank ? "" : "Q" + this.number.toString());
     }
     destroy() {
         helpers.removeFromArray(QuestionNumberLogic.instances, this);
@@ -2688,7 +2710,13 @@ class ComboCup extends Container {
     }
     setOnClickAway(func) { this.setEvent("onchange", func); }
     getValue() { return this.getAttribute("value"); }
-    setValue(value) { this.setAttribute("value", value); }
+    setValue(value) {
+        this.setAttribute("value", value);
+        let found = this._childNodes.filter(ch => ch._innerText == value);
+        if (found.length > 0) {
+            found[0].setAttribute("selected", true);
+        }
+    }
     setDecisionImage(value) { this._decisionImage.setIconName(value); }
     setErrorText(value) {
         this.errorText.innerHTML = value;
@@ -2911,8 +2939,8 @@ class ScoreLogic {
     }
     setCorrect(isCorrect) {
         this._score = isCorrect ? 1 : 0;
-        if ((this.attempted == 0 || this.settings.presentMode) &&
-            this.settings.initialChecksRemaining < 0) {
+        if ((this.attempted == 0 && this.settings.initialChecksRemaining < 0)
+            || this.settings.instantChecking) {
             this.setImage();
         }
         else {
@@ -2980,63 +3008,64 @@ class ScoreLogic {
 }
 ScoreLogic.showHourGlassNotification = true;
 ScoreLogic.instances = [];
+var Mode;
+(function (Mode) {
+    Mode[Mode["builder"] = 0] = "builder";
+    Mode[Mode["lesson-student"] = 1] = "lesson-student";
+    Mode[Mode["lesson-teacher"] = 2] = "lesson-teacher";
+    Mode[Mode["present-teacher"] = 3] = "present-teacher";
+    Mode[Mode["preview-teacher"] = 4] = "preview-teacher";
+})(Mode || (Mode = {}));
 class Settings {
-    constructor(settingsObj) {
+    constructor(settingsObj, mode) {
+        this.appendMode = false;
+        this.endTime = null;
+        this.initialChecksRemaining = -1;
+        this.questionJSON = "";
+        this.removeHyperlinks = false;
+        this.responses = [];
+        this.shuffleQuestions = false;
+        this.startTime = null;
+        this.seed = 1;
+        this.title = "";
+        this.truncateMarks = -1;
+        if (Settings.instance) {
+            throw "only one of instance of Settings is allowed";
+        }
+        Settings.instance = this;
         window["cupsById"] = {};
         for (var key in settingsObj) {
             this[key] = settingsObj[key];
         }
         ;
-        if (this.writeToSheet) {
-            this.sheetManager = new SheetManager(this);
-        }
-        this.random = new Random();
+        this.setDefaults(mode);
+        this.sheetManager = new SheetManager();
+        if (this.startTime)
+            this.startTime = new Date(this.startTime);
+        if (this.endTime)
+            this.endTime = new Date(this.endTime);
         if (this.endTime) {
             this.timerLogic = new TimerLogic(this.endTime, this);
         }
+        if (settingsObj.studentNames) {
+            this.setDefaults(Mode["lesson-teacher"]);
+            this.studentPicker = new StudentPickerLogic(this, settingsObj.studentNames);
+            this.responses = settingsObj.responses;
+            this.random = new Random(Number(settingsObj.responses.Seed));
+        }
+        else {
+            this.random = settingsObj.seed ? new Random(Number(settingsObj.seed)) : new Random();
+        }
     }
-    static getSettingsFromMarkbook(url, workbookSheetString, user, onSuccess, onFail) {
-        var addStuffToSettings = function (markbookSettings) {
-            if ("error" in markbookSettings) {
-                onFail(markbookSettings["error"]);
-                return;
-            }
-            var settings = new Settings(markbookSettings);
-            settings.checkRequest = (onSuccess, onRetry) => {
-                var object = {
-                    "action": "echo",
-                    "workbookSheetString": workbookSheetString,
-                    "user": user,
-                    "startTime": settings.startTime,
-                    "returnValue": 1
-                };
-                helpers.sendRequestAndRetry(url, object, onSuccess, onRetry);
-            };
-            settings.writeToSheet = (onSuccess, onRetry, scores) => {
-                var object = {
-                    "action": "writeToSheet",
-                    "workbookSheetString": workbookSheetString,
-                    "user": user,
-                    "startTime": settings.startTime,
-                    "scores": JSON.stringify(scores)
-                };
-                helpers.sendRequestAndRetry(url, object, onSuccess, onRetry);
-            };
-            settings.allowRowDelete = false;
-            settings.allowRowDuplicate = false;
-            settings.allowRefresh = false;
-            settings.allowGridlines = false;
-            settings.user = user;
-            settings.random = new Random(helpers.objToHash([user, markbookSettings.startTime]));
-            onSuccess(settings);
-        };
-        var data = {
-            action: "getMarkbookSettings",
-            workbookSheetString: workbookSheetString,
-            user: user
-        };
-        helpers.sendRequestAndFail(url, data, addStuffToSettings, onFail);
-        return;
+    setDefaults(mode) {
+        this.allowRowDelete = [true, false, false, false, true][mode];
+        this.allowRowDuplicate = [true, false, false, false, true][mode];
+        this.allowRefresh = [true, false, true, true, true][mode];
+        this.allowGridlines = [false, false, false, false, true][mode];
+        this.instantChecking = [true, false, true, true, true][mode];
+        this.presentMode = [false, false, false, true, false][mode];
+        this.sendScoresToMarksheet = [false, true, false, false, false][mode];
+        this.showSolutions = [true, false, true, false, true][mode];
     }
     get totalStars() {
         return ScoreLogic.instances.reduce((a, b) => a + b.stars, 0);
@@ -3063,12 +3092,11 @@ class Settings {
     }
 }
 class SheetManager {
-    constructor(settings) {
+    constructor() {
         this.numberOfFieldsWithQuestionTitles = {};
         this.columnHeadersWithFieldUIDs = {};
         this.scoresToSendBuffer = {};
         this.timerInterval = null;
-        this.settings = settings;
     }
     registerField(valueField, columnHeaderFirstPart, jsFunctionName) {
         if (!(columnHeaderFirstPart in this.numberOfFieldsWithQuestionTitles)) {
@@ -3077,8 +3105,8 @@ class SheetManager {
         let letter = jsFunctionName ? jsFunctionName : helpers.lowerCaseLetterFromIndex(this.numberOfFieldsWithQuestionTitles[columnHeaderFirstPart]++);
         let columnHeader = columnHeaderFirstPart + "." + letter;
         this.columnHeadersWithFieldUIDs[valueField.UID] = columnHeader;
-        if (this.settings.responses && columnHeader in this.settings.responses) {
-            valueField.setValue(this.settings.responses[columnHeader]);
+        if (Settings.instance.responses && columnHeader in Settings.instance.responses) {
+            valueField.setValue(Settings.instance.responses[columnHeader]);
         }
     }
     addFieldToSendBuffer(field, scoreLogic) {
@@ -3089,14 +3117,14 @@ class SheetManager {
                     this.scoresToSendBuffer[columnHeader] = {
                         value: scoreLogic.iconAsString,
                         color: scoreLogic.color,
-                        append: this.settings.appendMode
+                        append: Settings.instance.appendMode
                     };
                 }
                 else {
                     this.scoresToSendBuffer[columnHeader] = {
                         value: field.getValue(),
                         color: scoreLogic.color,
-                        append: this.settings.appendMode
+                        append: Settings.instance.appendMode
                     };
                 }
             }
@@ -3104,7 +3132,7 @@ class SheetManager {
                 this.scoresToSendBuffer[columnHeader] = {
                     value: field.getValue(),
                     color: "white",
-                    append: this.settings.appendMode
+                    append: Settings.instance.appendMode
                 };
             }
         }
@@ -3113,17 +3141,15 @@ class SheetManager {
         this.scoresToSendBuffer = helpers.mergeObjects(this.scoresToSendBuffer, scores);
     }
     attemptToSend() {
-        let merged = helpers.mergeObjects(this.settings.totalScores, this.scoresToSendBuffer);
-        let success = this.settings.writeToSheet(merged);
-        if (success) {
+        let merged = helpers.mergeObjects(Settings.instance.totalScores, this.scoresToSendBuffer);
+        let onSuccess = (data) => {
             this.scoresToSendBuffer = {};
             this.span.innerHTML = "";
-        }
-        else {
-            if (this.timerInterval == null) {
-                this.startCountDown();
-            }
-        }
+        };
+        let onRetry = (data) => {
+            this.span.innerHTML = "connection error....retrying";
+        };
+        Connection.instance.writeToSheet(onSuccess.bind(this), onRetry.bind(this), merged);
     }
     createCountdownDiv(parent) {
         this.div = new Container(parent, "div");
@@ -3132,29 +3158,6 @@ class SheetManager {
         this.div.appendChildElement(this.span);
         return this.div;
     }
-    startCountDown() {
-        let d = new Date();
-        this.endTime = new Date(d.valueOf() + 10000);
-        this.timerInterval = setInterval(function (sheetManager) {
-            var sheetManager = sheetManager;
-            return function () {
-                sheetManager.span.innerHTML = sheetManager.timerText;
-                if (sheetManager.isElapsed) {
-                    sheetManager.span.innerHTML = "retrying...";
-                    clearInterval(sheetManager.timerInterval);
-                    sheetManager.timerInterval = null;
-                    sheetManager.attemptToSend();
-                }
-            };
-        }(this), 900);
-    }
-    get timerText() {
-        var secondsLeft = Math.floor((this.endTime.valueOf() - new Date().valueOf()) / 1000);
-        return `Connection error: retrying in ${secondsLeft} seconds `;
-    }
-    get isElapsed() {
-        return this.endTime.valueOf() < new Date().valueOf();
-    }
 }
 class SolutionDiv extends Container {
     constructor(parent, questionNumberLogic, commentLogic) {
@@ -3162,6 +3165,43 @@ class SolutionDiv extends Container {
         this.classes.push("solution");
         if (commentLogic) {
             commentLogic.createAndAppendSolutions(this, questionNumberLogic);
+        }
+    }
+}
+class StudentPickerLogic {
+    constructor(settings, studentNames) {
+        this.settings = settings;
+        this.studentNames = studentNames;
+    }
+    createCombo(parent) {
+        this.combo = new ComboCup(parent, [], new Icon(parent, IconName.none), new Span(parent, ""));
+        this.combo._childNodes = this.studentNames.map(s => {
+            return new OptionCup(this.combo, s, false);
+        });
+        this.combo.setOnClickAway(this.comboClick.bind(this));
+        return this.combo;
+    }
+    comboClick() {
+        this.combo.errorText.innerHTML = "";
+        let student = this.combo.getValue();
+        console.log(student);
+        let onRetry = (data) => {
+            this.combo.errorText.innerHTML = "connection error...please try again";
+        };
+        Connection.instance.getMarkbookSettings(this.updateUser.bind(this), onRetry, student);
+    }
+    updateUser(markbookSettings) {
+        this.combo.errorText.innerHTML = "";
+        if (markbookSettings && markbookSettings.responses && markbookSettings.responses.Seed) {
+            let seed = markbookSettings.responses.Seed;
+            Settings.instance.random = new Random(seed);
+            Settings.instance.assignment.resetQuestionOrder();
+            if (Settings.instance.shuffleQuestions)
+                Settings.instance.assignment.shuffle(true);
+            Settings.instance.assignment.regenerateAllQuestions();
+        }
+        else {
+            throw "seed not found";
         }
     }
 }
@@ -3199,12 +3239,12 @@ class SubmitButtonAndFinalScoreLogic {
                     numChecks + " checks remaining";
     }
     onCheckButton() {
-        if (this.settings.checkRequest) {
+        if (this.settings.initialChecksRemaining >= 0) {
             this.button.setAttribute("disabled", true);
             let onRetry = (data) => {
                 this.button.innerHTML = "connection error....retrying";
             };
-            this.settings.checkRequest(this.checkCallback.bind(this), onRetry.bind(this));
+            Connection.instance.checkRequest(this.checkCallback.bind(this), onRetry.bind(this));
         }
         else {
             ScoreLogic.instances.forEach(s => { if (s.pending)
@@ -3252,7 +3292,7 @@ class TimerLogic {
         if (this.isElapsed) {
             return "TIME EXPIRED";
         }
-        var delta = Math.abs(this.endTime.valueOf() - new Date().valueOf()) / 1000;
+        var delta = Math.abs(Number(this.endTime) - Number(new Date())) / 1000;
         var days = Math.floor(delta / 86400);
         var daysString = days == 0 ? "" : days.toString() + " d ";
         delta -= days * 86400;
@@ -3267,7 +3307,7 @@ class TimerLogic {
         return daysString + hoursString + minutesString + secondsString;
     }
     get isElapsed() {
-        return this.endTime.valueOf() < new Date().valueOf();
+        return Number(this.endTime) < Number(new Date());
     }
 }
 //# sourceMappingURL=assignment.js.map

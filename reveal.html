@@ -1,19 +1,19 @@
 <html>
-<head> 
-	<meta charset="UTF-8"> 
-  <link rel="stylesheet" type="text/css" href="reveal.css">
-	<script src=assignment.js></script>
-  <script src="reveal.js"></script>
+<head>
+
+    <meta charset="UTF-8"> 
+    <link id="style" rel="stylesheet" type="text/css" href="css/reveal.css">
+    <script src="js/assignment.js"></script>
+    <script src="js/reveal.js"></script>
+    <script async src="js/acorn_interpreter.js"></script>
+
 </head>
 
 <body onload="init()">
+    <div id="assignment"></div>
+    <script>
 
-<div id="assignment" style="margin: 0;"></div>
-
-  <script>
-
-	  function init() {
-      let simpleQuestionData = [
+let simpleQuestionData = [
 			{ //question with no title
 				"title":"",
 				"leftRight": ["aubergines are __",""],
@@ -51,25 +51,31 @@
 				"comment": "6\n7\n8\n9\n10"
 			}
 		]
-    var lessonSettings = {
-			allowRowDelete : false,
-			allowRefresh: false,
-			showRowTitles: true,
-			allowGridlines : false,
-			appendToMarkbook: false,	
-			checksLimit : -1,
-			writeToSheet: null,
-			endTime: null,
-			shuffleQuestions: false,
-			questionJSON: JSON.stringify(simpleQuestionData),
-      responses: null,
-      presentMode: true
-		};
-      
-    
-    window.assignment = new Assignment(document.getElementById("assignment"),lessonSettings);
-	  }
-	  </script>
+        function init() {
+            var revealSettings = {
+                appendMode: false,
+                endTime: null,
+                initialChecksRemaining : -1,
+                presentMode: true,
+                questionJSON: JSON.stringify(simpleQuestionData),
+
+                removeHyperlinks: false,
+                responses: null,
+                shuffleQuestions: false,
+                startTime: new Date(),
+                title: "",
+
+                truncateMarks: -1,
+                
+                allowGridlines : false,
+                allowRowDelete : false,
+                allowRowDuplicate: false,
+                allowRefresh: false,
+            };
+
+        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings));
+        }
+    </script>
 </body>
 </html>
 

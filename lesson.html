@@ -1,0 +1,57 @@
+<html>
+<head> 
+	<meta charset="UTF-8"> 
+	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
+	<script src="js/assignment.js"></script>
+	<script async src="js/acorn_interpreter.js"></script>
+
+</head>
+<body onload="doStuff()">
+
+	<div id="assignment"></div>
+  
+  <script> 
+
+  function doStuff() { 
+	//DEV ONLY
+	let url = "https://script.google.com/macros/s/AKfycbylQm3yW95G8C6vmZKwQ88Id_LIPzeSr6heWCEjwlEuESgD9Emy/exec"; //DEV
+	let workbookSheetString = "e6WwRVM3tDVDAvTxN3Ik5CFiUzIFcycjfDdTpHYyZ4SnNDkjRWJIMiTjZUJXhQZJEFO3aENTJDZwo4UzTWLko113VO=="; //DEV MARKSHEET
+	let user = "student1";
+	user = "963642471725942668248468288604604"; //teacher id
+
+	
+	let onFail = function(settings) { 
+		document.getElementById("assignment").innerHTML = settings.error;
+		
+		if (settings.resetCookie) {
+			//delete user cookie is username does not match 
+			var img = document.createElement('img'); 
+			img.src = "set-cookie.php"; 
+			img.style.display = "none";
+			document.body.appendChild(img); 
+		
+			setTimeout(() => {location.reload(true)}, 3000); 
+		}
+	};
+
+	let onSuccess = function(data) {
+        //check for error data
+        if ("error" in data) {
+            document.getElementById("assignment").innerHTML = data.error;
+            return;
+        }
+
+		console.log(data);
+		var settings = new Settings(data,1); //default to student
+		window.assignment = new Assignment(document.getElementById("assignment"),settings);
+	};
+
+	let connection = new Connection(url, user, workbookSheetString);
+	Connection.instance.getMarkbookSettings(onSuccess,onFail);
+  }
+	  
+  </script>
+  
+
+</body>
+</html>

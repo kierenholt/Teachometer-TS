@@ -12,21 +12,25 @@ class QuestionLogic {
     questionDiv: IQuestionOrSectionDiv;
     solutionDiv: SolutionDiv;
     static purposesWithQuestionNumber = ["question","sudoku","template"];
-    static unorderedInstances: QuestionLogic[] = [];
     settings: Settings;
     
     constructor(rowData: RowData, settings: Settings, after? :QuestionLogic) {
         this.rowData = rowData;
         this.settings = settings;
-        QuestionLogic.unorderedInstances.push(this);
-
-        //add question number EVEN if its not a question
-        this.questionNumberLogic = new QuestionNumberLogic(this.settings, after ? after.questionNumberLogic : null);
+        
+        //add blank question number if its not a question
+        this.questionNumberLogic = new QuestionNumberLogic(this.settings, 
+            !this.isQuestionOrTemplateOrSudoku, this,
+            after ? after.questionNumberLogic : null);
 
         //title - must come before content div constructor
         this.questionTitleLogic = new QuestionTitleLogic(this.rowData.title, this.settings, after? after.questionTitleLogic : null);
     }
-
+    
+    static get readOnlyInstances(): QuestionLogic[] {
+        return QuestionNumberLogic.instances.map(qnl => qnl.questionLogic);
+    };
+    
     createQuestionDiv(parent):IQuestionOrSectionDiv {
         if (this.settings.presentMode) {
             this.questionDiv = new SectionDiv(parent, 
@@ -65,27 +69,31 @@ class QuestionLogic {
 
         this.questionDiv.destroy();
         if (this.solutionDiv) { this.solutionDiv.destroy(); }
-
-        helpers.removeFromArray(QuestionLogic.unorderedInstances, this);
     }
 
-    get questionNumbers() {
+    get columnHeaders() {
         let ret = [];
-        for (let i = 0; i < this.commentLogic.numAbleScoreLogics; i++) {
-            ret.push(this.questionNumberLogic.number + helpers.lowerCaseLetterFromIndex(i));
+        if (this.commentLogic) {
+            for (let letter in this.commentLogic.inputsWithCommentLetters) {
+                let field = this.commentLogic.inputsWithCommentLetters[letter];
+                let columnHeader = this.settings.sheetManager.columnHeadersWithFieldUIDs[field.UID];
+                if (columnHeader) {
+                    ret.push(columnHeader);
+                }
+            }
         }
         return ret;
     }
 
     static toggleHideAllQuestionsButOne(questionLogic: QuestionLogic) {
         if (questionLogic.questionDiv.classes.indexOf("displayBlock") != -1) {
-            QuestionLogic.unorderedInstances.forEach(ql => {
+            QuestionLogic.readOnlyInstances.forEach(ql => {
                 ql.questionDiv.removeClass("displayNone");
                 ql.questionDiv.removeClass("displayBlock"); 
             });
         }
         else {
-            QuestionLogic.unorderedInstances.filter(ql => ql != questionLogic).forEach(ql2 => 
+            QuestionLogic.readOnlyInstances.filter(ql => ql != questionLogic).forEach(ql2 => 
                 { 
                     ql2.questionDiv.addClass("displayNone");
                     ql2.questionDiv.removeClass("displayBlock"); 

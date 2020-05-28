@@ -1,10 +1,10 @@
 <html>
 <head> 
 	<meta charset="UTF-8"> 
-	<link id="style" rel="stylesheet" type="text/css" href="assignment.css">
+	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
 		
-	<script src="assignment.js"></script>
-	<script async src="acorn_interpreter.js"></script>
+	<script src="js/assignment.js"></script>
+	<script async src="js/acorn_interpreter.js"></script>
 
 
 <script>
@@ -193,13 +193,12 @@
 			appendMode: false,	
 			endTime: null,
 			initialChecksRemaining: -1,
-			presentMode: false,
 			questionJSON: null,
 
 			removeHyperlinks: false,
 			responses: null,
 			shuffleQuestions: false,
-			startTime: new Date(),
+			startTime: new Date().toDateString(),
 			title: "",
 
 			truncateMarks: -1,
@@ -208,18 +207,25 @@
 			allowRowDelete : true,
 			allowRowDuplicate: true,
 			allowRefresh: true,
+        	instantChecking: true,
+			presentMode: false,
+			showSolutions: true,
 		});
 		
 		window.assignment = new Assignment(document.getElementById("assignment"),builderSettings);
 		
 		//test1
 		createButton("refresh",()=>window.assignment.regenerateAllQuestions());
-		createButton("append random Row",() => {
+		createButton("append random question",() => {
 				assignment.addRowsFromData([templateQuestionData[new Random().next(templateQuestionData.length)]])
 		});
-		createButton("remove row at index 0",()=> assignment.questionsDiv._childNodes[0].destroy());
-		createButton("create Icon after index 0",()=> createIconAfter(assignment.questionsDiv._childNodes[0], 2));
+		createButton("append random row",() => {
+				assignment.addRowsFromData([notesData[new Random().next(notesData.length)]])
+		});
 		createButton("builder shuffle",()=> assignment.shuffle(true)); //like the shuffle button in builder
+		createButton("lesson shuffle",()=> assignment.shuffle(false)); //like the shuffle option in lesson
+		createButton("reset question order",()=> assignment.resetQuestionOrder()); 
+
 		createButton("truncate",()=> assignment.truncate());
 		createButton("delete All",()=> assignment.deleteAll());
 		createButton("preview in new window",()=> assignment.previewInNewWindow());
