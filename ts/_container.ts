@@ -33,17 +33,17 @@ class Container extends ICup {
     }
 
     appendChildElement(child:ICup, after?:ICup) {
-        //if already in array, remove
-        if (this._childNodes.indexOf(child) != -1) { helpers.removeFromArray(this._childNodes, child)};
-
+        //remove child from its old parent
+        helpers.removeFromArray(child._parent._childNodes, child)
+        //if after is specified
         if (after && this._childNodes.indexOf(after) < this._childNodes.length-1) {
             if (this.getElement(false)) {
                 let before = this._childNodes[this._childNodes.indexOf(after) + 1];
                 this._element.insertBefore(child.getElement(true),before.getElement(true)); //auto refresh
             }
             helpers.insertAfter(this._childNodes,after,child);
-        }
-        else {
+        } 
+        else { //just append
             if (this.getElement(false)) {
                 this._element.appendChild(child.getElement(true)); //auto refresh
             }
@@ -182,32 +182,25 @@ class TableCup extends Container { // |
         super(parent, "table", childNodes);
         this.attributes["class"] = "markdowntable"; 
         this.attributes["style"] = this.hasBorder ? "" : "border: none;";
-        this.replace(TableCup.rowReplacer);
     }
 
-    static rowReplacer: Replacer = {
-        "pattern": /(?:^|\n)([^\n]*)/,
-        "nodeConstructorFromMatch": (parent: Container, str: string) => {
-            return [new RowCup(parent, [str])];
-        }
+    static fromString(parent, hasBorder, str): TableCup {
+        let ret = new TableCup(parent, hasBorder, []);
+        ret._childNodes = str.split("\n").map(s => {return RowCup.fromString(ret, s)});
+        return ret;
     }
 }
 
 
 class RowCup extends Container {
     constructor(parent: Container, childNodes) { 
-        super(parent, "tr", childNodes);
-        this.replace(RowCup.cellReplacer); 
+        super(parent, "tr", childNodes); 
     }
 
-    static cellReplacer: Replacer = 
-    {
-        //"pattern": /(\|)/,
-        "pattern": /(?:^|[\|¦])([^\|¦]*)/,
-        "nodeConstructorFromMatch": (parent: Container, str: string) => {
-            str = helpers.trimChar(str,"|");
-            return [new CellCup(parent, [str])];
-        }
+    static fromString(parent, str): RowCup {
+        let ret = new RowCup(parent, []);
+        ret._childNodes = str.split("|").slice(1).map(s => {return new CellCup(ret, s)});
+        return ret;
     }
 }
   
@@ -248,6 +241,26 @@ class CodeCup extends Container {
   */
 }
 
+
+class UnderlineCup extends Container {
+    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("underline"); }
+}
+
+class BoldCup extends Container {
+    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("bold"); }
+}
+
+class SuperScriptCup extends Container {
+    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("superscript"); }
+}
+
+class SubScriptCup extends Container { 
+    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("subscript"); }
+}
+
+class HeadingCup extends Container {
+    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("heading"); }
+}
 
 class RelativePositionCup extends Container {
     xPos: string;

@@ -19,7 +19,7 @@ class CommentLogic {
     seed: number;
 
     inputsWithCommentLetters = {};
-    dollarCupsWithCommentLetters = {};
+    dollarCupsAndImagesWithCommentLetters = {};
     checkBoxesWithCommentLetters = {};
     scoreLogicsWithCommentLetters = {};
     jsFunctionNamesWithCommentLetters = {};
@@ -73,7 +73,12 @@ class CommentLogic {
             let variablesToKeepAsDollars = ((this.engine as ExpressionEngine).variablesToKeepAsDollars(this.seed));
             for (let i = 0; i < variablesToKeepAsDollars.length; i++) {
                 if (!variablesToKeepAsDollars[i]) {
-                    valueFields[i] = (valueFields[i] as DollarCup).swapForInput();
+                    if (valueFields[i] instanceof DollarSpan) {
+                        valueFields[i] = (valueFields[i] as DollarSpan).swapForInput();
+                    }
+                    if (valueFields[i] instanceof DollarImage) { //DOES NOT WORK FOR IMAGES!
+                        throw("cannot exchange an image for an input element");
+                    }
                 }
             }
         }
@@ -117,8 +122,8 @@ class CommentLogic {
             }
 
             //OUTPUTS
-            if (v instanceof DollarCup)   {
-                this.dollarCupsWithCommentLetters[commentLetter] = v;
+            if (v instanceof DollarSpan || v instanceof DollarImage)   {
+                this.dollarCupsAndImagesWithCommentLetters[commentLetter] = v;
             }
 
             //HOOK SCORELOGIC UP TO SETIMAGEFIELDS, except for code("") comments
@@ -239,8 +244,15 @@ class CommentLogic {
 
     updateDollars(outputValues) {
         //update dollar cups
-        for (let key in this.dollarCupsWithCommentLetters) {
-            if (key in outputValues) { (this.dollarCupsWithCommentLetters[key] as DollarCup).setValue(outputValues[key]); }
+        for (let key in this.dollarCupsAndImagesWithCommentLetters) {
+            if (key in outputValues) {
+                if (this.dollarCupsAndImagesWithCommentLetters[key] instanceof DollarSpan) {
+                    (this.dollarCupsAndImagesWithCommentLetters[key] as DollarSpan).setValue(outputValues[key]);
+                }
+                if (this.dollarCupsAndImagesWithCommentLetters[key] instanceof DollarImage) {
+                    (this.dollarCupsAndImagesWithCommentLetters[key] as DollarImage).setValue(outputValues[key]);
+                }
+            }
         }
     }
 
@@ -276,8 +288,8 @@ class CommentLogic {
         for (let letter in this.checkBoxesWithCommentLetters) {
             (this.checkBoxesWithCommentLetters[letter] as ValueField).resetError();
         }
-        for (let letter in this.dollarCupsWithCommentLetters) {
-            (this.dollarCupsWithCommentLetters[letter] as ValueField).resetError();
+        for (let letter in this.dollarCupsAndImagesWithCommentLetters) {
+            (this.dollarCupsAndImagesWithCommentLetters[letter] as ValueField).resetError();
         }
         //show errors
         for (let letter in outputs) {
@@ -291,9 +303,9 @@ class CommentLogic {
                 (this.checkBoxesWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
                 outputs[letter] = "";
             }
-            if (letter in this.dollarCupsWithCommentLetters && 
+            if (letter in this.dollarCupsAndImagesWithCommentLetters && 
                     outputs[letter] instanceof ExpressionError) {
-                (this.dollarCupsWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
+                (this.dollarCupsAndImagesWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
                 outputs[letter] = "";
             }
         }

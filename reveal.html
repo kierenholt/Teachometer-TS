@@ -13,6 +13,72 @@
     <div id="assignment"></div>
     <script>
 
+let notesData = [
+			{
+				"title":"blank both",
+				"leftRight": ["", ""],
+				"purpose": "notes"
+			},{
+				"title":"code block with line numbers?",
+				"leftRight": ["```line1\nline2\nline3\n```", ""],
+				"purpose": "notes"
+			},{
+				"title":"table with empty cells too",
+				"leftRight": ["|a|b|c\n|x|y|z\nFIRST ROW\n???\n line 2", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"combo",
+				"leftRight": ["{a/b/c}", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"rollover",
+				"leftRight": ["???\n hidden stuff\n???\n", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"radio",
+				"leftRight": ["A. blue\nB. green\nC. orange D. another", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"bullet",
+				"leftRight": ["* a bullet\n* another bullet\n not a * bullet", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"line break",
+				"leftRight": ["\n a line break\n another line break\nanother line break", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"basic fraction",
+				"leftRight": ["~[top A.](bottom^2)", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"link",
+				"leftRight": ["[google](www.google.co.uk)", ""],
+				"purpose": "notes"
+			},
+			{ //index 10
+				"title":"image",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)", "![Imgur](https://i.imgur.com/SMh0hnf.gif)"],
+				"purpose": "notes"
+			},
+			{
+				"title":"textarea",
+				"leftRight": ["______________________________________","2"],
+				"purpose": "notes"
+			},
+			{
+				"title":"relative position",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)\n@[50,50](RELATIVE)","="],
+				"purpose": "notes"
+			}
+			];
+
 let simpleQuestionData = [
 			{ //question with no title
 				"title":"",
@@ -52,28 +118,21 @@ let simpleQuestionData = [
 			}
 		]
         function init() {
-            var revealSettings = {
+            var revealSettings = new Settings({
                 appendMode: false,
                 endTime: null,
                 initialChecksRemaining : -1,
                 presentMode: true,
-                questionJSON: JSON.stringify(simpleQuestionData),
+                questionJSON: JSON.stringify(notesData),
 
                 removeHyperlinks: false,
                 responses: null,
                 shuffleQuestions: false,
                 startTime: new Date(),
-                title: "",
+                title: ""
+            },3);
 
-                truncateMarks: -1,
-                
-                allowGridlines : false,
-                allowRowDelete : false,
-                allowRowDuplicate: false,
-                allowRefresh: false,
-            };
-
-        window.assignment = new Assignment(document.getElementById("assignment"),new Settings(revealSettings));
+        window.assignment = new Assignment(document.getElementById("assignment"),revealSettings);
         }
     </script>
 </body>

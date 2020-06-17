@@ -12,7 +12,7 @@
         } 
         */
     
-class TimerLogic {
+class QuizTimerLogic {
     endTime: Date;
     timerInterval: any;
     div: Container;

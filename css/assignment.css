@@ -22,20 +22,22 @@ questionsDiv
     content
     margin (absolute)
 */
-div.question {
-  position: relative; /*for the margin which is absolute positioned*/
-  clear: both;
+div.withMargin {
   border-width: 1px;
   border-style: solid;
   border-radius: 0.5em;
+  padding: 1em 1em 1em 6em !important ;
+}
+div.question {
+  position: relative; /*for the margin which is absolute positioned*/
+  clear: both;
   page-break-inside: avoid;
-  margin: 0 1em 1em 1em;
-  padding: 1em 1em 1em 6em;
+  margin: 0 1em 1em 1em !important;
   width: auto;
   min-height:100px;
   overflow: hidden;
 }
-div.content > div > span.questionTitle {font-size: 2em; }
+div.content > div > span.questionTitle { font-size: 2em; }
 div.content > div.fullWidth { margin: 1em 0em 0em 0em; width: 100%; position:relative; }
 div.content > div.leftHalfWidth { margin: 1em 0em 0em 0em; width: 48%; float: left; position:relative;}
 div.content > div.rightHalfWidth { margin: 1em 0em 0em 0em; width: 48%; padding-left: 4%; float: left; clear: right; position:relative;  }
@@ -107,6 +109,21 @@ div.sheetManagerCountdown {
 .greyBorder { border-color: #b3b3b3; }
 .greenBorder { border-color: #007700; }
 
+/* INLINE ELEMENTS */
+.superscript {
+  position: relative;
+  top: -0.4em;
+  font-size: 0.8em;
+}
+.subscript {
+  position: relative;
+  bottom: -0.6em;
+  font-size: 0.8em;
+}
+.underline { text-decoration: underline; }
+.bold { font-weight: bold; }
+.heading { font-size: 2em; }
+
 /*USER ERRORS*/ 
 .errorText {
   color: red;
@@ -121,7 +138,6 @@ pre.code {
     font-family: 'Roboto Mono', 'Monaco', 'Menlo', 'Ubuntu Mono', 'Consolas', 'source-code-pro', monospace;
 }
 
-/* Bare bones style for the desired effect */
 pre.code {
   display: table;
   table-layout: fixed;
@@ -186,7 +202,7 @@ table.fraction {
   width: auto;
   border-style: none;
 }
-table.fraction > tbody > tr > td { border-style: none; }
+table.fraction > tbody > tr > td { border-style: none; text-align: center}
 table.fraction > tbody > tr:first-child > td {
   border-style: none none solid none;
   border-width: 1px;
@@ -257,4 +273,38 @@ div.rollover:not(:hover) img {
   font-size: 10px;
   width: 4px;
   left: 88%; 
+}
+
+/*** CALCULATOR ***/
+
+.calculatorOutput, input.calculatorInput {font-family: Consolas,monospace}
+.calculatorOutput {
+    max-height: 8em;
+    overflow: auto;
+    line-height: 1.5em;
+}
+.calculatorHeading {
+  display: block;
+  border-style: none none solid none;
+  border-width: 1px;
+}
+div.calculatorContainer {
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 0.5em;
+  padding: 1em;
+  background-color: #dddd;
+  border-color: #b3b3b3;
+  margin: 1em 0 0 0;
+}
+
+/*** BLINKING ***/
+.blink{
+  animation: blink 1s linear infinite;
+}
+@keyframes blink{
+  0%{opacity: 0;}
+  49%{opacity: 0;}
+  50%{opacity: 1;}
+  100%{opacity: 1;}
 }

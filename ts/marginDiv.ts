@@ -36,15 +36,19 @@ class MarginDiv extends Container {
         }
 
         //refresh button
-        let refreshButton = new Icon(this,IconName.refresh);
-        refreshButton.setEvent("onclick",
-            function(ql) { 
-                var ql = ql;
-                return () => { questionLogic.commentLogic.generateNewDollars();}
-            }(questionLogic)
-            );
+        if (Settings.instance.allowRefresh && 
+            (questionLogic.rowData.purpose == "template" || questionLogic.rowData.purpose == "sudoku")
+            ) {
+            let refreshButton = new Icon(this,IconName.refresh);
+            refreshButton.setEvent("onclick",
+                function(ql) { 
+                    var ql = ql;
+                    return () => { questionLogic.commentLogic.generateNewDollars();}
+                }(questionLogic)
+                );
             refreshButton.addClass("refreshButton").addClass("hideOnPrint");
-        this.appendChildElement(refreshButton);
+            this.appendChildElement(refreshButton);
+        }
 
         //gridlines button
         if (parent.contentDiv.gridlines.length > 0) {
@@ -59,17 +63,47 @@ class MarginDiv extends Container {
             this.appendChildElement(gridlinesButton);
         }
 
-        //spotlight button
+        //pin button
         //hideAllQuestionsButOne
-        let spotlightButton = new Icon(this,IconName.pin);
-        spotlightButton.setEvent("onclick",
+        if (Settings.instance.allowPin) {
+            let spotlightButton = new Icon(this,IconName.pin);
+            spotlightButton.setEvent("onclick",
+                function(ql) { 
+                    var ql = ql;
+                    return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql);}
+                }(questionLogic)
+                );
+            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
+            this.appendChildElement(spotlightButton);
+        }
+
+        //calculator button
+        let calculatorButton = new Icon(this,IconName.calculator);
+        calculatorButton.setEvent("onclick",
             function(ql) { 
                 var ql = ql;
-                return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql);}
+                return () => { 
+                    Settings.instance.calculatorLogic.moveAfterQuestion(ql);
+                }
             }(questionLogic)
             );
-            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
-        this.appendChildElement(spotlightButton);
+        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint");
+        this.appendChildElement(calculatorButton);
+
+        //countdown timer
+        if (Settings.instance.allowCountdownTimer) {
+            let countdownButton = new Icon(this,IconName.clock);
+            countdownButton.setEvent("onclick",
+                function(ql) { 
+                    var ql = ql;
+                    return () => { 
+                        Settings.instance.countdownTimerLogic.moveAfterQuestion(ql);
+                    }
+                }(questionLogic)
+                );
+            countdownButton.addClass("countdownButton").addClass("hideOnPrint");
+            this.appendChildElement(countdownButton);
+        }
 
     }
 }

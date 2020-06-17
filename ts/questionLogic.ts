@@ -120,17 +120,22 @@ class QuestionDiv extends IQuestionOrSectionDiv {
             questionLogic: QuestionLogic) {
         super(parent, "div");
         this.classes.push("question");
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) { this.classes.push("withMargin") };
         this.classes.push("greyBorder");
 
         //content and margin divs
         this.contentDiv =  new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
-        this.marginDiv =  new MarginDiv(this, questionNumberLogic, questionLogic);
-        this._childNodes = [this.contentDiv, this.marginDiv];
+        this._childNodes = [this.contentDiv];
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
+            this.marginDiv =  new MarginDiv(this, questionNumberLogic, questionLogic);
+            this._childNodes.push(this.marginDiv);
+        }
     }
 }
 
 class SectionDiv extends IQuestionOrSectionDiv {
     contentDiv: ContentDiv;
+    marginDiv: MarginDiv;
 
     constructor(parent: Container, 
             questionTitleLogic: QuestionTitleLogic,
@@ -143,5 +148,9 @@ class SectionDiv extends IQuestionOrSectionDiv {
         //content and margin divs
         this.contentDiv =  new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
         this._childNodes = [this.contentDiv];
+        if (questionLogic.isQuestionOrTemplateOrSudoku) {
+            this.marginDiv =  new MarginDiv(this, questionNumberLogic, questionLogic);
+            this._childNodes.push(this.marginDiv);
+        }
     }
 }

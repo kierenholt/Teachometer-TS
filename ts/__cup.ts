@@ -64,7 +64,7 @@ abstract class ICup {
     get joinedEvents() {
         let buffer = "";
         for (var key in this._events) { //does not support Object.entries(obj)
-            buffer += ` ${key}="window.cupsById['${this.UID}']._events['${key}'].forEach( e=> e() )" `;
+            buffer += ` ${key}="window.cupsById['${this.UID}']._events['${key}'].forEach( e=> e(event) )" `;
         }
         return buffer
     }
@@ -116,7 +116,7 @@ abstract class ICup {
         if (this.getElement(false)) {
             this._element[eventName] = function(eventArray) {
                 var eventArray = eventArray;
-                return () => { eventArray.forEach( e => e() )}
+                return (event) => { eventArray.forEach( e => e(event) )}
             }(this._events[eventName]);
         }
         this._events[eventName].push(func);
@@ -136,7 +136,7 @@ abstract class ICup {
             }
             for (let c of this.classes) {this._element.classList.add(c)}
             for (let key in this._events) {
-                this._element[key] = () => { this._events[key].forEach( e => e() )};
+                this._element[key] = (event) => { this._events[key].forEach( e => e(event) )};
             }
             this._element.innerHTML = this.innerHTML; 
         }
@@ -184,25 +184,6 @@ class BreakCup extends ICup {
     constructor(parent: Container) { super(parent, "br"); }
 }
 
-class UnderlineCup extends ICup {
-    constructor(parent: Container, str) { super(parent, "u",str); }
-}
-
-class BoldCup extends ICup {
-    constructor(parent: Container, str) { super(parent, "b", str); }
-}
-
-class SuperScriptCup extends ICup {
-    constructor(parent: Container, str) { super(parent, "sup", str); }
-}
-
-class SubScriptCup extends ICup { 
-    constructor(parent: Container, str) { super(parent ,"sub", str); }
-}
-
-class HeadingCup extends ICup {
-    constructor(parent: Container, str) { super(parent, "h1", str); }
-}
 
 class ImageCup extends ICup {
     domain: any;

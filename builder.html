@@ -20,7 +20,7 @@
 				"purpose": "notes"
 			},{
 				"title":"table with empty cells too",
-				"leftRight": ["|||\n|a|b|c\n|x|y|z\n|||\nFIRST ROW\n???\n line 2", ""],
+				"leftRight": ["|a|b|c\n|x|y|z\nFIRST ROW\n???\n line 2", ""],
 				"purpose": "notes"
 			},
 			{
@@ -50,7 +50,7 @@
 			},
 			{
 				"title":"basic fraction",
-				"leftRight": ["~[top A.](bottom^2)", ""],
+				"leftRight": ["~[x](x^2 + 5x + 1)", ""],
 				"purpose": "notes"
 			},
 			{
@@ -71,6 +71,11 @@
 			{
 				"title":"relative position",
 				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)\n@[50,50](RELATIVE)","="],
+				"purpose": "notes"
+			},
+			{
+				"title":"formats",
+				"leftRight": [" *bold text* \n _underline text_ \n#title text \n x^superscript \n x~subscript ","="],
 				"purpose": "notes"
 			}
 			];
@@ -113,25 +118,25 @@
 			}
 		]
 		let templateQuestionData = [
-			{
+			{//index 0
 				"title":"simple template",
 				"leftRight": ["$$ + 3 = ___",""],
 				"purpose": "template",
 				"comment": "10..20\na+3"
 			},
-			{
+			{//index 1
 				"title":"check for crazy sig figs in question",
 				"leftRight": ["$$*0.1 = ___",""],
 				"purpose": "template",
 				"comment": "2..9\n0.1*a"
 			},
-			{
+			{//index 2
 				"title":"image template",
-				"leftRight": ["$$",""],
+				"leftRight": ["![]($$)",""],
 				"purpose": "template",
-				"comment": '"![]("+("https://i.imgur.com/fj7Wmk3.png","https://i.imgur.com/aT6WzPT.gif","https://i.imgur.com/Gzu17kk.png")+")"'
+				"comment": '"https://i.imgur.com/fj7Wmk3.png","https://i.imgur.com/aT6WzPT.gif","https://i.imgur.com/Gzu17kk.png"'
 			},
-			{
+			{//index 3
 				"title":"adding strings template",
 				"leftRight": ["$$ + 00 = $$",""],
 				"purpose": "template",
@@ -148,6 +153,18 @@
 				"leftRight": ["$$ {bigger than/less than/equal to} $$",""],
 				"purpose": "template",
 				"comment": '1..20\nif(a>c,"bigger than",if(a==c,"equal to","less than"))\n1..20'
+			},
+			{ //index 6
+				"title":"dollar superscripts",
+				"leftRight": ["~[1](x^$$ - 1) ",""],
+				"purpose": "template",
+				"comment": '2..5'
+			},
+			{ //index 7
+				"title":"dollar subscripts",
+				"leftRight": ["x~$$ - 1 ",""],
+				"purpose": "template",
+				"comment": '2..5'
 			},
 		];
 		let jsfunctionData = [{
@@ -193,24 +210,16 @@
 			appendMode: false,	
 			endTime: null,
 			initialChecksRemaining: -1,
-			questionJSON: null,
+			questionJSON: JSON.stringify(notesData),
 
 			removeHyperlinks: false,
 			responses: null,
 			shuffleQuestions: false,
 			startTime: new Date().toDateString(),
-			title: "",
+			title: "builder",
 
-			truncateMarks: -1,
-				
-			allowGridlines : false,
-			allowRowDelete : true,
-			allowRowDuplicate: true,
-			allowRefresh: true,
-        	instantChecking: true,
-			presentMode: false,
-			showSolutions: true,
-		});
+			truncateMarks: -1
+		},0);
 		
 		window.assignment = new Assignment(document.getElementById("assignment"),builderSettings);
 		

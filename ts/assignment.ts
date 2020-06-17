@@ -22,21 +22,26 @@ class Assignment extends Container {
         this._element = div; //must come first
         this.settings = settingsObj;
         this.settings.assignment = this;
+        this._childNodes = [];
 
-        if (this.settings.title) window.document.title = this.settings.title;
+        //title
+        if (this.settings.title) { 
+            this._childNodes.push(new HeadingCup(this, this.settings.title));
+            window.document.title = this.settings.title;
+        }
         
-        //divs
-        this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
-        if (this.settings.showSolutions) { 
-            this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv"); 
+        //countdown timer
+        if (Settings.instance.allowCountdownTimer) {
+            this._childNodes.push(Settings.instance.countdownTimerLogic.createDiv(this));
         }
-        //this.jumbledSolutionsDiv = new Container(this, "div").addClass("jumbledSolutionsDiv");
+        
+        //calculator
+        this._childNodes.push(Settings.instance.calculatorLogic.createDiv(this));
 
-        //if question data included in settings
-        if (this.settings.questionJSON) { 
-            var rows = JSON.parse(this.settings.questionJSON);
-            this.addRowsFromData(rows);
-        }
+        //questions div
+        this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
+        this._childNodes.push(this.questionsDiv);
+        
 
         //if shuffle is ON
         if (this.settings.shuffleQuestions) {this.shuffle(false);}
@@ -45,20 +50,17 @@ class Assignment extends Container {
 
         //APPENDING DOES NOT WORK SO PUSH TO CHILDNODES
         if (this.settings.presentMode) {
-            this._childNodes = [this.questionsDiv];
+            //IF PRESENTING
             this.questionsDiv.addClass("slides")
             this.getElement(true).classList.add("reveal");
-            this.refresh();
-            window["Reveal"].initialize({transition: 'linear'});
         }
         else {
-            //submit button and sheet timer
-            this._childNodes = [];
+            //NORMAL VIEW
             //student picker - teacher only
+            
             if (this.settings.studentPicker) {
                 this._childNodes.push(this.settings.studentPicker.createCombo(this));
             }   
-            this._childNodes.push(this.questionsDiv);   
             //submit button      
             if (!this.settings.instantChecking) {
                 this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
@@ -66,7 +68,8 @@ class Assignment extends Container {
                 this._childNodes.push(this.submitButtonDiv);
             }
             //solutions
-            if (this.solutionsDiv) {
+            if (this.settings.showSolutions) {
+                this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv");     
                 this._childNodes.push(new HeadingCup(this,"solutions"));
                 this._childNodes.push(this.solutionsDiv);
             }
@@ -77,9 +80,16 @@ class Assignment extends Container {
             if (this.settings.sheetManager) {
                 this._childNodes.push(this.settings.sheetManager.createCountdownDiv(this));
             }
-            this.refresh();
         }
-    
+        
+        //if question data included in settings
+        if (this.settings.questionJSON) { 
+            var rows = JSON.parse(this.settings.questionJSON);
+            this.addRowsFromData(rows);
+        }
+        this.refresh();
+
+        if (this.settings.presentMode) window["Reveal"].initialize({transition: 'linear'});
     }
     
     addRowsFromData(rowData: RowData[]) {

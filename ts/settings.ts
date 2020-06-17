@@ -1,6 +1,6 @@
 
 enum Mode {
-    "builder","lesson-student","lesson-teacher","present-teacher","preview-teacher"
+    "builder","lessonStudent","lessonTeacher","presentTeacher","previewTeacher"
 }
 
 class Settings {
@@ -18,10 +18,12 @@ class Settings {
     truncateMarks: number = -1;
 
     //DEFAULTS DEPENDING ON MODE
+    mode: Mode
     allowGridlines: boolean;
     allowRowDelete: boolean;
     allowRowDuplicate: boolean;
     allowRefresh: boolean;
+    allowPin: boolean;
     instantChecking: boolean;
     presentMode: boolean;
     sendScoresToMarksheet: boolean;
@@ -30,11 +32,14 @@ class Settings {
     //ADDED IN CONSTRUCTOR
     random: Random; //from seed
     assignment: Assignment;
-    timerLogic: TimerLogic;
+    timerLogic: QuizTimerLogic;
     sheetManager: SheetManager;
     studentPicker: StudentPickerLogic;
+    calculatorLogic : CalculatorLogic;
+    countdownTimerLogic: CountdownTimerLogic;
 
     static instance: Settings;
+    allowCountdownTimer: boolean;
 
     constructor(settingsObj:any, mode:Mode) {
         if (Settings.instance) { throw "only one of instance of Settings is allowed"}
@@ -43,21 +48,26 @@ class Settings {
         
         for (var key in settingsObj) {this[key] = settingsObj[key]};
 
+        //MODE
+        this.mode = mode;
         this.setDefaults(mode);
 
         this.sheetManager = new SheetManager();
+        this.calculatorLogic = new CalculatorLogic();
+        this.countdownTimerLogic = new CountdownTimerLogic();
         
         //setup timer
         if (this.startTime) this.startTime = new Date(this.startTime);
         if (this.endTime) this.endTime = new Date(this.endTime);
         
         if (this.endTime) {
-            this.timerLogic = new TimerLogic(this.endTime, this);
+            this.timerLogic = new QuizTimerLogic(this.endTime, this);
         }        
 
-        //TEACHER settings for lesson
+        //TEACHER settings for lesson - overrides defaults
         if (settingsObj.studentNames) {
-            this.setDefaults(Mode["lesson-teacher"]);
+            this.mode = Mode.lessonTeacher;
+            this.setDefaults(Mode.lessonTeacher);
             this.studentPicker = new StudentPickerLogic(this, settingsObj.studentNames);
 
             //first student's responses will be added to existing questions
@@ -72,11 +82,13 @@ class Settings {
 
  
     setDefaults(mode: Mode) {
-//    "builder","lesson-student","lesson-teacher","present-teacher","preview-teacher"
+//    "builder" = 0,"lesson-student" = 1,"lesson-teacher" = 2,"present-teacher" = 3,"preview-teacher" = 4
+        this.allowCountdownTimer =      [false,false,true,true,true][mode];
         this.allowRowDelete =           [true,false,false,false,true][mode];
         this.allowRowDuplicate =        [true,false,false,false,true][mode];
         this.allowRefresh =             [true,false,true,true,true][mode];
         this.allowGridlines =           [false,false,false,false,true][mode];
+        this.allowPin =                 [false,true,true,false,true][mode];
         this.instantChecking =          [true,false,true,true,true][mode];
         this.presentMode =              [false,false,false,true,false][mode];
         this.sendScoresToMarksheet =    [false,true,false,false,false][mode];

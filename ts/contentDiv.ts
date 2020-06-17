@@ -64,7 +64,8 @@ class ContentDiv extends Container {
                 d instanceof InputCup ||
                 d instanceof TextAreaCup ||
                 d instanceof CheckBoxCup ||
-                d instanceof DollarCup) {
+                d instanceof DollarSpan ||
+                d instanceof DollarImage) {
                     this.setValueFields.push(d);
                 }
             else if (d instanceof RadioCup) {
@@ -104,7 +105,8 @@ class ContentDiv extends Container {
             "pattern": /((?:^|\n)[\|¦](?:[^\n]|\n\|)*)/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
                 let hasBorder = str.startsWith("|");
-                return [new TableCup(parent, hasBorder, [str])]; //row and cell are replaced inside the constructor
+                return [TableCup.fromString(parent, hasBorder, str)];
+                //return [new TableCup(parent, hasBorder, [str])]; //row and cell are replaced inside the constructor
             },
         },
         { //relative position - block level
@@ -130,7 +132,7 @@ class ContentDiv extends Container {
                 return [new BreakCup(parent)];
             },
         },
-        { //fraction
+        { //fraction - block level
             "pattern": /(~\[[^\]]*\]\((?:\\\)|[^)])*\))/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
                 let top = ""; let bottom = "";
@@ -138,11 +140,52 @@ class ContentDiv extends Container {
                 return [new FractionCup(parent, [top], [bottom])];
             },
         },
-        { //dollar field
+        { //heading
+            "pattern": /((?:\n|^)#[^\n]+)/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                str = helpers.trimChar(str,"#");
+                return [new HeadingCup(parent, str)];
+            },
+        },
+        { //super script
+            "pattern": /(\^[\S\$]+)/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                str = helpers.trimChar(str,"^");
+                return [new SuperScriptCup(parent, str)];
+            },
+        },
+        { //subscript
+            "pattern": /(\~[\S]+)/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                str = helpers.trimChar(str,"~");
+                return [new SubScriptCup(parent,str)];
+            },
+        },
+        { //bold
+            "pattern": /(\*[^*]+\*)/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                str = helpers.trimChar(str,"*");
+                return [new BoldCup(parent,str)];
+            },
+        },
+        { //underline
+            "pattern": /(_[^_]+_)/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                return [new UnderlineCup(parent, str)];
+            },
+        },
+        { //dollar image - must come before normal image and dollar
+            "pattern": /(!\[[^\]]*\]\(\$\$\))/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                let alt = ""; let width = ""; let dummy = "";
+                [,alt,width] = str.match(/!\[([^\],]*),?([^\]]*)\]/);
+                return [new DollarImage(parent, alt, width)];
+            },
+        },
+        { //dollar span
             "pattern": /(\$\$)/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                let span = new Span(parent, "");
-                return [new DollarCup(parent, span), span];
+                return [new DollarSpan(parent)];
             },
         },
         { //anchor
@@ -207,39 +250,6 @@ class ContentDiv extends Container {
                 let span = new Span(parent, "");
                 return [new ComboCup(parent, [" ",str], decisionImage, span), decisionImage, span];
             },
-        },
-        { //heading
-            "pattern": /((?:\n|^)#[^\n]+)/,
-            "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                str = helpers.trimChar(str,"#");
-                return [new HeadingCup(parent, str)];
-            },
-        },
-        { //super script
-            "pattern": /(\^[\S]+)/,
-            "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                str = helpers.trimChar(str,"^");
-                return [new SuperScriptCup(parent, str)];
-            },
-        },
-        { //subscript
-            "pattern": /(\~[\S]+)/,
-            "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                str = helpers.trimChar(str,"~");
-                return [new SubScriptCup(parent,str)];
-            },
-        },
-        { //bold
-            "pattern": /(\*[^*]+\*)/,
-            "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                str = helpers.trimChar(str,"*");
-                return [new BoldCup(parent,str)];
-            },
-        },
-        { //underline
-            "pattern": /(_[^_]+_)/,
-            "nodeConstructorFromMatch": (parent: Container, str: string) => {
-                return [new UnderlineCup(parent, str)];
-            }
-    }];
+        }
+    ];
 }

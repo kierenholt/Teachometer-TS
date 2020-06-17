@@ -50,7 +50,7 @@ class ICup {
     get joinedEvents() {
         let buffer = "";
         for (var key in this._events) {
-            buffer += ` ${key}="window.cupsById['${this.UID}']._events['${key}'].forEach( e=> e() )" `;
+            buffer += ` ${key}="window.cupsById['${this.UID}']._events['${key}'].forEach( e=> e(event) )" `;
         }
         return buffer;
     }
@@ -99,7 +99,7 @@ class ICup {
         if (this.getElement(false)) {
             this._element[eventName] = function (eventArray) {
                 var eventArray = eventArray;
-                return () => { eventArray.forEach(e => e()); };
+                return (event) => { eventArray.forEach(e => e(event)); };
             }(this._events[eventName]);
         }
         this._events[eventName].push(func);
@@ -120,7 +120,7 @@ class ICup {
                 this._element.classList.add(c);
             }
             for (let key in this._events) {
-                this._element[key] = () => { this._events[key].forEach(e => e()); };
+                this._element[key] = (event) => { this._events[key].forEach(e => e(event)); };
             }
             this._element.innerHTML = this.innerHTML;
         }
@@ -155,21 +155,6 @@ class AnchorCup extends ICup {
 }
 class BreakCup extends ICup {
     constructor(parent) { super(parent, "br"); }
-}
-class UnderlineCup extends ICup {
-    constructor(parent, str) { super(parent, "u", str); }
-}
-class BoldCup extends ICup {
-    constructor(parent, str) { super(parent, "b", str); }
-}
-class SuperScriptCup extends ICup {
-    constructor(parent, str) { super(parent, "sup", str); }
-}
-class SubScriptCup extends ICup {
-    constructor(parent, str) { super(parent, "sub", str); }
-}
-class HeadingCup extends ICup {
-    constructor(parent, str) { super(parent, "h1", str); }
 }
 class ImageCup extends ICup {
     constructor(parent, src, alt, width) {
@@ -237,10 +222,7 @@ class Container extends ICup {
         return this;
     }
     appendChildElement(child, after) {
-        if (this._childNodes.indexOf(child) != -1) {
-            helpers.removeFromArray(this._childNodes, child);
-        }
-        ;
+        helpers.removeFromArray(child._parent._childNodes, child);
         if (after && this._childNodes.indexOf(after) < this._childNodes.length - 1) {
             if (this.getElement(false)) {
                 let before = this._childNodes[this._childNodes.indexOf(after) + 1];
@@ -367,28 +349,23 @@ class TableCup extends Container {
         super(parent, "table", childNodes);
         this.attributes["class"] = "markdowntable";
         this.attributes["style"] = this.hasBorder ? "" : "border: none;";
-        this.replace(TableCup.rowReplacer);
+    }
+    static fromString(parent, hasBorder, str) {
+        let ret = new TableCup(parent, hasBorder, []);
+        ret._childNodes = str.split("\n").map(s => { return RowCup.fromString(ret, s); });
+        return ret;
     }
 }
-TableCup.rowReplacer = {
-    "pattern": /(?:^|\n)([^\n]*)/,
-    "nodeConstructorFromMatch": (parent, str) => {
-        return [new RowCup(parent, [str])];
-    }
-};
 class RowCup extends Container {
     constructor(parent, childNodes) {
         super(parent, "tr", childNodes);
-        this.replace(RowCup.cellReplacer);
+    }
+    static fromString(parent, str) {
+        let ret = new RowCup(parent, []);
+        ret._childNodes = str.split("|").slice(1).map(s => { return new CellCup(ret, s); });
+        return ret;
     }
 }
-RowCup.cellReplacer = {
-    "pattern": /(?:^|[\|¦])([^\|¦]*)/,
-    "nodeConstructorFromMatch": (parent, str) => {
-        str = helpers.trimChar(str, "|");
-        return [new CellCup(parent, [str])];
-    }
-};
 class CellCup extends Container {
     constructor(parent, childNodes) { super(parent, "td", childNodes); }
 }
@@ -414,6 +391,21 @@ class CodeCup extends Container {
         this.attributes["class"] = "code";
         this.replace = null;
     }
+}
+class UnderlineCup extends Container {
+    constructor(parent, str) { super(parent, "span", [str]); this.addClass("underline"); }
+}
+class BoldCup extends Container {
+    constructor(parent, str) { super(parent, "span", [str]); this.addClass("bold"); }
+}
+class SuperScriptCup extends Container {
+    constructor(parent, str) { super(parent, "span", [str]); this.addClass("superscript"); }
+}
+class SubScriptCup extends Container {
+    constructor(parent, str) { super(parent, "span", [str]); this.addClass("subscript"); }
+}
+class HeadingCup extends Container {
+    constructor(parent, str) { super(parent, "span", [str]); this.addClass("heading"); }
 }
 class RelativePositionCup extends Container {
     constructor(parent, xPos, yPos, childNodes) {
@@ -463,16 +455,17 @@ class Assignment extends Container {
         this._element = div;
         this.settings = settingsObj;
         this.settings.assignment = this;
-        if (this.settings.title)
+        this._childNodes = [];
+        if (this.settings.title) {
+            this._childNodes.push(new HeadingCup(this, this.settings.title));
             window.document.title = this.settings.title;
+        }
+        if (Settings.instance.allowCountdownTimer) {
+            this._childNodes.push(Settings.instance.countdownTimerLogic.createDiv(this));
+        }
+        this._childNodes.push(Settings.instance.calculatorLogic.createDiv(this));
         this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
-        if (this.settings.showSolutions) {
-            this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv");
-        }
-        if (this.settings.questionJSON) {
-            var rows = JSON.parse(this.settings.questionJSON);
-            this.addRowsFromData(rows);
-        }
+        this._childNodes.push(this.questionsDiv);
         if (this.settings.shuffleQuestions) {
             this.shuffle(false);
         }
@@ -480,24 +473,20 @@ class Assignment extends Container {
             this.truncate(this.settings.truncateMarks);
         }
         if (this.settings.presentMode) {
-            this._childNodes = [this.questionsDiv];
             this.questionsDiv.addClass("slides");
             this.getElement(true).classList.add("reveal");
-            this.refresh();
-            window["Reveal"].initialize({ transition: 'linear' });
         }
         else {
-            this._childNodes = [];
             if (this.settings.studentPicker) {
                 this._childNodes.push(this.settings.studentPicker.createCombo(this));
             }
-            this._childNodes.push(this.questionsDiv);
             if (!this.settings.instantChecking) {
                 this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
                 this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
                 this._childNodes.push(this.submitButtonDiv);
             }
-            if (this.solutionsDiv) {
+            if (this.settings.showSolutions) {
+                this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv");
                 this._childNodes.push(new HeadingCup(this, "solutions"));
                 this._childNodes.push(this.solutionsDiv);
             }
@@ -507,8 +496,14 @@ class Assignment extends Container {
             if (this.settings.sheetManager) {
                 this._childNodes.push(this.settings.sheetManager.createCountdownDiv(this));
             }
-            this.refresh();
         }
+        if (this.settings.questionJSON) {
+            var rows = JSON.parse(this.settings.questionJSON);
+            this.addRowsFromData(rows);
+        }
+        this.refresh();
+        if (this.settings.presentMode)
+            window["Reveal"].initialize({ transition: 'linear' });
     }
     addRowsFromData(rowData) {
         for (var row of rowData) {
@@ -644,6 +639,86 @@ class Assignment extends Container {
         return QuestionLogic.readOnlyInstances.map(ql => ql.rowData);
     }
 }
+class CalculatorBase {
+    constructor() { }
+    moveAfterQuestion(ql) {
+        let index = ql.questionDiv._childNodes.indexOf(this.div);
+        if (index != -1 && this.div.classes.indexOf("displayNone") == -1) {
+            this.div.addClass("displayNone");
+        }
+        else {
+            this.div.removeClass("displayNone");
+            ql.questionDiv.appendChildElement(this.div);
+            this.div._parent = ql.questionDiv;
+        }
+    }
+}
+class CalculatorLogic extends CalculatorBase {
+    constructor() {
+        super();
+        this.helpText = `Type the calculation in. Press Enter to calculate. Supports: 
+    operations + - * /
+    E notation e.g. 5e-4 the same as 0.0005  
+    functions sqrt() exp() ln() pow()
+    trig functions sin() cos() tan() arcsin() arccos() arctan() in degrees
+    variables e.g. x = 9.
+    constants pi, e`;
+        this.customFunctions = `
+        var sqrt = Math.sqrt;
+        var ln = Math.log;
+        var exp = Math.exp;
+        var sin = function(n) {return Math.sin(n/180*Math.PI)}
+        var cos = function(n) {return Math.cos(n/180*Math.PI)}
+        var tan = function(n) {return Math.tan(n/180*Math.PI)}
+        var asin = arcsin = function(n) {return 180*Math.asin(n)/Math.PI}
+        var acos = arccos = function(n) {return 180*Math.acos(n)/Math.PI}
+        var atan = arctan = function(n) {return 180*Math.atan(n)/Math.PI}
+        var pi = Math.PI;
+        var e = Math.E;
+        var pow = Math.pow;
+        
+    `;
+        this.interpreter = new Interpreter(this.customFunctions);
+    }
+    createDiv(parent) {
+        this.div = new Container(parent, "div").addClass("calculatorContainer").addClass("displayNone");
+        this.maxHeightBlock = new Container(this.div, "div").addClass("calculatorOutput");
+        this.output = new Span(this.div, "");
+        this.maxHeightBlock.appendChildElement(this.output);
+        this.errorSpan = new Span(this.div, "");
+        this.image = new Icon(this.div, IconName.help).setAttribute("title", this.helpText);
+        this.input = new InputCup(parent, 20, this.image, this.errorSpan).addClass("calculatorInput");
+        this.input.setEvent("onkeyup", (e) => {
+            this.checkEnterKey(e);
+        });
+        this.div._childNodes = [this.maxHeightBlock, this.input, this.image];
+        return this.div;
+    }
+    checkEnterKey(event) {
+        if (event.keyCode === 13 && this.input.getValue()) {
+            event.preventDefault();
+            var input = this.input.getValue();
+            var result = "";
+            var i;
+            try {
+                this.interpreter.appendCode(input);
+                i = 100000;
+                while (i-- && this.interpreter.step()) { }
+                result = this.interpreter.value;
+            }
+            catch (e) {
+                result = "Error:code did not execute completely";
+                this.interpreter = new Interpreter(this.customFunctions);
+            }
+            if (i == -1) {
+                result = "Error: Code contains an infinite loop";
+                this.interpreter = new Interpreter(this.customFunctions);
+            }
+            this.output.innerHTML += (input + " => " + result + "\n");
+            this.maxHeightBlock.getElement(true).scrollTo(0, 1000);
+        }
+    }
+}
 class JSFunction {
     constructor(code, JSName) {
         try {
@@ -716,7 +791,7 @@ class CommentLogic {
         this.solutionLines = {};
         this.solutionValueSpans = {};
         this.inputsWithCommentLetters = {};
-        this.dollarCupsWithCommentLetters = {};
+        this.dollarCupsAndImagesWithCommentLetters = {};
         this.checkBoxesWithCommentLetters = {};
         this.scoreLogicsWithCommentLetters = {};
         this.jsFunctionNamesWithCommentLetters = {};
@@ -753,7 +828,12 @@ class CommentLogic {
             let variablesToKeepAsDollars = (this.engine.variablesToKeepAsDollars(this.seed));
             for (let i = 0; i < variablesToKeepAsDollars.length; i++) {
                 if (!variablesToKeepAsDollars[i]) {
-                    valueFields[i] = valueFields[i].swapForInput();
+                    if (valueFields[i] instanceof DollarSpan) {
+                        valueFields[i] = valueFields[i].swapForInput();
+                    }
+                    if (valueFields[i] instanceof DollarImage) {
+                        throw ("cannot exchange an image for an input element");
+                    }
                 }
             }
         }
@@ -783,8 +863,8 @@ class CommentLogic {
                     this.settings.sheetManager.registerField(v, this.questionLogic.rowData.title);
                 }
             }
-            if (v instanceof DollarCup) {
-                this.dollarCupsWithCommentLetters[commentLetter] = v;
+            if (v instanceof DollarSpan || v instanceof DollarImage) {
+                this.dollarCupsAndImagesWithCommentLetters[commentLetter] = v;
             }
             if (v instanceof ComboCup ||
                 v instanceof InputCup ||
@@ -885,9 +965,14 @@ class CommentLogic {
         this.settings.sheetManager.attemptToSend();
     }
     updateDollars(outputValues) {
-        for (let key in this.dollarCupsWithCommentLetters) {
+        for (let key in this.dollarCupsAndImagesWithCommentLetters) {
             if (key in outputValues) {
-                this.dollarCupsWithCommentLetters[key].setValue(outputValues[key]);
+                if (this.dollarCupsAndImagesWithCommentLetters[key] instanceof DollarSpan) {
+                    this.dollarCupsAndImagesWithCommentLetters[key].setValue(outputValues[key]);
+                }
+                if (this.dollarCupsAndImagesWithCommentLetters[key] instanceof DollarImage) {
+                    this.dollarCupsAndImagesWithCommentLetters[key].setValue(outputValues[key]);
+                }
             }
         }
     }
@@ -918,8 +1003,8 @@ class CommentLogic {
         for (let letter in this.checkBoxesWithCommentLetters) {
             this.checkBoxesWithCommentLetters[letter].resetError();
         }
-        for (let letter in this.dollarCupsWithCommentLetters) {
-            this.dollarCupsWithCommentLetters[letter].resetError();
+        for (let letter in this.dollarCupsAndImagesWithCommentLetters) {
+            this.dollarCupsAndImagesWithCommentLetters[letter].resetError();
         }
         for (let letter in outputs) {
             if (letter in this.inputsWithCommentLetters &&
@@ -932,9 +1017,9 @@ class CommentLogic {
                 this.checkBoxesWithCommentLetters[letter].setErrorText(outputs[letter].message);
                 outputs[letter] = "";
             }
-            if (letter in this.dollarCupsWithCommentLetters &&
+            if (letter in this.dollarCupsAndImagesWithCommentLetters &&
                 outputs[letter] instanceof ExpressionError) {
-                this.dollarCupsWithCommentLetters[letter].setErrorText(outputs[letter].message);
+                this.dollarCupsAndImagesWithCommentLetters[letter].setErrorText(outputs[letter].message);
                 outputs[letter] = "";
             }
         }
@@ -1143,7 +1228,8 @@ class ContentDiv extends Container {
                 d instanceof InputCup ||
                 d instanceof TextAreaCup ||
                 d instanceof CheckBoxCup ||
-                d instanceof DollarCup) {
+                d instanceof DollarSpan ||
+                d instanceof DollarImage) {
                 this.setValueFields.push(d);
             }
             else if (d instanceof RadioCup) {
@@ -1182,7 +1268,7 @@ ContentDiv.replacers = [
         "pattern": /((?:^|\n)[\|¦](?:[^\n]|\n\|)*)/,
         "nodeConstructorFromMatch": (parent, str) => {
             let hasBorder = str.startsWith("|");
-            return [new TableCup(parent, hasBorder, [str])];
+            return [TableCup.fromString(parent, hasBorder, str)];
         },
     },
     {
@@ -1218,10 +1304,53 @@ ContentDiv.replacers = [
         },
     },
     {
+        "pattern": /((?:\n|^)#[^\n]+)/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            str = helpers.trimChar(str, "#");
+            return [new HeadingCup(parent, str)];
+        },
+    },
+    {
+        "pattern": /(\^[\S\$]+)/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            str = helpers.trimChar(str, "^");
+            return [new SuperScriptCup(parent, str)];
+        },
+    },
+    {
+        "pattern": /(\~[\S]+)/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            str = helpers.trimChar(str, "~");
+            return [new SubScriptCup(parent, str)];
+        },
+    },
+    {
+        "pattern": /(\*[^*]+\*)/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            str = helpers.trimChar(str, "*");
+            return [new BoldCup(parent, str)];
+        },
+    },
+    {
+        "pattern": /(_[^_]+_)/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            return [new UnderlineCup(parent, str)];
+        },
+    },
+    {
+        "pattern": /(!\[[^\]]*\]\(\$\$\))/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            let alt = "";
+            let width = "";
+            let dummy = "";
+            [, alt, width] = str.match(/!\[([^\],]*),?([^\]]*)\]/);
+            return [new DollarImage(parent, alt, width)];
+        },
+    },
+    {
         "pattern": /(\$\$)/,
         "nodeConstructorFromMatch": (parent, str) => {
-            let span = new Span(parent, "");
-            return [new DollarCup(parent, span), span];
+            return [new DollarSpan(parent)];
         },
     },
     {
@@ -1288,42 +1417,88 @@ ContentDiv.replacers = [
             let span = new Span(parent, "");
             return [new ComboCup(parent, [" ", str], decisionImage, span), decisionImage, span];
         },
-    },
-    {
-        "pattern": /((?:\n|^)#[^\n]+)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            str = helpers.trimChar(str, "#");
-            return [new HeadingCup(parent, str)];
-        },
-    },
-    {
-        "pattern": /(\^[\S]+)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            str = helpers.trimChar(str, "^");
-            return [new SuperScriptCup(parent, str)];
-        },
-    },
-    {
-        "pattern": /(\~[\S]+)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            str = helpers.trimChar(str, "~");
-            return [new SubScriptCup(parent, str)];
-        },
-    },
-    {
-        "pattern": /(\*[^*]+\*)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            str = helpers.trimChar(str, "*");
-            return [new BoldCup(parent, str)];
-        },
-    },
-    {
-        "pattern": /(_[^_]+_)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            return [new UnderlineCup(parent, str)];
-        }
     }
 ];
+class CountdownTimerLogic extends CalculatorBase {
+    constructor() {
+        super();
+        this.helpText = "Enter time in secs or mins:secs. \n Press Enter to start countdown.";
+    }
+    createDiv(parent) {
+        this.div = new Container(parent, "div");
+        this.div.addClass("countdownTimerContainer").addClass("displayNone");
+        let errorSpan = new Span(this.div, "");
+        let image = new Icon(this.div, IconName.help).setAttribute("title", this.helpText);
+        ;
+        this.input = new InputCup(parent, 20, image, errorSpan).addClass("countdownTimerInput");
+        this.input.setEvent("onkeyup", (e) => {
+            this.onKeyUp(e);
+        });
+        this.input.setEvent("onfocus", () => {
+            this.onFocus();
+        });
+        this.div._childNodes = [this.input, image];
+        return this.div;
+    }
+    onFocus() {
+        this.input.removeClass("red").removeClass("blink");
+        if (this.lastEnteredValue) {
+            this.input.setValue(this.lastEnteredValue);
+        }
+        if (this.timerInterval) {
+            clearInterval(this.timerInterval);
+        }
+    }
+    onKeyUp(event) {
+        if (event.keyCode === 13 && this.input.getValue()) {
+            this.input.getElement(true).blur();
+            event.preventDefault();
+            var durationString = this.input.getValue();
+            this.lastEnteredValue = durationString;
+            var patt = /([0-9]*):?([0-9]*)/;
+            var result = patt.exec(durationString);
+            let seconds = null;
+            if (result[2]) {
+                seconds += Number(result[2]) + 60 * Number(result[1]);
+            }
+            else {
+                seconds = Number(result[1]);
+            }
+            if (helpers.isNumeric(seconds)) {
+                let endTime = new Date(Number(new Date()) + 1000 * seconds);
+                if (endTime) {
+                    this.startCounting(endTime);
+                }
+            }
+        }
+    }
+    startCounting(endTime) {
+        this.endTime = endTime;
+        this.timerInterval = setInterval(function (timer) {
+            var timer = timer;
+            return function () {
+                timer.input.setValue(timer.timerText);
+                if (timer.isElapsed) {
+                    timer.input.addClass("red").addClass("blink");
+                    clearInterval(timer.timerInterval);
+                }
+            };
+        }(this), 900);
+    }
+    get timerText() {
+        if (this.isElapsed) {
+            return "TIME UP";
+        }
+        var delta = Math.abs(Number(this.endTime) - Number(new Date())) / 1000;
+        var minutes = Math.floor(delta / 60) % 60;
+        delta -= minutes * 60;
+        var seconds = Math.floor(delta % 60);
+        return minutes.toString() + ":" + ("0" + seconds.toString()).slice(-2);
+    }
+    get isElapsed() {
+        return Number(this.endTime) < Number(new Date());
+    }
+}
 class ExpressionError extends Error {
     constructor(message, paramFeedbackToUser, paramIsCritical) {
         super(message);
@@ -2428,7 +2603,10 @@ var IconName;
     IconName[IconName["refresh"] = 7] = "refresh";
     IconName[IconName["grid"] = 8] = "grid";
     IconName[IconName["pin"] = 9] = "pin";
-    IconName[IconName["none"] = 10] = "none";
+    IconName[IconName["calculator"] = 10] = "calculator";
+    IconName[IconName["clock"] = 11] = "clock";
+    IconName[IconName["help"] = 12] = "help";
+    IconName[IconName["none"] = 13] = "none";
 })(IconName || (IconName = {}));
 ;
 class Icon extends ICup {
@@ -2463,7 +2641,10 @@ Icon.imageData = [
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAIsSURBVDjLpVNLSJQBEP7+h6uu62vLVAJDW1KQTMrINQ1vPQzq1GOpa9EppGOHLh0kCEKL7JBEhVCHihAsESyJiE4FWShGRmauu7KYiv6Pma+DGoFrBQ7MzGFmPr5vmDFIYj1mr1WYfrHPovA9VVOqbC7e/1rS9ZlrAVDYHig5WB0oPtBI0TNrUiC5yhP9jeF4X8NPcWfopoY48XT39PjjXeF0vWkZqOjd7LJYrmGasHPCCJbHwhS9/F8M4s8baid764Xi0Ilfp5voorpJfn2wwx/r3l77TwZUvR+qajXVn8PnvocYfXYH6k2ioOaCpaIdf11ivDcayyiMVudsOYqFb60gARJYHG9DbqQFmSVNjaO3K2NpAeK90ZCqtgcrjkP9aUCXp0moetDFEeRXnYCKXhm+uTW0CkBFu4JlxzZkFlbASz4CQGQVBFeEwZm8geyiMuRVntzsL3oXV+YMkvjRsydC1U+lhwZsWXgHb+oWVAEzIwvzyVlk5igsi7DymmHlHsFQR50rjl+981Jy1Fw6Gu0ObTtnU+cgs28AKgDiy+Awpj5OACBAhZ/qh2HOo6i+NeA73jUAML4/qWux8mt6NjW1w599CS9xb0mSEqQBEDAtwqALUmBaG5FV3oYPnTHMjAwetlWksyByaukxQg2wQ9FlccaK/OXA3/uAEUDp3rNIDQ1ctSk6kHh1/jRFoaL4M4snEMeD73gQx4M4PsT1IZ5AfYH68tZY7zv/ApRMY9mnuVMvAAAAAElFTkSuQmCC",
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAI/SURBVDjLjZPbS9NhHMYH+zNidtCSQrqwQtY5y2QtT2QGrTZf13TkoYFlzsWa/tzcoR3cSc2xYUlGJfzAaIRltY0N12H5I+jaOxG8De+evhtdOP1hu3hv3sPzPO/z4SsBIPnfuvG8cbBlWiEVO5OUItA0VS8oxi9EdhXo+6yV3V3UGHRvVXHNfNv6zRfNuBZVoiFcB/3LdnQ8U+Gk+bhPVKB3qUOuf6/muaQR/qwDkZ9BRFdCmMr5EPz6BN7lMYylLGgNNaKqt3K0SKDnQ7us690t3rNsxeyvaUz+8OJpzo/QNzd8WTtcaQ7WlBmPvxhx1V2Pg7oDziIBimwwf3qAGWESkVwQ7owNujk1ztvk+cg4NnAUTT4FrrjqUKHdF9jxBfXr1rgjaSk4OlMcLrnOrJ7latxbL1V2lgvlbG9MtMTrMw1r1PImtfyn1n5q47TlBLf90n5NmalMtUdKZoyQMkLKlIGLjMyYhFpmlz3nGEVmFJlRZNaf7pIaEndM24XIjCOzjX9mm2S2JsqdkMYIqbB1j5C6yWzVk7YRFTsGFu7l+4nveExIA9aMCcOJh6DIoMigyOh+o4UryRWQOtIjaJtoziM1FD0mpE4uZcTc72gBaUyYKEI6khgqINXO3saR7kM8IZUVCRDS0Ucf+xFbCReQhr97MZ51wpWxYnhpCD3zOrT4lTisr+AJqVx0Fiiyr4/vhP4VyyMFIUWNqRrV96vWKXKckBoIqWzXYcoPDrUslDJoopuEVEpIB0sR+AuErIiZ6OqMKAAAAABJRU5ErkJggg==",
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABmJLR0QA/wD/AP+gvaeTAAAApklEQVQ4jb3SQQqBURTF8R99E0aSMrEFC7AGpvYmG1A2YgG2YCIDJSlRTF65fS4lcut1T+f/Ou/d1+O5ZkFPysoYqJKAbtCtNww0k4CP6uuABuboBG+EVdGD0jcJg30Wugx6WlbG8IMRKozRDt4gnDqq7Y8MThVOOAfz4jHbsfR9wuCa3eq/b9DAAr3gDbEuul/6NmGwy0L/O8JP/kG9DkGfcXvBwB3GoiAx97DmjwAAAABJRU5ErkJggg==",
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA6UlEQVQ4y2NgIBL8L2aUA+LrQOzGQCoAamIC4sNA/BeIv5NsCFBDFVSzHxCvhhriQqxmCyD+DcQ1QMwFxFuB+D8QfwViB2wa1IC4EYgXAvFUIL4PxNuBWASIj0I1w/BjdM0FUNtgCs4C8XMgvgvEV9E0XwRiPXQDjID4LVRBGBCzAPF0NI0gCzqBmA2Xn2GG3ATizWiaQS6xIibgkF2CjOcSo1kM6kQTLIasJybB7IYq7sfikl5CBjRDFZ4GYgU074ASkhE+zV5QRVPRQxhqSCOhjPIQiKPIyShs0FSnxUAOAMUrEPMwkAkABQjt40jPAagAAAAASUVORK5CYII="
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA6UlEQVQ4y2NgIBL8L2aUA+LrQOzGQCoAamIC4sNA/BeIv5NsCFBDFVSzHxCvhhriQqxmCyD+DcQ1QMwFxFuB+D8QfwViB2wa1IC4EYgXAvFUIL4PxNuBWASIj0I1w/BjdM0FUNtgCs4C8XMgvgvEV9E0XwRiPXQDjID4LVRBGBCzAPF0NI0gCzqBmA2Xn2GG3ATizWiaQS6xIibgkF2CjOcSo1kM6kQTLIasJybB7IYq7sfikl5CBjRDFZ4GYgU074ASkhE+zV5QRVPRQxhqSCOhjPIQiKPIyShs0FSnxUAOAMUrEPMwkAkABQjt40jPAagAAAAASUVORK5CYII=",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGxSURBVDjLpVM9a8JQFL0vUUGFfowFpw4dxM2vf9G5newv6OIvEDoVOnUQf0G7CEYQHVzUVZQoaKFugoW20EUaTd5L+u6NSQORdvDC5dyEd+499ySPOY4Dh0TEK8rl8n0mk7lOJBIpVVWBMUaJAzCFEMA5B8MwPpfL5VOlUrklonegWq3qEr+c/2Nbq9VWHs9XkEwm0xLUy/Lzn5KbD1exaDR6FlpBURSq4/E4HJ2c4jMwmYpcw6vf31be2bAHQTPVHYEFyAr7VeEACzfAQKPuSmlCy7LINBcteifSx3ROWutzlCAZ3Z9Op9ButyEWi8F8Poder0drXTQ1SNUeqalt22EFQrgvC4UC5HI5mow1EjA/SjdEjEQiYAd+HV8BF5xwNBpBo9EgBZPJBDqdDimYzWbQ7XapmeA8rIDLiRjFYpEm4zTEfD7v19lslhSgJ2EFXBAOh0Oo1+vk/ng8Bk3TyBtd16HVarkrCRFWYFqmrwAzqMDzBhMVWNaeFSzT5P3BQJXI3G+9P14XC8c0t5tQg/V6/dLv9c+l3ATDFrvL5HZyCBxpv5Rvboxv3eOxQ6/zD+IbEqvBQWgxAAAAAElFTkSuQmCC",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMESURBVDjLXZNrSFNxGMYPgQQRfYv6EgR9kCgKohtFgRAVQUHQh24GQReqhViWlVYbZJlZmZmombfVpJXTdHa3reM8uszmWpqnmQuX5drmLsdjenR7ev9DR3Xgd3h43+d5/pw/HA4AN9zITSPUhJ14R0xn87+h2ZzJvZVInJpzAQOXQOQMt+/5rvhMCLXv9Vjrt1rSXitmwj+Jua1+Ox+2HfGNdGf6yW8l5sUKPNVcRsiaPDA22Ahv6/7Ae/0aKdviQ0G7B/c6f8Zg+gbfh079Mjno0MhS58lflOsgEjh3BXc+bM/0DzbvDwj314znt/bjof0HdPw3FBq6kP+oCxVNfdDZvqPsrQmf6zdFRtyPJgbrFoqUTeS+FnPrekpmiC2lS+QcUx+qrf0wmFzodYfgC0nwhoYh9oegfdmLsmYXHj7JhV23erS7ZNYHyibGLiLtXsO19BoHSiwu6Ok09gwFg/gy8BO/STOkKFBk7EWh2YkLeh5Hy4Ws2B2w157iDvOpxw4UPRPRTSfL41FIsow7ZeXwUFF4dBQ1L96A/xLEFf1HMC/LxAt25PH+VN0HXH1gh2dEwdBoBGO0OKvW4L7hCdIvavBSsMIRVHCi0ArmZZl4wbYrz/yHSq1Ql9vQLylUEoE7GMal3OuxMG/7CO848N6n4HheK5iXZeIFmy88Nu+8aYJG24G3ziB+0Ee7wwqemlvQ5w9hcAJwyUDtpwBOFLeBeVkmXpB0qlK9RV2HlLsCsvUivHRhQwoQjhCkA1TgJX1OK0JVzIN5WSZesPZ44XKia+P5BqSS4aq+BzZXABLdhyQrsJPOqv4MVcEbMA/zsky8gLHyYO7hI9laecOZWuzLfYXU2zzSblmQerMZqjwTknOeY9dlIw5kVcrMG/8XpoQgCEkOhwNNJn5i7bFSrFDpsCrFEIPpLacr0WxpibYIQpS86/8pMBqNswnJ6XSivqHBv3R3pmbxzgwz4Z+EaTXtwqIogrzjxIJ4QVVV1UyihxgjFv3/K09Bu/lEkBgg5rLZH+fT5dvfn7iFAAAAAElFTkSuQmCC",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKkSURBVDjLpZPdT5JhGMb9W+BPaK3matVqndXWOOigA6fmJ9DUcrUMlrN0mNMsKTUznQpq6pyKAm8CIogmypcg8GIiX8rHRHjhVbPt6o01nMvZWge/k3vP9duuZ/edAyDnf/hjoCMP2Vr3gUDj3CdV6zT1xZ6iFDaKnLEkBFOmPfaZArWT5sw60iFP+BAbOzTcQSqDZzsNRyCNkcVoaGghzDlVQKylOHJrMrUZ2Yf52y6kc36IxpyoH1lHF7EBgyMKV4jCJ5U/1UVscU4IZOYEa3I1HtwI01hwxlDLhDoJD/wxGr5YGmOLAdRIrVCuhmD3JdA6SQabx12srGB0KSpc86ew4olDOGjH4x4z0gdHDD9+c4TaQQtq+k2Yt0egXYugTmoVZgV9cyHSxXTtJjZR3WNCVfcK/NE0ppYDUNu2QTMCtS0IbrsOrVMOWL27eNJtJLOCDoWXdgeTEEosqPxoBK/TwDzWY9rowy51gJ1dGr2zLpS2aVH5QQ+Hbw88sZ7OClrGXbQrkMTTAQu4HXqUv9eh7J0OSfo7tiIU+GItilpUuM/AF2tg98eR36Q+FryQ2kjbVhximQu8dgPKxPMoeTuH4tfqDIWvCBQ2KlDQKEe9dBlGTwR36+THFZg+QoUxAL0jgsoOQzYYS+wjskcjTzSToVAkA7Hqg4Spc6tm4vgT+eIFVvmb+eCSMwLlih/cNg0KmpRoGzdl+BXOb5jAsMYNjSWAm9VjwesPR1knFilPNMu510CkdPZtqK1BvJQsoaRZjqLGaTzv1UNp9EJl9uNqxefU5QdDnFNX+Y5Qxrn9bDLUR6zjqzsMizeWYdG5gy6ZDbk8aehiuYRz5jHdeDTKvlY1IrhSMUxe4g9SuVwpdaFsgDxf2i84V9zH/us1/is/AdevBaK9Tb3EAAAAAElFTkSuQmCC"
 ];
 class MarginDiv extends Container {
     constructor(parent, questionNumberLogic, questionLogic) {
@@ -2491,13 +2672,16 @@ class MarginDiv extends Container {
             duplicateButton.addClass("duplicateButton").addClass("hideOnPrint");
             this.appendChildElement(duplicateButton);
         }
-        let refreshButton = new Icon(this, IconName.refresh);
-        refreshButton.setEvent("onclick", function (ql) {
-            var ql = ql;
-            return () => { questionLogic.commentLogic.generateNewDollars(); };
-        }(questionLogic));
-        refreshButton.addClass("refreshButton").addClass("hideOnPrint");
-        this.appendChildElement(refreshButton);
+        if (Settings.instance.allowRefresh &&
+            (questionLogic.rowData.purpose == "template" || questionLogic.rowData.purpose == "sudoku")) {
+            let refreshButton = new Icon(this, IconName.refresh);
+            refreshButton.setEvent("onclick", function (ql) {
+                var ql = ql;
+                return () => { questionLogic.commentLogic.generateNewDollars(); };
+            }(questionLogic));
+            refreshButton.addClass("refreshButton").addClass("hideOnPrint");
+            this.appendChildElement(refreshButton);
+        }
         if (parent.contentDiv.gridlines.length > 0) {
             let gridlinesButton = new Icon(this, IconName.grid);
             gridlinesButton.setEvent("onclick", function (contentDiv) {
@@ -2507,13 +2691,35 @@ class MarginDiv extends Container {
             gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint");
             this.appendChildElement(gridlinesButton);
         }
-        let spotlightButton = new Icon(this, IconName.pin);
-        spotlightButton.setEvent("onclick", function (ql) {
+        if (Settings.instance.allowPin) {
+            let spotlightButton = new Icon(this, IconName.pin);
+            spotlightButton.setEvent("onclick", function (ql) {
+                var ql = ql;
+                return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql); };
+            }(questionLogic));
+            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
+            this.appendChildElement(spotlightButton);
+        }
+        let calculatorButton = new Icon(this, IconName.calculator);
+        calculatorButton.setEvent("onclick", function (ql) {
             var ql = ql;
-            return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql); };
+            return () => {
+                Settings.instance.calculatorLogic.moveAfterQuestion(ql);
+            };
         }(questionLogic));
-        spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
-        this.appendChildElement(spotlightButton);
+        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint");
+        this.appendChildElement(calculatorButton);
+        if (Settings.instance.allowCountdownTimer) {
+            let countdownButton = new Icon(this, IconName.clock);
+            countdownButton.setEvent("onclick", function (ql) {
+                var ql = ql;
+                return () => {
+                    Settings.instance.countdownTimerLogic.moveAfterQuestion(ql);
+                };
+            }(questionLogic));
+            countdownButton.addClass("countdownButton").addClass("hideOnPrint");
+            this.appendChildElement(countdownButton);
+        }
     }
 }
 class QuestionLogic {
@@ -2594,10 +2800,17 @@ class QuestionDiv extends IQuestionOrSectionDiv {
     constructor(parent, questionTitleLogic, questionNumberLogic, leftRightMarkdown, questionLogic) {
         super(parent, "div");
         this.classes.push("question");
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
+            this.classes.push("withMargin");
+        }
+        ;
         this.classes.push("greyBorder");
         this.contentDiv = new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
-        this.marginDiv = new MarginDiv(this, questionNumberLogic, questionLogic);
-        this._childNodes = [this.contentDiv, this.marginDiv];
+        this._childNodes = [this.contentDiv];
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
+            this.marginDiv = new MarginDiv(this, questionNumberLogic, questionLogic);
+            this._childNodes.push(this.marginDiv);
+        }
     }
 }
 class SectionDiv extends IQuestionOrSectionDiv {
@@ -2605,6 +2818,10 @@ class SectionDiv extends IQuestionOrSectionDiv {
         super(parent, "section");
         this.contentDiv = new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
         this._childNodes = [this.contentDiv];
+        if (questionLogic.isQuestionOrTemplateOrSudoku) {
+            this.marginDiv = new MarginDiv(this, questionNumberLogic, questionLogic);
+            this._childNodes.push(this.marginDiv);
+        }
     }
 }
 class QuestionNumberLogic {
@@ -2699,6 +2916,51 @@ class QuestionTitleLogic {
     }
 }
 QuestionTitleLogic.instances = [];
+class QuizTimerLogic {
+    constructor(endTime, settings) {
+        this.endTime = endTime;
+        this.settings = settings;
+    }
+    createDiv(parent) {
+        this.div = new Container(parent, "div");
+        this.div.addClass("timer");
+        this.span = new Span(this.div, "");
+        this.div.appendChildElement(this.span);
+        this.timerInterval = setInterval(function (timer) {
+            var timer = timer;
+            return function () {
+                timer.span.innerHTML = timer.timerText;
+                if (timer.isElapsed) {
+                    timer.div.addClass("red");
+                    clearInterval(timer.timerInterval);
+                    timer.settings.disableAllInputs();
+                }
+            };
+        }(this), 900);
+        return this.div;
+    }
+    get timerText() {
+        if (this.isElapsed) {
+            return "TIME EXPIRED";
+        }
+        var delta = Math.abs(Number(this.endTime) - Number(new Date())) / 1000;
+        var days = Math.floor(delta / 86400);
+        var daysString = days == 0 ? "" : days.toString() + " d ";
+        delta -= days * 86400;
+        var hours = Math.floor(delta / 3600) % 24;
+        var hoursString = hours == 0 ? "" : hours.toString() + " h ";
+        delta -= hours * 3600;
+        var minutes = Math.floor(delta / 60) % 60;
+        var minutesString = minutes.toString() + " m ";
+        delta -= minutes * 60;
+        var seconds = Math.floor(delta % 60);
+        var secondsString = seconds.toString() + " s";
+        return daysString + hoursString + minutesString + secondsString;
+    }
+    get isElapsed() {
+        return Number(this.endTime) < Number(new Date());
+    }
+}
 class ComboCup extends Container {
     constructor(parent, childNodes, decisionImage, span) {
         super(parent, "select", childNodes);
@@ -2879,23 +3141,21 @@ class CheckBoxCup extends Icon {
         }
     }
 }
-class DollarCup extends Container {
-    constructor(parent, span) {
-        super(parent, "div");
+class DollarImage extends ImageCup {
+    constructor(parent, alt, width) {
+        super(parent, "", alt, width);
+    }
+    setValue(value) { this.setAttribute("src", value); }
+    getValue() { return this.getAttribute("src"); }
+    setErrorText(value) { }
+    resetError() { }
+}
+class DollarSpan extends Span {
+    constructor(parent) {
+        super(parent, "");
         this.classes.push("dollarCup");
-        this.errorText = span;
-        this.errorText.addClass("errorText");
     }
-    setValue(value) {
-        this.destroyAllChildren();
-        this.appendChildString(value);
-        for (let replacer of ContentDiv.replacers) {
-            this.replace(replacer);
-        }
-        if (this.getElement(false)) {
-            this._element.innerHTML = this.innerHTML;
-        }
-    }
+    setValue(value) { this.innerHTML = value; }
     getValue() { return this.innerHTML; }
     swapForInput() {
         let parent = this._parent;
@@ -2906,12 +3166,8 @@ class DollarCup extends Container {
         parent._childNodes.splice(index, 2, input, decisionImage, span);
         return input;
     }
-    setErrorText(value) {
-        this.errorText.innerHTML = value;
-    }
-    resetError() {
-        this.errorText.innerHTML = "";
-    }
+    setErrorText(value) { }
+    resetError() { }
 }
 class ScoreLogic {
     constructor(setImageField, settings, questionDiv) {
@@ -3011,10 +3267,10 @@ ScoreLogic.instances = [];
 var Mode;
 (function (Mode) {
     Mode[Mode["builder"] = 0] = "builder";
-    Mode[Mode["lesson-student"] = 1] = "lesson-student";
-    Mode[Mode["lesson-teacher"] = 2] = "lesson-teacher";
-    Mode[Mode["present-teacher"] = 3] = "present-teacher";
-    Mode[Mode["preview-teacher"] = 4] = "preview-teacher";
+    Mode[Mode["lessonStudent"] = 1] = "lessonStudent";
+    Mode[Mode["lessonTeacher"] = 2] = "lessonTeacher";
+    Mode[Mode["presentTeacher"] = 3] = "presentTeacher";
+    Mode[Mode["previewTeacher"] = 4] = "previewTeacher";
 })(Mode || (Mode = {}));
 class Settings {
     constructor(settingsObj, mode) {
@@ -3038,17 +3294,21 @@ class Settings {
             this[key] = settingsObj[key];
         }
         ;
+        this.mode = mode;
         this.setDefaults(mode);
         this.sheetManager = new SheetManager();
+        this.calculatorLogic = new CalculatorLogic();
+        this.countdownTimerLogic = new CountdownTimerLogic();
         if (this.startTime)
             this.startTime = new Date(this.startTime);
         if (this.endTime)
             this.endTime = new Date(this.endTime);
         if (this.endTime) {
-            this.timerLogic = new TimerLogic(this.endTime, this);
+            this.timerLogic = new QuizTimerLogic(this.endTime, this);
         }
         if (settingsObj.studentNames) {
-            this.setDefaults(Mode["lesson-teacher"]);
+            this.mode = Mode.lessonTeacher;
+            this.setDefaults(Mode.lessonTeacher);
             this.studentPicker = new StudentPickerLogic(this, settingsObj.studentNames);
             this.responses = settingsObj.responses;
             this.random = new Random(Number(settingsObj.responses.Seed));
@@ -3058,10 +3318,12 @@ class Settings {
         }
     }
     setDefaults(mode) {
+        this.allowCountdownTimer = [false, false, true, true, true][mode];
         this.allowRowDelete = [true, false, false, false, true][mode];
         this.allowRowDuplicate = [true, false, false, false, true][mode];
         this.allowRefresh = [true, false, true, true, true][mode];
         this.allowGridlines = [false, false, false, false, true][mode];
+        this.allowPin = [false, true, true, false, true][mode];
         this.instantChecking = [true, false, true, true, true][mode];
         this.presentMode = [false, false, false, true, false][mode];
         this.sendScoresToMarksheet = [false, true, false, false, false][mode];
@@ -3263,51 +3525,6 @@ class SubmitButtonAndFinalScoreLogic {
                 this.settings.disableAllInputs();
             }
         }
-    }
-}
-class TimerLogic {
-    constructor(endTime, settings) {
-        this.endTime = endTime;
-        this.settings = settings;
-    }
-    createDiv(parent) {
-        this.div = new Container(parent, "div");
-        this.div.addClass("timer");
-        this.span = new Span(this.div, "");
-        this.div.appendChildElement(this.span);
-        this.timerInterval = setInterval(function (timer) {
-            var timer = timer;
-            return function () {
-                timer.span.innerHTML = timer.timerText;
-                if (timer.isElapsed) {
-                    timer.div.addClass("red");
-                    clearInterval(timer.timerInterval);
-                    timer.settings.disableAllInputs();
-                }
-            };
-        }(this), 900);
-        return this.div;
-    }
-    get timerText() {
-        if (this.isElapsed) {
-            return "TIME EXPIRED";
-        }
-        var delta = Math.abs(Number(this.endTime) - Number(new Date())) / 1000;
-        var days = Math.floor(delta / 86400);
-        var daysString = days == 0 ? "" : days.toString() + " d ";
-        delta -= days * 86400;
-        var hours = Math.floor(delta / 3600) % 24;
-        var hoursString = hours == 0 ? "" : hours.toString() + " h ";
-        delta -= hours * 3600;
-        var minutes = Math.floor(delta / 60) % 60;
-        var minutesString = minutes.toString() + " m ";
-        delta -= minutes * 60;
-        var seconds = Math.floor(delta % 60);
-        var secondsString = seconds.toString() + " s";
-        return daysString + hoursString + minutesString + secondsString;
-    }
-    get isElapsed() {
-        return Number(this.endTime) < Number(new Date());
     }
 }
 //# sourceMappingURL=assignment.js.map

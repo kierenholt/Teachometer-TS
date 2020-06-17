@@ -224,27 +224,24 @@ class CheckBoxCup extends Icon implements ValueField, SetImageField {
     }
 }
 
-class DollarCup extends Container implements ValueField {
-    errorText: Span;
-    constructor(parent: Container, span: Span) {
-        super(parent, "div");
-        this.classes.push("dollarCup")
-        this.errorText = span;
-        this.errorText.addClass("errorText");
+
+class DollarImage extends ImageCup implements ValueField {
+    constructor(parent, alt, width) {
+        super(parent, "", alt, width);
+    }
+    setValue(value: string) { this.setAttribute("src",value); }
+    getValue(): string { return this.getAttribute("src"); }
+    setErrorText(value: string) { }
+    resetError() { }
+}
+
+class DollarSpan extends Span implements ValueField {
+    constructor(parent: Container) {
+        super(parent, "");
+        this.classes.push("dollarCup");
     }
 
-    setValue(value: string) {
-        this.destroyAllChildren();
-        this.appendChildString(value);
-
-        //replacers
-        for (let replacer of ContentDiv.replacers) {
-            this.replace(replacer);
-        }
-
-        if (this.getElement(false)) { this._element.innerHTML = this.innerHTML; }
-    }
-
+    setValue(value: string) { this.innerHTML = value; }
     getValue() { return this.innerHTML; }
 
     //must be done before any HTMLelements have been rendered - does not trigger destroy
@@ -259,10 +256,7 @@ class DollarCup extends Container implements ValueField {
 
         return input;
     }
-    setErrorText(value) { 
-        this.errorText.innerHTML = value;
-    }
-    resetError() {
-        this.errorText.innerHTML = "";
-    }
+    
+    setErrorText(value) { }
+    resetError() { }
 }
