@@ -133,7 +133,7 @@ function onFail() {
 }
 
 function init(sheets) {
-        console.log(sheets);
+        //console.log(sheets);
     if (sheets["usernames"]) { //teacher mode
         var teacherDiv = document.getElementById("teacherDiv");
         teacherDiv.innerHTML = `<select onchange="comboChange()" id="teacherCombo"> 

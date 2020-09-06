@@ -1,7 +1,7 @@
 
 abstract class ICup {
     _parent: Container;
-    _innerText = "";
+    _innerHTML = "";
     _element : HTMLElement;
     _events: any = {};
     UID:string = null;
@@ -24,7 +24,7 @@ abstract class ICup {
             this.settings = parent.settings;
             window["cupsById"][this.UID] = this;
         }
-        if (innerHTML) {this._innerText = innerHTML};
+        if (innerHTML) {this._innerHTML = innerHTML};
         //console.log(this, this.UID);
     }
 
@@ -35,15 +35,15 @@ abstract class ICup {
     }
 
     get innerHTML() { 
-        //if (this.getElement(false)) { return this.element.innerText; }
-        return this._innerText;
+        if (this.getElement(false)) { return this._element.innerHTML; }
+        return this._innerHTML;
     }
 
     set innerHTML(value) {
         if (this.getElement(false)) { 
-            this.getElement(false).innerText = value;
+            this.getElement(false).innerHTML = value;
         }
-        this._innerText = value;
+        this._innerHTML = value;
     }
 
     get joinedAttributes() {
@@ -207,14 +207,21 @@ class ImageCup extends ICup {
 class ButtonCup extends ICup {
     constructor(parent: Container, text) {
         super(parent, "button");
-        this._innerText = text;
+        this._innerHTML = text;
     }
 }
 
 class OptionCup extends ICup  { //does not implement responseField
-    constructor(parent: Container, value, isSelected) { 
-        super(parent, "option", value); 
+    constructor(parent: Container, value, text, isSelected) { 
+        super(parent, "option", text); 
         this.attributes["value"] = value;
         this.attributes["selected"] = isSelected;
+    }
+}
+
+
+class CanvasCup extends ICup {
+    constructor(parent: Container) {
+        super(parent, "canvas");
     }
 }

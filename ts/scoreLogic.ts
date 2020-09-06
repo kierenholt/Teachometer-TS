@@ -15,7 +15,7 @@ class ScoreLogic  {
         ScoreLogic.instances.push(this);
         this.settings = settings;
         this.setImageField = setImageField;
-        if (this.questionDiv instanceof QuestionDiv) this.questionDiv = questionDiv; //turns green when all SL's are correct
+        if (questionDiv instanceof QuestionDiv) this.questionDiv = questionDiv; //turns green when all SL's are correct
 
         this._score = 0;
         

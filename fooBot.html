@@ -1,0 +1,28 @@
+<html>
+<head>
+	<meta charset="UTF-8"> 
+    <script src="js/phaser.js"></script>
+	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
+	<script src="js/assignment.js"></script>
+	<script src="js/acorn_interpreter.js"></script>
+`
+</head>
+
+<body>
+
+    <canvas id="foobot" style="
+    margin: 100px;"></canvas>
+
+<script>
+    var game = new fooBotGame(document.getElementById("foobot"));
+
+setTimeout( function(game) {
+    var game= game
+    return ()=> {game.startInterpreter("moveDown()")};
+    }(game)
+        ,1000);
+
+</script>
+
+</body>
+</html>

@@ -117,7 +117,7 @@ var helpersMaker = function() {
       return !isNaN(parseFloat(str)) && isFinite(str);
     }
 
-    //SPECIAL
+    //TREES
     var getDescendants = function(div: ICup):ICup[] {
       let ret = [div];
       if (div instanceof Container) {
@@ -134,6 +134,7 @@ var helpersMaker = function() {
       return a.hostname;
     }
 
+    //ARRAYS
     var insertAfter = function(arr, ref, item) {
       let index = arr.indexOf(ref);
       arr = arr.splice(index + 1,0,item);
@@ -142,6 +143,11 @@ var helpersMaker = function() {
     var insertBefore = function(arr, ref, item) {
       let index = arr.indexOf(ref);
       arr = arr.splice(index,0,item);
+    }
+
+    var getItemImmediatelyBefore = function(arr, after) {
+      let index = arr.indexOf(after);
+      return index == -1 ? undefined : arr[index-1];
     }
 
     var getItemImmediatelyAfter = function(arr, after) {
@@ -203,6 +209,7 @@ var helpersMaker = function() {
         getDomainFromUrl: getDomainFromUrl,
         insertAfter: insertAfter,
         insertBefore: insertBefore,
+        getItemImmediatelyBefore: getItemImmediatelyBefore,
         getItemImmediatelyAfter: getItemImmediatelyAfter,
         removeFromArray: removeFromArray, 
         removeCrazySigFigs: removeCrazySigFigs, 

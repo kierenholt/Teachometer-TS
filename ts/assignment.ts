@@ -25,10 +25,16 @@ class Assignment extends Container {
         this._childNodes = [];
 
         //title
-        if (this.settings.title) { 
+        if (this.settings.title && !Settings.instance.presentMode) { 
+            this._childNodes.push(new BreakCup(this));
             this._childNodes.push(new HeadingCup(this, this.settings.title));
             window.document.title = this.settings.title;
         }
+        
+        //student picker - teacher only
+        if (this.settings.studentPicker) {
+            this._childNodes.push(this.settings.studentPicker.createDiv(this));
+        }   
         
         //countdown timer
         if (Settings.instance.allowCountdownTimer) {
@@ -43,9 +49,6 @@ class Assignment extends Container {
         this._childNodes.push(this.questionsDiv);
         
 
-        //if shuffle is ON
-        if (this.settings.shuffleQuestions) {this.shuffle(false);}
-        if (this.settings.truncateMarks > 0) {this.truncate(this.settings.truncateMarks)}
         
 
         //APPENDING DOES NOT WORK SO PUSH TO CHILDNODES
@@ -56,18 +59,12 @@ class Assignment extends Container {
         }
         else {
             //NORMAL VIEW
-            //student picker - teacher only
-            
-            if (this.settings.studentPicker) {
-                this._childNodes.push(this.settings.studentPicker.createCombo(this));
-            }   
-            //submit button      
+            //submit button - must be after questions are added!   USE PLACEHOLDER
             if (!this.settings.instantChecking) {
-                this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
-                this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
-                this._childNodes.push(this.submitButtonDiv);
+                this.submitButtonDiv = new Container(this,"div");
+                this._childNodes.push(this.submitButtonDiv);        
             }
-            //solutions
+            //solutions - must be before questions are added
             if (this.settings.showSolutions) {
                 this.solutionsDiv = new Container(this, "div").addClass("solutionsDiv");     
                 this._childNodes.push(new HeadingCup(this,"solutions"));
@@ -77,17 +74,27 @@ class Assignment extends Container {
             if (this.settings.timerLogic) {
                 this._childNodes.push(this.settings.timerLogic.createDiv(this));
             }
-            if (this.settings.sheetManager) {
-                this._childNodes.push(this.settings.sheetManager.createCountdownDiv(this));
-            }
+            QuestionNumberLogic.createCountdownDiv(this);
         }
         
         //if question data included in settings
         if (this.settings.questionJSON) { 
             var rows = JSON.parse(this.settings.questionJSON);
             this.addRowsFromData(rows);
+            //if shuffle is ON
+            if (this.settings.shuffleQuestions) {this.shuffle(false);}
+            if (this.settings.truncateMarks > 0) {this.truncate(this.settings.truncateMarks)}
         }
+
+
+        //submit button - must be added after the questions
+        if (!this.settings.instantChecking) {
+            this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
+            this.submitButtonDiv._childNodes = [this.submitButtonAndFinalScoreLogic.createDiv(this)];
+        }
+
         this.refresh();
+
 
         if (this.settings.presentMode) window["Reveal"].initialize({transition: 'linear'});
     }
@@ -145,20 +152,23 @@ class Assignment extends Container {
         }
         let i = 0;
         //find question which runs over the mark limit
-        while (QuestionLogic.readOnlyInstances[i] && n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters) ) {
-            n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
+        while (QuestionLogic.readOnlyInstances[i] && 
+            (QuestionLogic.readOnlyInstances[i].commentLogic == undefined || n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters)) ) {
+            if (QuestionLogic.readOnlyInstances[i].commentLogic) {
+                n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
+            }
             i++;
         }
         //trim surplus solutions from this question
         let lastQn = QuestionLogic.readOnlyInstances[i];
-        if (lastQn) {
+        if (lastQn && lastQn.commentLogic) {
             let scoreLogics: ScoreLogic[] = helpers.getValuesFromObject(lastQn.commentLogic.scoreLogicsWithCommentLetters);
             if (n > 0) {
                 lastQn.commentLogic.truncate(scoreLogics.length - n);
             }
-            if (n > 0) { i++; }
-            QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
         }
+        if (n > 0) { i++; }
+        QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
     }
     
     regenerateAllQuestions() { //templates only
@@ -231,7 +241,7 @@ class Assignment extends Container {
 
     //columnHeaders
     get questionNumbers() { //to populate the marksheet
-        return QuestionLogic.readOnlyInstances.reduce((a, b) => a.concat(b.columnHeaders), []);
+        return QuestionNumberLogic.instances.reduce((a, b) => a.concat(b.columnHeaders), []);
     }
 
     get currentQuestionData() {

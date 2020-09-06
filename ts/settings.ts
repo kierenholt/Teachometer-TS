@@ -16,6 +16,8 @@ class Settings {
     seed: number = 1;
     title: string = "";
     truncateMarks: number = -1;
+    pageMode: boolean = false
+    pageNumber: Number = 1;
 
     //DEFAULTS DEPENDING ON MODE
     mode: Mode
@@ -33,7 +35,6 @@ class Settings {
     random: Random; //from seed
     assignment: Assignment;
     timerLogic: QuizTimerLogic;
-    sheetManager: SheetManager;
     studentPicker: StudentPickerLogic;
     calculatorLogic : CalculatorLogic;
     countdownTimerLogic: CountdownTimerLogic;
@@ -52,7 +53,6 @@ class Settings {
         this.mode = mode;
         this.setDefaults(mode);
 
-        this.sheetManager = new SheetManager();
         this.calculatorLogic = new CalculatorLogic();
         this.countdownTimerLogic = new CountdownTimerLogic();
         
@@ -66,8 +66,8 @@ class Settings {
 
         //TEACHER settings for lesson - overrides defaults
         if (settingsObj.studentNames) {
-            this.mode = Mode.lessonTeacher;
-            this.setDefaults(Mode.lessonTeacher);
+            this.mode = (this.mode == Mode.lessonStudent) ? Mode.lessonTeacher : Mode.presentTeacher;
+            this.setDefaults(this.mode);
             this.studentPicker = new StudentPickerLogic(this, settingsObj.studentNames);
 
             //first student's responses will be added to existing questions

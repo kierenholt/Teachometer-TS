@@ -45,7 +45,7 @@ abstract class IExpression {
                             buffer += JSONtoEval(val.getValue(injector));
                         }
                         else if (typeof(val) == "string") {
-                            buffer += JSONtoEval(val);
+                            buffer += JSON.stringify(val);
                         }
                         else if (val == undefined) {
                             throw new ExpressionError(`variable "${s[i]}" is undefined`,true,false);
@@ -186,8 +186,8 @@ function compareobjects(A,B) {
 
 //formats calculated JSON for insertion into eval strings (buffer += etc,)
 function JSONtoEval(str) {
-    if (str == "" || str == undefined) {
-        return "null";
+    if (str == "" || str == undefined || str == "undefined") {
+        return "undefined";
     } //e.g. if a variable is bound to empty textbox, then empty string will be evalled  
     let obj = undefined;
     try {
@@ -195,7 +195,7 @@ function JSONtoEval(str) {
     }
     catch (e) { 
         //within replaceVariables
-        throw new ExpressionError("unable to parse JSON: " + str, true, false);
+        //throw new ExpressionError("unable to parse JSON: " + str, true, false);
     }
     if (typeof(obj) == "string") {
         return str;
@@ -458,10 +458,10 @@ class FunctionExpression extends IExpression {
         if (s[i] != "(") {
             this.i = i - 1; //includes final bracket
             if (this.functionName == "true") {
-                this.eval = function(injector) { return true; }
+                this.eval = function(injector) { return "true"; }
             }
             else if (this.functionName == "false") { 
-                this.eval = function(injector) { return false; }
+                this.eval = function(injector) { return "false"; } //must return JSON
             }
             else {
                 throw new ExpressionError("string without following bracket",true,true);
@@ -826,6 +826,19 @@ class FunctionExpression extends IExpression {
         //CALL CUSTOM CODE FUNCTION 
         if (injector.allVariablesAndFunctions[this.functionName] instanceof JSFunction) {
             return injector.allVariablesAndFunctions[this.functionName].execute(evaluatedParameters); //already in JSON
+        }
+
+        //CALL FOOBOT FUNCTION 
+        if (this.functionName == "foobot") {
+            let commentLetter = evaluatedParameters[0]; //first parameter is comment letter
+            //second parameter is level map
+            //third parameter is code
+            if (!injector.footbotsWithCommentLetters[commentLetter]) throw new ExpressionError("foobot with letter " + commentLetter + " not found",false,true);
+            if (!evaluatedParameters[1]) throw new ExpressionError("foobot map argument #2 not defined",false,true);
+            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run( evaluatedParameters[1], evaluatedParameters[2]);
+            
+            throw new ExpressionError("running game...",true,false);
+            return JSON.stringify(returnedLevelMap);
         }
 
         //try Math

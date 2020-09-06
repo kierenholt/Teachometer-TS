@@ -18,10 +18,13 @@ class QuestionLogic {
         this.rowData = rowData;
         this.settings = settings;
         
+
+
         //add blank question number if its not a question
         this.questionNumberLogic = new QuestionNumberLogic(this.settings, 
             !this.isQuestionOrTemplateOrSudoku, this,
             after ? after.questionNumberLogic : null);
+
 
         //title - must come before content div constructor
         this.questionTitleLogic = new QuestionTitleLogic(this.rowData.title, this.settings, after? after.questionTitleLogic : null);
@@ -51,6 +54,15 @@ class QuestionLogic {
             this.commentLogic = new CommentLogic(this.rowData.comment, this.questionDiv.contentDiv.setValueFields, 
                 this.rowData.purpose, this);
         }
+        
+        //page mode - hide question div unless it is stored pageNumber
+        if (Settings.instance.pageMode) {
+            if (QuestionLogic.readOnlyInstances.indexOf(this) + 1 != Settings.instance.pageNumber) {
+                this.questionDiv.removeClass("displayBlock");
+                this.questionDiv.addClass("displayNone");
+            }
+        }
+
         return this.questionDiv;
     }
 
@@ -71,18 +83,17 @@ class QuestionLogic {
         if (this.solutionDiv) { this.solutionDiv.destroy(); }
     }
 
-    get columnHeaders() {
-        let ret = [];
-        if (this.commentLogic) {
-            for (let letter in this.commentLogic.inputsWithCommentLetters) {
-                let field = this.commentLogic.inputsWithCommentLetters[letter];
-                let columnHeader = this.settings.sheetManager.columnHeadersWithFieldUIDs[field.UID];
-                if (columnHeader) {
-                    ret.push(columnHeader);
-                }
-            }
+
+    //on click right arrow
+    hideThisAndShowNextQuestion() {
+        var onSuccess = (pageNumber) => {
+            this.questionDiv.removeClass("displayBlock");
+            this.questionDiv.addClass("displayNone");
+            let next = QuestionLogic.readOnlyInstances[pageNumber-1];
+            if (next) next.questionDiv.addClass("displayBlock");
         }
-        return ret;
+
+        Connection.instance.pageRequest(onSuccess.bind(this));
     }
 
     static toggleHideAllQuestionsButOne(questionLogic: QuestionLogic) {
@@ -120,13 +131,14 @@ class QuestionDiv extends IQuestionOrSectionDiv {
             questionLogic: QuestionLogic) {
         super(parent, "div");
         this.classes.push("question");
-        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) { this.classes.push("withMargin") };
         this.classes.push("greyBorder");
 
         //content and margin divs
         this.contentDiv =  new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
         this._childNodes = [this.contentDiv];
-        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder || 
+            Settings.instance.pageMode) {
+            this.classes.push("withMargin"); 
             this.marginDiv =  new MarginDiv(this, questionNumberLogic, questionLogic);
             this._childNodes.push(this.marginDiv);
         }

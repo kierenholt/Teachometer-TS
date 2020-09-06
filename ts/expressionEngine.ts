@@ -31,12 +31,14 @@ class ExpressionEngine implements IEngine {
     random: Random;
     jsFunctionsWithLetters: any;
     variableNamesWithLetters: any;
+    footbotsWithCommentLetters: any;
     numVariables = 0;
 
-    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters) {
+    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters, footbotsWithCommentLetters) {
         //expression tree
         this.jsFunctionsWithLetters = jsFunctionsWithLetters;
         this.variableNamesWithLetters = variableNamesWithLetters;
+        this.footbotsWithCommentLetters= footbotsWithCommentLetters;
         for (let key in commentsWithLetters) {
             this.allVariablesAndFunctions[key] = toExpressionTree(commentsWithLetters[key],0);
             this.numVariables++;
@@ -80,7 +82,7 @@ class ExpressionEngine implements IEngine {
             }
         }
 
-        //prepare variables - copy the input over to allVariables with the specified variable name
+        //copy the variables over to allVariables with the specified variable name
         for (let letter in this.variableNamesWithLetters) {
             this.allVariablesAndFunctions[this.variableNamesWithLetters[letter]] = inputs[letter];
         }
@@ -99,6 +101,7 @@ class ExpressionEngine implements IEngine {
                         //re-throw critical errors up to commentLogic
                         else { throw(e) }
                     }
+                    else { throw(e) }
                 }
             }
         }

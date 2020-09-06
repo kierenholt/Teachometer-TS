@@ -1,6 +1,7 @@
 <html>
 <head> 
 	<meta charset="UTF-8"> 
+    <script src="js/phaser.js"></script>
 	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
 		
 	<script src="js/assignment.js"></script>
@@ -14,7 +15,8 @@
 				"title":"blank both",
 				"leftRight": ["", ""],
 				"purpose": "notes"
-			},{
+			},
+			{ //index 1
 				"title":"code block with line numbers?",
 				"leftRight": ["```line1\nline2\nline3\n```", ""],
 				"purpose": "notes"
@@ -23,7 +25,7 @@
 				"leftRight": ["|a|b|c\n|x|y|z\nFIRST ROW\n???\n line 2", ""],
 				"purpose": "notes"
 			},
-			{
+			{ //index 3
 				"title":"combo",
 				"leftRight": ["{a/b/c}", ""],
 				"purpose": "notes"
@@ -33,7 +35,7 @@
 				"leftRight": ["???\n hidden stuff\n???\n", ""],
 				"purpose": "notes"
 			},
-			{
+			{ //index 5
 				"title":"radio",
 				"leftRight": ["A. blue\nB. green\nC. orange D. another", ""],
 				"purpose": "notes"
@@ -43,7 +45,7 @@
 				"leftRight": ["* a bullet\n* another bullet\n not a * bullet", ""],
 				"purpose": "notes"
 			},
-			{
+			{ //index 7
 				"title":"line break",
 				"leftRight": ["\n a line break\n another line break\nanother line break", ""],
 				"purpose": "notes"
@@ -63,6 +65,11 @@
 				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)", "![Imgur](https://i.imgur.com/SMh0hnf.gif)"],
 				"purpose": "notes"
 			},
+			{ //index 11
+				"title":"image in table",
+				"leftRight": ["|![Imgur](https://i.imgur.com/SMh0hnf.gif)||", "![Imgur](https://i.imgur.com/SMh0hnf.gif)"],
+				"purpose": "notes"
+			},
 			{
 				"title":"textarea",
 				"leftRight": ["______________________________________","2"],
@@ -80,8 +87,21 @@
 			}
 			];
 		let simpleQuestionData = [
+			
+		{ 
+				"title":"A question",
+				"leftRight": ["1 2 3 4 5 __ __ __ __ __",""],
+				"purpose": "question",
+				"comment": "6\n7\n8\n9\n10"
+			},
+			{ 
+				"title":"lots of inputs",
+				"leftRight": ["1 2 3 4 5 __ __ __ __ __",""],
+				"purpose": "question",
+				"comment": "6\n7\n8\n9\n10"
+			},
 			{ //question with no title
-				"title":"",
+				"title":"input",
 				"leftRight": ["aubergines are __",""],
 				"purpose": "question",
 				"comment": "purple"
@@ -109,12 +129,6 @@
 				"leftRight": ["grass is A. red B. green C. blue",""],
 				"purpose": "question",
 				"comment": "B"
-			},
-			{ //index 5
-				"title":"lots of inputs",
-				"leftRight": ["1 2 3 4 5 __ __ __ __ __",""],
-				"purpose": "question",
-				"comment": "6\n7\n8\n9\n10"
 			}
 		]
 		let templateQuestionData = [
@@ -132,7 +146,7 @@
 			},
 			{//index 2
 				"title":"image template",
-				"leftRight": ["![]($$)",""],
+				"leftRight": ["![image]($$)",""],
 				"purpose": "template",
 				"comment": '"https://i.imgur.com/fj7Wmk3.png","https://i.imgur.com/aT6WzPT.gif","https://i.imgur.com/Gzu17kk.png"'
 			},
@@ -182,6 +196,12 @@
 				"leftRight": ['plus 5 code ____________________________________\nTEST plusFive(___) => $$','plusFive(3) => $$ \n does it equal 8? []'],
 				"purpose": "template",
 				"comment": 'code("plusFive")\nvariable("B")\nplusFive(B)\nplusFive(3)\nplusFive(3)==8'
+			},{ //index 3
+				"title":"code test with true and false check",
+				"leftRight": ['plus 5 code ____________________________________',
+					'[] equalsFive(3) => $$ \n[] equalsFive(5) => $$ '],
+				"purpose": "template",
+				"comment": 'code("equalsFive")\nequalsFive(3)==false\nequalsFive(3)\nequalsFive(5)==true\nequalsFive(5)'
 			},
 			{
 				"title":"console test",
@@ -198,19 +218,27 @@
 			}
 		]
 		let sudokuData = [{
-				"title":"basic sudoku",
-				"leftRight": ["$$ $$ $$ $$ $$",""],
-				"purpose": "sudoku",
-				"comment": "2..3\na+1\nb+1\nc+1\nd+1"
+				"title":"infinite loop error test",
+				"leftRight": ["$$ $$",""],
+				"purpose": "template",
+				"comment": "2..3\na+b"
+			}
+		]
+		let foobotData = [{
+				"title":"foobot",
+				"leftRight": ["code ________________________","[foobot]"],
+				"purpose": "template",
+				"comment": "variable(\"A\")\nfoobot(\"b\",\"r__\",A)"
 			}
 		]
 
 
 		var builderSettings = new Settings({
 			appendMode: false,	
+			pageMode: false,	
 			endTime: null,
 			initialChecksRemaining: -1,
-			questionJSON: JSON.stringify(notesData),
+			questionJSON: JSON.stringify(foobotData),
 
 			removeHyperlinks: false,
 			responses: null,
@@ -254,6 +282,7 @@
 		b.innerText = innerText;
 		document.getElementById("buttons").appendChild(b);
 	}
+
 </script>
 
 </head>

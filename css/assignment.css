@@ -66,22 +66,13 @@ button.submitButton {
 h1.finalScore { text-align: center; }
 
 /* SOLUTIONS  */
-div#solutionsDiv {
+div.solutionsDiv {
   clear: both;
   border-collapse: collapse;
   page-break-before: always;
 }
-div#solutionsDiv > p { margin: 0; }
+div.solutionsDiv > p { margin: 0; }
 
-/* JUMBLED SOLUTIONS DIV */
-div#jumbledSolutionsDivContainer { 
-  clear: both;
-  padding: 20px 0px; 
-}
-div.jumbleDivs {
-  display: inline-block;
-  margin: 0px 20px; 
-}
 
 /* TIMER DIV */
 div.timer {
@@ -107,7 +98,7 @@ div.sheetManagerCountdown {
 .greenBackground { background-color: #0dc50dbd; }
 .greyBackground { background-color:#b3b3b3; }
 .greyBorder { border-color: #b3b3b3; }
-.greenBorder { border-color: #007700; }
+.greenBorder { border-color: #00aa00; }
 
 /* INLINE ELEMENTS */
 .superscript {

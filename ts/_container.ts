@@ -199,7 +199,7 @@ class RowCup extends Container {
 
     static fromString(parent, str): RowCup {
         let ret = new RowCup(parent, []);
-        ret._childNodes = str.split("|").slice(1).map(s => {return new CellCup(ret, s)});
+        ret._childNodes = str.split("|").slice(1).map(s => {return new CellCup(ret, [s])});
         return ret;
     }
 }
@@ -259,7 +259,7 @@ class SubScriptCup extends Container {
 }
 
 class HeadingCup extends Container {
-    constructor(parent: Container, str) { super(parent, "span", [str]); this.addClass("heading"); }
+    constructor(parent: Container, str) { super(parent, "p", [str]); this.addClass("heading"); }
 }
 
 class RelativePositionCup extends Container {

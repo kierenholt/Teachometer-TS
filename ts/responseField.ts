@@ -37,7 +37,7 @@ class ComboCup extends Container implements ClickAwayField, ValueField, SetImage
     static optionReplacer: Replacer = { 
         "pattern": /(?:^|\/)([^\/]+)/,
         "nodeConstructorFromMatch": (parent: Container, str: string) => {
-            return [new OptionCup(parent, str, false)];
+            return [new OptionCup(parent, str, str, false)];
         }
     }
 
@@ -101,8 +101,8 @@ class TextAreaCup extends ICup implements ClickAwayField, ValueField, SetImageFi
     }
 
     setOnClickAway(func) { this.setEvent("onblur",func); }
-    getValue() { return this.getAttribute("value"); }
-    setValue(value: string) { this.innerHTML = value; }
+    getValue() { return this.getAttribute("value") } //innerHTML DOES NOT CHANGE even when user alters the textarea contents
+    setValue(value: string) { this.setAttribute("value",value); this.innerHTML = value; }
     setDecisionImage(value: IconName) { this._decisionImage.setIconName(value); }
     setErrorText(value) { 
         this.errorText.innerHTML = value; 

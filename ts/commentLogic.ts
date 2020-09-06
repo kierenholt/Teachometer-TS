@@ -21,6 +21,7 @@ class CommentLogic {
     inputsWithCommentLetters = {};
     dollarCupsAndImagesWithCommentLetters = {};
     checkBoxesWithCommentLetters = {};
+    footbotsWithCommentLetters = {};
     scoreLogicsWithCommentLetters = {};
     jsFunctionNamesWithCommentLetters = {};
     pastInputValuesWithLetters = {}; //set each time inputValues is called
@@ -51,20 +52,30 @@ class CommentLogic {
                 let c = splitComments[i];
                 let codeMatches = c.match(/code\(\"([\S]+)\"\)/);
                 let variableMatches = c.match(/variable\(\"([\S]+)\"\)/);
+                let foobotMatches = c.match(/foobot/);
                 let commentLetter = helpers.lowerCaseLetterFromIndex(i);
                 if (codeMatches) { 
                     //keep function name in lowercase
                     this.jsFunctionNamesWithCommentLetters[commentLetter] = codeMatches[1].toLowerCase(); 
                 }
+                else if (foobotMatches) { 
+                    //keep function name in lowercase
+                    this.footbotsWithCommentLetters[commentLetter] = valueFields[i];
+                    commentsWithLetters[commentLetter] = c; //include a comment since it links to a valuefield
+                    if (!(valueFields[i]  instanceof fooBotCanvas)) { throw "foobot canvas not found"}; 
+                }
                 else if (variableMatches) {
-                    //use later in first step of inputs
+                    //need to use later in first step of inputs
                     variableNamesWithCommentLetters[commentLetter] = variableMatches[1]; 
                 }
                 else { 
-                    //does not match code("something") so add to comments as normal
+                    //does not match code("") or variable("") so add to comments as normal
                     commentsWithLetters[commentLetter] = c;
                 }
-                this.engine = new ExpressionEngine(commentsWithLetters,this.jsFunctionNamesWithCommentLetters,variableNamesWithCommentLetters);
+                this.engine = new ExpressionEngine(commentsWithLetters,
+                    this.jsFunctionNamesWithCommentLetters,
+                    variableNamesWithCommentLetters,
+                    this.footbotsWithCommentLetters);
                 //do not add scorelogic to variables which map to jsfunctions 
             }
         } 
@@ -99,26 +110,20 @@ class CommentLogic {
                 this.inputsWithCommentLetters[commentLetter] = v; //assign comment letter
 
                 //register with sheetmanager
-                if (this.settings.sheetManager ) {
-                    if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
-                        //code does not have a scorelogic letter so use functionName
-                        this.settings.sheetManager.registerField(v, this.questionLogic.rowData.title, this.jsFunctionNamesWithCommentLetters[commentLetter]);
-                    }
-                    else if (commentLetter in variableNamesWithCommentLetters) {
-                        //do not register variables
-                    }
-                    else {
-                        //use title or question number as first part of column header
-                        let columnHeaderFirstPart = helpers.IsStringNullOrWhiteSpace(this.questionLogic.rowData.title) ? this.questionLogic.questionNumberLogic.number.toString() : this.questionLogic.rowData.title;
-                        this.settings.sheetManager.registerField(v, columnHeaderFirstPart);
-                    }
+                if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
+                    //code does not have a scorelogic letter so use functionName
+                    this.questionLogic.questionNumberLogic.registerField(v);
+                }
+                else if (commentLetter in variableNamesWithCommentLetters) {
+                    //do not register variables
+                }
+                else {
+                    this.questionLogic.questionNumberLogic.registerField(v);
                 }
             }
-            if (v instanceof CheckBoxCup) {
+            if (v instanceof CheckBoxCup || v instanceof fooBotCanvas) {
                 this.checkBoxesWithCommentLetters[commentLetter] = v;
-                if (this.settings.sheetManager) {
-                    this.settings.sheetManager.registerField(v, this.questionLogic.rowData.title);
-                }
+                this.questionLogic.questionNumberLogic.registerField(v);
             }
 
             //OUTPUTS
@@ -131,9 +136,10 @@ class CommentLogic {
                 v instanceof InputCup || 
                 v instanceof TextAreaCup || 
                 v instanceof CheckBoxCup || 
-                v instanceof RadioSet)   {
+                v instanceof RadioSet ||
+                v instanceof fooBotCanvas)   {
                     if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
-                        //do not create scorelogic, add some default code
+                        //do not create scorelogic for code inputs, add some default code
                         v.setValue(JSFunction.generateDefaultCode(this.jsFunctionNamesWithCommentLetters[commentLetter]));
                     }
                     else if (commentLetter in variableNamesWithCommentLetters) {
@@ -229,17 +235,13 @@ class CommentLogic {
     sendToSheetManager(inputValues) {
         for (let letter in inputValues) { //excludes checkboxes
             if (!helpers.IsStringNullOrWhiteSpace(inputValues[letter]) && this.fieldHasChanged(letter)) {
-                if (this.settings.sheetManager) {
-                    this.settings.sheetManager.addFieldToSendBuffer(this.inputsWithCommentLetters[letter], this.scoreLogicsWithCommentLetters[letter]);
-                }
+                this.questionLogic.questionNumberLogic.addFieldToSendBuffer(this.inputsWithCommentLetters[letter], this.scoreLogicsWithCommentLetters[letter]);
             }
         }
         for (let key in this.checkBoxesWithCommentLetters) {
-            if (this.settings.sheetManager) {
-                this.settings.sheetManager.addFieldToSendBuffer(this.checkBoxesWithCommentLetters[key],this.scoreLogicsWithCommentLetters[key]);
-            }
+            this.questionLogic.questionNumberLogic.addFieldToSendBuffer(this.checkBoxesWithCommentLetters[key],this.scoreLogicsWithCommentLetters[key]);
         }
-        this.settings.sheetManager.attemptToSend();
+        QuestionNumberLogic.attemptToSend();
     }
 
     updateDollars(outputValues) {
@@ -261,6 +263,7 @@ class CommentLogic {
         let ret = {};
         for (let key in this.inputsWithCommentLetters) {
             ret[key] = this.inputsWithCommentLetters[key].getValue();
+            if (ret[key] == undefined) ret[key] = '""';
         }
         return ret;
     }
@@ -273,12 +276,15 @@ class CommentLogic {
         }
         catch (e) {
             //user info errors are copied into outputs so no criticals will be caught
-            if (e instanceof ExpressionError && e.isCritical) {
+            if (e instanceof ExpressionError ) {
+                if (e.isCritical) {
                     this.questionLogic.questionDiv.contentDiv.destroyAllChildren();
                     this.questionLogic.questionDiv.contentDiv.appendChildString(`There is an error in this question's comment cell which is preventing it from calculating the solutions.\n Error detail: ${e.message}`);
                     this.questionLogic.questionDiv.contentDiv.addClass("red");
-                    return null;
+                }
+                return null;
             }
+            else {throw(e)}
         }
         //hide previous errors
         this.questionLogic.questionDiv.contentDiv.removeClass("red");
@@ -297,16 +303,19 @@ class CommentLogic {
                     outputs[letter] instanceof ExpressionError) {
                 (this.inputsWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
             if (letter in this.checkBoxesWithCommentLetters && 
                     outputs[letter] instanceof ExpressionError) {
                 (this.checkBoxesWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
             if (letter in this.dollarCupsAndImagesWithCommentLetters && 
                     outputs[letter] instanceof ExpressionError) {
                 (this.dollarCupsAndImagesWithCommentLetters[letter] as ValueField).setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
         }
         return outputs;
@@ -345,7 +354,7 @@ class CommentLogic {
             let letter = letters[i];
             this.scoreLogicsWithCommentLetters[letter].setImageField.destroy();
             this.scoreLogicsWithCommentLetters[letter].destroy(); 
-            this.solutionLines[letter].destroy();
+            if (this.solutionLines[letter]) this.solutionLines[letter].destroy();
             n--;
             i--;
         }

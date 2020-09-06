@@ -31,7 +31,7 @@ include('doNotUpload.php');
     });
 
     function init(result) {
-      console.log(result);
+      //console.log(result);
       document.getElementById("userNameHint").innerHTML = result["userHint"];
       window["isInHashes"] = function(hashes) {
         var hashes = hashes;

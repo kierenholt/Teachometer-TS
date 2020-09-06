@@ -9,7 +9,6 @@ interface Replacer {
 class ContentDiv extends Container {
     parent: QuestionDiv;
     setValueFields: ValueField[];
-    clickAwayFields: ClickAwayField[];
     questionTitle: Container;
     gridlines: GridLines[] = [];
 
@@ -65,7 +64,8 @@ class ContentDiv extends Container {
                 d instanceof TextAreaCup ||
                 d instanceof CheckBoxCup ||
                 d instanceof DollarSpan ||
-                d instanceof DollarImage) {
+                d instanceof DollarImage || 
+                d instanceof fooBotCanvas) {
                     this.setValueFields.push(d);
                 }
             else if (d instanceof RadioCup) {
@@ -167,13 +167,13 @@ class ContentDiv extends Container {
                 str = helpers.trimChar(str,"*");
                 return [new BoldCup(parent,str)];
             },
-        },
-        { //underline
+        },/* UNDER LINE CONFLICTS WITH INPUT AND ISNT USED MUCH ANYWAY
+        { //
             "pattern": /(_[^_]+_)/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
                 return [new UnderlineCup(parent, str)];
             },
-        },
+        },*/
         { //dollar image - must come before normal image and dollar
             "pattern": /(!\[[^\]]*\]\(\$\$\))/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
@@ -226,11 +226,17 @@ class ContentDiv extends Container {
                 return [new InputCup(parent, size, decisionImage, span), decisionImage, span];
             },
         },
-        { //check box field - does not need decision image
+        { //check box field - does not need decision image because it extends Icon
             "pattern": /(?:[^\!]|^)(\[\])/,
             "nodeConstructorFromMatch": (parent: Container, str: string) => {
                 let span = new Span(parent, "");
                 return [new CheckBoxCup(parent, IconName.hourglass, span), span];
+            },
+        },
+        { //foobot
+            "pattern": /(\[foobot\])/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                return [new fooBotCanvas(parent)];
             },
         },
         { //radio button field

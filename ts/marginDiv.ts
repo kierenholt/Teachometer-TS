@@ -4,8 +4,13 @@ class MarginDiv extends Container {
     constructor(parent, questionNumberLogic: QuestionNumberLogic, questionLogic: QuestionLogic) {
         super(parent,"div");
         this.classes.push("margin");
-        this.classes.push("greyBackground");
-        
+        if (Settings.instance.presentMode) {
+            
+        }
+        else {
+            this.classes.push("greyBackground");
+        }
+
         //question number
         if (questionNumberLogic) {
             let questionNumberDiv = new Container(this,"div",[questionNumberLogic.createSpan(this)]);
@@ -17,7 +22,8 @@ class MarginDiv extends Container {
         if (this.settings.allowRowDelete) {
             let deleteButton = new Icon(this,IconName.trash);
             deleteButton.setEvent("onclick", questionLogic.destroy.bind(questionLogic));
-            deleteButton.addClass("deleteButton").addClass("hideOnPrint");
+            deleteButton.addClass("deleteButton").addClass("hideOnPrint")
+            .setAttribute("title","delete this question");
             this.appendChildElement(deleteButton);
         }
 
@@ -31,7 +37,8 @@ class MarginDiv extends Container {
                     return () => { assignment.duplicateRow(ql);}
                 }(questionLogic, this.settings.assignment)
                 );
-            duplicateButton.addClass("duplicateButton").addClass("hideOnPrint");
+            duplicateButton.addClass("duplicateButton").addClass("hideOnPrint")
+            .setAttribute("title","duplicate this question");
             this.appendChildElement(duplicateButton);
         }
 
@@ -46,7 +53,8 @@ class MarginDiv extends Container {
                     return () => { questionLogic.commentLogic.generateNewDollars();}
                 }(questionLogic)
                 );
-            refreshButton.addClass("refreshButton").addClass("hideOnPrint");
+            refreshButton.addClass("refreshButton").addClass("hideOnPrint")
+            .setAttribute("title","randomise this question");
             this.appendChildElement(refreshButton);
         }
 
@@ -59,7 +67,8 @@ class MarginDiv extends Container {
                     return () => { contentDiv.toggleGridlines();}
                 }(parent.contentDiv)
                 );
-            gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint");
+            gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint")
+            .setAttribute("title","show gridlines");
             this.appendChildElement(gridlinesButton);
         }
 
@@ -73,7 +82,8 @@ class MarginDiv extends Container {
                     return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql);}
                 }(questionLogic)
                 );
-            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
+            spotlightButton.addClass("refreshButton").addClass("hideOnPrint")
+            .setAttribute("title","pin this question");
             this.appendChildElement(spotlightButton);
         }
 
@@ -87,7 +97,8 @@ class MarginDiv extends Container {
                 }
             }(questionLogic)
             );
-        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint");
+        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint")
+        .setAttribute("title","show inline calculator");
         this.appendChildElement(calculatorButton);
 
         //countdown timer
@@ -101,8 +112,25 @@ class MarginDiv extends Container {
                     }
                 }(questionLogic)
                 );
-            countdownButton.addClass("countdownButton").addClass("hideOnPrint");
+            countdownButton.addClass("countdownButton").addClass("hideOnPrint")
+            .setAttribute("title","show countdown timer");
             this.appendChildElement(countdownButton);
+        }
+
+        //next page button
+        if (Settings.instance.pageMode) {
+            let pageButton = new Icon(this,IconName.rightArrow);
+            pageButton.setEvent("onclick",
+                function(ql) { 
+                    var ql = ql;
+                    return () => { 
+                        ql.hideThisAndShowNextQuestion();
+                    }
+                }(questionLogic)
+                );
+            pageButton.addClass("pageButton").addClass("hideOnPrint")
+            .setAttribute("title","go to next question");
+            this.appendChildElement(pageButton);
         }
 
     }

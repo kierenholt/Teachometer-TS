@@ -55,7 +55,10 @@ class JSFunction {
             evaluated = JSON.stringify(arr);
         }
         else {
-            evaluated = JSON.stringify(this.interpreter.value);
+            if (this.interpreter.value === undefined) { evaluated = "undefined" }
+            else {
+                evaluated = JSON.stringify(this.interpreter.value);
+            }
         }
         this.cache[joinedParameters] = evaluated;
         return evaluated;

@@ -23,18 +23,35 @@ section div.content div.relative {
 	color: black;
 }
 
+/*** MARGIN AND CONTENT ***/
 
 section div.margin {
     position: absolute;
-    bottom: 0;
-    right: 0;
+    top: 0;
+    width: 1em;
+
+    left: 0;
+    text-align: left;
 }
+
+section div.content {
+	margin: 0 0 0 2em;
+}
+
 section div.margin img {
     height: 32px;
     width: 32px;
-    margin: 16px;
+    margin: 16px 0 0 0;
+    display: block;
 }
 
+/*** STUDENT PICKER ***/
+select.studentPicker {
+	z-index: 100;
+	position: absolute;
+	top: 0px;
+	left: 3em;
+}
 
 .calculatorOutput, input.calculatorInput {font-family: Consolas,monospace}
 .calculatorOutput {

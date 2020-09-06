@@ -1,28 +1,34 @@
 class StudentPickerLogic {
     settings: Settings;
     combo: ComboCup;
+    div: Container;
     studentNames: string[];
+    NUMBER_CHARACTERS_VISIBLE = 10; //number of characters in student name, 
+    //the rest chopped off to hide confidential info
 
     constructor(settings: Settings, studentNames: string[]) {
         this.settings = settings;
         this.studentNames = studentNames;
     }
 
-    createCombo(parent) {
-        this.combo = new ComboCup(parent, [], 
+    createDiv(parent) {
+        this.div = new Container(parent, "div");
+        let teachermodeNotice = new Span(this.div, "teacher mode enabled. Pick a student to view their questions.").addClass("red");
+        this.combo = new ComboCup(this.div, [], 
             new Icon(parent, IconName.none),
-            new Span(parent,""));
+            new Span(parent,"")).addClass("studentPicker");
         this.combo._childNodes = this.studentNames.map(s => {
-            return new OptionCup(this.combo,s,false);
+            let text = (s.length > this.NUMBER_CHARACTERS_VISIBLE) ? s.substr(0,this.NUMBER_CHARACTERS_VISIBLE)+"..." : s;
+            return new OptionCup(this.combo,s,text,false);
         });
         this.combo.setOnClickAway(this.comboClick.bind(this));
-        return this.combo;
+        this.div._childNodes = [teachermodeNotice, this.combo];
+        return this.div;
     }
 
     comboClick() {
         this.combo.errorText.innerHTML = "";
         let student = this.combo.getValue();
-        console.log(student);
         let onRetry = (data) => { 
             this.combo.errorText.innerHTML = "connection error...please try again";
         };

@@ -1,6 +1,6 @@
 class ICup {
     constructor(parent, tagName, innerHTML) {
-        this._innerText = "";
+        this._innerHTML = "";
         this._events = {};
         this.UID = null;
         this.attributes = {};
@@ -17,7 +17,7 @@ class ICup {
             window["cupsById"][this.UID] = this;
         }
         if (innerHTML) {
-            this._innerText = innerHTML;
+            this._innerHTML = innerHTML;
         }
         ;
     }
@@ -25,13 +25,16 @@ class ICup {
         return `<${this.tagName} id="${this.UID}" ${this.joinedEvents} ${this.joinedAttributes} ${this.joinedClasses}>${this.innerHTML}</${this.tagName}>`;
     }
     get innerHTML() {
-        return this._innerText;
+        if (this.getElement(false)) {
+            return this._element.innerHTML;
+        }
+        return this._innerHTML;
     }
     set innerHTML(value) {
         if (this.getElement(false)) {
-            this.getElement(false).innerText = value;
+            this.getElement(false).innerHTML = value;
         }
-        this._innerText = value;
+        this._innerHTML = value;
     }
     get joinedAttributes() {
         let buffer = "";
@@ -177,14 +180,19 @@ class ImageCup extends ICup {
 class ButtonCup extends ICup {
     constructor(parent, text) {
         super(parent, "button");
-        this._innerText = text;
+        this._innerHTML = text;
     }
 }
 class OptionCup extends ICup {
-    constructor(parent, value, isSelected) {
-        super(parent, "option", value);
+    constructor(parent, value, text, isSelected) {
+        super(parent, "option", text);
         this.attributes["value"] = value;
         this.attributes["selected"] = isSelected;
+    }
+}
+class CanvasCup extends ICup {
+    constructor(parent) {
+        super(parent, "canvas");
     }
 }
 class Container extends ICup {
@@ -362,7 +370,7 @@ class RowCup extends Container {
     }
     static fromString(parent, str) {
         let ret = new RowCup(parent, []);
-        ret._childNodes = str.split("|").slice(1).map(s => { return new CellCup(ret, s); });
+        ret._childNodes = str.split("|").slice(1).map(s => { return new CellCup(ret, [s]); });
         return ret;
     }
 }
@@ -405,7 +413,7 @@ class SubScriptCup extends Container {
     constructor(parent, str) { super(parent, "span", [str]); this.addClass("subscript"); }
 }
 class HeadingCup extends Container {
-    constructor(parent, str) { super(parent, "span", [str]); this.addClass("heading"); }
+    constructor(parent, str) { super(parent, "p", [str]); this.addClass("heading"); }
 }
 class RelativePositionCup extends Container {
     constructor(parent, xPos, yPos, childNodes) {
@@ -456,9 +464,13 @@ class Assignment extends Container {
         this.settings = settingsObj;
         this.settings.assignment = this;
         this._childNodes = [];
-        if (this.settings.title) {
+        if (this.settings.title && !Settings.instance.presentMode) {
+            this._childNodes.push(new BreakCup(this));
             this._childNodes.push(new HeadingCup(this, this.settings.title));
             window.document.title = this.settings.title;
+        }
+        if (this.settings.studentPicker) {
+            this._childNodes.push(this.settings.studentPicker.createDiv(this));
         }
         if (Settings.instance.allowCountdownTimer) {
             this._childNodes.push(Settings.instance.countdownTimerLogic.createDiv(this));
@@ -466,23 +478,13 @@ class Assignment extends Container {
         this._childNodes.push(Settings.instance.calculatorLogic.createDiv(this));
         this.questionsDiv = new Container(this, "div").addClass("questionsDiv");
         this._childNodes.push(this.questionsDiv);
-        if (this.settings.shuffleQuestions) {
-            this.shuffle(false);
-        }
-        if (this.settings.truncateMarks > 0) {
-            this.truncate(this.settings.truncateMarks);
-        }
         if (this.settings.presentMode) {
             this.questionsDiv.addClass("slides");
             this.getElement(true).classList.add("reveal");
         }
         else {
-            if (this.settings.studentPicker) {
-                this._childNodes.push(this.settings.studentPicker.createCombo(this));
-            }
             if (!this.settings.instantChecking) {
-                this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
-                this.submitButtonDiv = this.submitButtonAndFinalScoreLogic.createDiv(this);
+                this.submitButtonDiv = new Container(this, "div");
                 this._childNodes.push(this.submitButtonDiv);
             }
             if (this.settings.showSolutions) {
@@ -493,13 +495,21 @@ class Assignment extends Container {
             if (this.settings.timerLogic) {
                 this._childNodes.push(this.settings.timerLogic.createDiv(this));
             }
-            if (this.settings.sheetManager) {
-                this._childNodes.push(this.settings.sheetManager.createCountdownDiv(this));
-            }
+            QuestionNumberLogic.createCountdownDiv(this);
         }
         if (this.settings.questionJSON) {
             var rows = JSON.parse(this.settings.questionJSON);
             this.addRowsFromData(rows);
+            if (this.settings.shuffleQuestions) {
+                this.shuffle(false);
+            }
+            if (this.settings.truncateMarks > 0) {
+                this.truncate(this.settings.truncateMarks);
+            }
+        }
+        if (!this.settings.instantChecking) {
+            this.submitButtonAndFinalScoreLogic = new SubmitButtonAndFinalScoreLogic(this.settings);
+            this.submitButtonDiv._childNodes = [this.submitButtonAndFinalScoreLogic.createDiv(this)];
         }
         this.refresh();
         if (this.settings.presentMode)
@@ -552,21 +562,24 @@ class Assignment extends Container {
             n = prompt("enter number of marks you want left over", "10");
         }
         let i = 0;
-        while (QuestionLogic.readOnlyInstances[i] && n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters)) {
-            n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
+        while (QuestionLogic.readOnlyInstances[i] &&
+            (QuestionLogic.readOnlyInstances[i].commentLogic == undefined || n >= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters))) {
+            if (QuestionLogic.readOnlyInstances[i].commentLogic) {
+                n -= helpers.lengthOfObject(QuestionLogic.readOnlyInstances[i].commentLogic.scoreLogicsWithCommentLetters);
+            }
             i++;
         }
         let lastQn = QuestionLogic.readOnlyInstances[i];
-        if (lastQn) {
+        if (lastQn && lastQn.commentLogic) {
             let scoreLogics = helpers.getValuesFromObject(lastQn.commentLogic.scoreLogicsWithCommentLetters);
             if (n > 0) {
                 lastQn.commentLogic.truncate(scoreLogics.length - n);
             }
-            if (n > 0) {
-                i++;
-            }
-            QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
         }
+        if (n > 0) {
+            i++;
+        }
+        QuestionLogic.readOnlyInstances.slice(i).forEach(ql => ql.destroy());
     }
     regenerateAllQuestions() {
         CommentLogic.instances.forEach(c => c.generateNewDollars());
@@ -633,7 +646,7 @@ class Assignment extends Container {
         previewWindow.document.close();
     }
     get questionNumbers() {
-        return QuestionLogic.readOnlyInstances.reduce((a, b) => a.concat(b.columnHeaders), []);
+        return QuestionNumberLogic.instances.reduce((a, b) => a.concat(b.columnHeaders), []);
     }
     get currentQuestionData() {
         return QuestionLogic.readOnlyInstances.map(ql => ql.rowData);
@@ -762,7 +775,12 @@ class JSFunction {
             evaluated = JSON.stringify(arr);
         }
         else {
-            evaluated = JSON.stringify(this.interpreter.value);
+            if (this.interpreter.value === undefined) {
+                evaluated = "undefined";
+            }
+            else {
+                evaluated = JSON.stringify(this.interpreter.value);
+            }
         }
         this.cache[joinedParameters] = evaluated;
         return evaluated;
@@ -793,6 +811,7 @@ class CommentLogic {
         this.inputsWithCommentLetters = {};
         this.dollarCupsAndImagesWithCommentLetters = {};
         this.checkBoxesWithCommentLetters = {};
+        this.footbotsWithCommentLetters = {};
         this.scoreLogicsWithCommentLetters = {};
         this.jsFunctionNamesWithCommentLetters = {};
         this.pastInputValuesWithLetters = {};
@@ -811,9 +830,18 @@ class CommentLogic {
                 let c = splitComments[i];
                 let codeMatches = c.match(/code\(\"([\S]+)\"\)/);
                 let variableMatches = c.match(/variable\(\"([\S]+)\"\)/);
+                let foobotMatches = c.match(/foobot/);
                 let commentLetter = helpers.lowerCaseLetterFromIndex(i);
                 if (codeMatches) {
                     this.jsFunctionNamesWithCommentLetters[commentLetter] = codeMatches[1].toLowerCase();
+                }
+                else if (foobotMatches) {
+                    this.footbotsWithCommentLetters[commentLetter] = valueFields[i];
+                    commentsWithLetters[commentLetter] = c;
+                    if (!(valueFields[i] instanceof fooBotCanvas)) {
+                        throw "foobot canvas not found";
+                    }
+                    ;
                 }
                 else if (variableMatches) {
                     variableNamesWithCommentLetters[commentLetter] = variableMatches[1];
@@ -821,7 +849,7 @@ class CommentLogic {
                 else {
                     commentsWithLetters[commentLetter] = c;
                 }
-                this.engine = new ExpressionEngine(commentsWithLetters, this.jsFunctionNamesWithCommentLetters, variableNamesWithCommentLetters);
+                this.engine = new ExpressionEngine(commentsWithLetters, this.jsFunctionNamesWithCommentLetters, variableNamesWithCommentLetters, this.footbotsWithCommentLetters);
             }
         }
         if (purpose == "sudoku") {
@@ -845,23 +873,18 @@ class CommentLogic {
                 v instanceof TextAreaCup ||
                 v instanceof RadioSet) {
                 this.inputsWithCommentLetters[commentLetter] = v;
-                if (this.settings.sheetManager) {
-                    if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
-                        this.settings.sheetManager.registerField(v, this.questionLogic.rowData.title, this.jsFunctionNamesWithCommentLetters[commentLetter]);
-                    }
-                    else if (commentLetter in variableNamesWithCommentLetters) {
-                    }
-                    else {
-                        let columnHeaderFirstPart = helpers.IsStringNullOrWhiteSpace(this.questionLogic.rowData.title) ? this.questionLogic.questionNumberLogic.number.toString() : this.questionLogic.rowData.title;
-                        this.settings.sheetManager.registerField(v, columnHeaderFirstPart);
-                    }
+                if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
+                    this.questionLogic.questionNumberLogic.registerField(v);
+                }
+                else if (commentLetter in variableNamesWithCommentLetters) {
+                }
+                else {
+                    this.questionLogic.questionNumberLogic.registerField(v);
                 }
             }
-            if (v instanceof CheckBoxCup) {
+            if (v instanceof CheckBoxCup || v instanceof fooBotCanvas) {
                 this.checkBoxesWithCommentLetters[commentLetter] = v;
-                if (this.settings.sheetManager) {
-                    this.settings.sheetManager.registerField(v, this.questionLogic.rowData.title);
-                }
+                this.questionLogic.questionNumberLogic.registerField(v);
             }
             if (v instanceof DollarSpan || v instanceof DollarImage) {
                 this.dollarCupsAndImagesWithCommentLetters[commentLetter] = v;
@@ -870,7 +893,8 @@ class CommentLogic {
                 v instanceof InputCup ||
                 v instanceof TextAreaCup ||
                 v instanceof CheckBoxCup ||
-                v instanceof RadioSet) {
+                v instanceof RadioSet ||
+                v instanceof fooBotCanvas) {
                 if (commentLetter in this.jsFunctionNamesWithCommentLetters) {
                     v.setValue(JSFunction.generateDefaultCode(this.jsFunctionNamesWithCommentLetters[commentLetter]));
                 }
@@ -952,17 +976,13 @@ class CommentLogic {
     sendToSheetManager(inputValues) {
         for (let letter in inputValues) {
             if (!helpers.IsStringNullOrWhiteSpace(inputValues[letter]) && this.fieldHasChanged(letter)) {
-                if (this.settings.sheetManager) {
-                    this.settings.sheetManager.addFieldToSendBuffer(this.inputsWithCommentLetters[letter], this.scoreLogicsWithCommentLetters[letter]);
-                }
+                this.questionLogic.questionNumberLogic.addFieldToSendBuffer(this.inputsWithCommentLetters[letter], this.scoreLogicsWithCommentLetters[letter]);
             }
         }
         for (let key in this.checkBoxesWithCommentLetters) {
-            if (this.settings.sheetManager) {
-                this.settings.sheetManager.addFieldToSendBuffer(this.checkBoxesWithCommentLetters[key], this.scoreLogicsWithCommentLetters[key]);
-            }
+            this.questionLogic.questionNumberLogic.addFieldToSendBuffer(this.checkBoxesWithCommentLetters[key], this.scoreLogicsWithCommentLetters[key]);
         }
-        this.settings.sheetManager.attemptToSend();
+        QuestionNumberLogic.attemptToSend();
     }
     updateDollars(outputValues) {
         for (let key in this.dollarCupsAndImagesWithCommentLetters) {
@@ -980,6 +1000,8 @@ class CommentLogic {
         let ret = {};
         for (let key in this.inputsWithCommentLetters) {
             ret[key] = this.inputsWithCommentLetters[key].getValue();
+            if (ret[key] == undefined)
+                ret[key] = '""';
         }
         return ret;
     }
@@ -989,11 +1011,16 @@ class CommentLogic {
             outputs = this.engine.calculate(inputValues, this.seed);
         }
         catch (e) {
-            if (e instanceof ExpressionError && e.isCritical) {
-                this.questionLogic.questionDiv.contentDiv.destroyAllChildren();
-                this.questionLogic.questionDiv.contentDiv.appendChildString(`There is an error in this question's comment cell which is preventing it from calculating the solutions.\n Error detail: ${e.message}`);
-                this.questionLogic.questionDiv.contentDiv.addClass("red");
+            if (e instanceof ExpressionError) {
+                if (e.isCritical) {
+                    this.questionLogic.questionDiv.contentDiv.destroyAllChildren();
+                    this.questionLogic.questionDiv.contentDiv.appendChildString(`There is an error in this question's comment cell which is preventing it from calculating the solutions.\n Error detail: ${e.message}`);
+                    this.questionLogic.questionDiv.contentDiv.addClass("red");
+                }
                 return null;
+            }
+            else {
+                throw (e);
             }
         }
         this.questionLogic.questionDiv.contentDiv.removeClass("red");
@@ -1011,16 +1038,19 @@ class CommentLogic {
                 outputs[letter] instanceof ExpressionError) {
                 this.inputsWithCommentLetters[letter].setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
             if (letter in this.checkBoxesWithCommentLetters &&
                 outputs[letter] instanceof ExpressionError) {
                 this.checkBoxesWithCommentLetters[letter].setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
             if (letter in this.dollarCupsAndImagesWithCommentLetters &&
                 outputs[letter] instanceof ExpressionError) {
                 this.dollarCupsAndImagesWithCommentLetters[letter].setErrorText(outputs[letter].message);
                 outputs[letter] = "";
+                outputs = null;
             }
         }
         return outputs;
@@ -1052,7 +1082,8 @@ class CommentLogic {
             let letter = letters[i];
             this.scoreLogicsWithCommentLetters[letter].setImageField.destroy();
             this.scoreLogicsWithCommentLetters[letter].destroy();
-            this.solutionLines[letter].destroy();
+            if (this.solutionLines[letter])
+                this.solutionLines[letter].destroy();
             n--;
             i--;
         }
@@ -1110,16 +1141,25 @@ class Connection {
             "action": "checkRequest",
             "workbookSheetString": this.workbookSheetString,
             "user": this.user,
-            "startTime": Number(Settings.instance.startTime)
+            "startTimeAsNumber": Number(Settings.instance.startTime)
         };
         this.sendRequestAndRetry(this.url, object, onSuccess, onRetry);
     }
-    writeToSheet(scores, onSuccess, onRetry) {
+    pageRequest(onSuccess) {
+        var object = {
+            "action": "pageRequest",
+            "workbookSheetString": this.workbookSheetString,
+            "user": this.user,
+            "startTimeAsNumber": Number(Settings.instance.startTime)
+        };
+        this.sendRequestAndFail(this.url, object, onSuccess, () => { });
+    }
+    writeToSheet(onSuccess, onRetry, scores) {
         var object = {
             "action": "writeToSheet",
             "workbookSheetString": this.workbookSheetString,
             "user": this.user,
-            "startTime": Number(Settings.instance.startTime),
+            "startTimeAsNumber": Number(Settings.instance.startTime),
             "scores": JSON.stringify(scores)
         };
         this.sendRequestAndRetry(this.url, object, onSuccess, onRetry);
@@ -1178,7 +1218,7 @@ class Connection {
             var onSuccess = onSuccess;
             return (data) => {
                 onSuccess(data);
-                document.body.removeChild(scriptElement);
+                scriptElement.remove();
             };
         }(scriptElement, onSuccess);
         scriptElement.src = url + queryString + "prefix=callback";
@@ -1229,7 +1269,8 @@ class ContentDiv extends Container {
                 d instanceof TextAreaCup ||
                 d instanceof CheckBoxCup ||
                 d instanceof DollarSpan ||
-                d instanceof DollarImage) {
+                d instanceof DollarImage ||
+                d instanceof fooBotCanvas) {
                 this.setValueFields.push(d);
             }
             else if (d instanceof RadioCup) {
@@ -1332,12 +1373,6 @@ ContentDiv.replacers = [
         },
     },
     {
-        "pattern": /(_[^_]+_)/,
-        "nodeConstructorFromMatch": (parent, str) => {
-            return [new UnderlineCup(parent, str)];
-        },
-    },
-    {
         "pattern": /(!\[[^\]]*\]\(\$\$\))/,
         "nodeConstructorFromMatch": (parent, str) => {
             let alt = "";
@@ -1398,6 +1433,12 @@ ContentDiv.replacers = [
         "nodeConstructorFromMatch": (parent, str) => {
             let span = new Span(parent, "");
             return [new CheckBoxCup(parent, IconName.hourglass, span), span];
+        },
+    },
+    {
+        "pattern": /(\[foobot\])/,
+        "nodeConstructorFromMatch": (parent, str) => {
+            return [new fooBotCanvas(parent)];
         },
     },
     {
@@ -1532,7 +1573,7 @@ class IExpression {
                         buffer += JSONtoEval(val.getValue(injector));
                     }
                     else if (typeof (val) == "string") {
-                        buffer += JSONtoEval(val);
+                        buffer += JSON.stringify(val);
                     }
                     else if (val == undefined) {
                         throw new ExpressionError(`variable "${s[i]}" is undefined`, true, false);
@@ -1675,15 +1716,14 @@ function compareobjects(A, B) {
     return A == B;
 }
 function JSONtoEval(str) {
-    if (str == "" || str == undefined) {
-        return "null";
+    if (str == "" || str == undefined || str == "undefined") {
+        return "undefined";
     }
     let obj = undefined;
     try {
         obj = JSON.parse(str);
     }
     catch (e) {
-        throw new ExpressionError("unable to parse JSON: " + str, true, false);
     }
     if (typeof (obj) == "string") {
         return str;
@@ -1902,10 +1942,10 @@ class FunctionExpression extends IExpression {
         if (s[i] != "(") {
             this.i = i - 1;
             if (this.functionName == "true") {
-                this.eval = function (injector) { return true; };
+                this.eval = function (injector) { return "true"; };
             }
             else if (this.functionName == "false") {
-                this.eval = function (injector) { return false; };
+                this.eval = function (injector) { return "false"; };
             }
             else {
                 throw new ExpressionError("string without following bracket", true, true);
@@ -2214,6 +2254,16 @@ class FunctionExpression extends IExpression {
         if (injector.allVariablesAndFunctions[this.functionName] instanceof JSFunction) {
             return injector.allVariablesAndFunctions[this.functionName].execute(evaluatedParameters);
         }
+        if (this.functionName == "foobot") {
+            let commentLetter = evaluatedParameters[0];
+            if (!injector.footbotsWithCommentLetters[commentLetter])
+                throw new ExpressionError("foobot with letter " + commentLetter + " not found", false, true);
+            if (!evaluatedParameters[1])
+                throw new ExpressionError("foobot map argument #2 not defined", false, true);
+            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run(evaluatedParameters[1], evaluatedParameters[2]);
+            throw new ExpressionError("running game...", true, false);
+            return JSON.stringify(returnedLevelMap);
+        }
         if (typeof (Math[this.functionName]) == "function") {
             let ret = Math[this.functionName](evaluatedParameters[0], evaluatedParameters[1], evaluatedParameters[2]);
             return JSON.stringify(ret);
@@ -2235,13 +2285,14 @@ class SimpleEngine {
     }
 }
 class ExpressionEngine {
-    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters) {
+    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters, footbotsWithCommentLetters) {
         this.overflowCounter = 0;
         this.OVERFLOW_LIMIT = 1000;
         this.allVariablesAndFunctions = {};
         this.numVariables = 0;
         this.jsFunctionsWithLetters = jsFunctionsWithLetters;
         this.variableNamesWithLetters = variableNamesWithLetters;
+        this.footbotsWithCommentLetters = footbotsWithCommentLetters;
         for (let key in commentsWithLetters) {
             this.allVariablesAndFunctions[key] = toExpressionTree(commentsWithLetters[key], 0);
             this.numVariables++;
@@ -2296,6 +2347,9 @@ class ExpressionEngine {
                         else {
                             throw (e);
                         }
+                    }
+                    else {
+                        throw (e);
                     }
                 }
             }
@@ -2368,6 +2422,148 @@ class ExpressionEngine {
             }
         }
         return colsToShow;
+    }
+}
+class Robot extends Phaser.GameObjects.Sprite {
+    constructor(scene, x, y) {
+        super(scene, x, y, "robot");
+        scene.add.existing(this);
+        this.setDepth(10);
+    }
+    moveDown() {
+        this.scene.tweens.add({
+            targets: this,
+            y: this.y + 50,
+            duration: 1000,
+            ease: 'Linear',
+            repeat: 0,
+            yoyo: false,
+            paused: false,
+            onStart: () => { this.scene.busy = true; },
+            onComplete: () => { this.scene.busy = false; },
+        });
+    }
+}
+class Scene1 extends Phaser.Scene {
+    constructor(levelMap) {
+        super({
+            key: 'sceneA',
+            active: true,
+            physics: {
+                default: 'arcade',
+                arcade: {
+                    debug: false,
+                }
+            },
+        });
+        Scene1.instance = this;
+        this.levelMap = levelMap;
+    }
+    preload() {
+        this.load.image("robot", "images/robot.png");
+        this.load.image("floor", "images/floor.png");
+    }
+    create() {
+        this.player = new Robot(this, 100, 100);
+        this.floors = this.physics.add.staticGroup();
+        this.setLevel();
+    }
+    setLevel() {
+        this.floors.clear(true, true);
+        let map = this.levelMap.split("\n");
+        for (let j = 0; j < map.length; j++) {
+            let y = 32 + j * 64;
+            for (let i = 0; i < map[j].length; i++) {
+                let x = 32 + 64 * i;
+                this.floors.create(x, y, 'floor');
+                if (map[j][i] == "r") {
+                    this.player.x = x;
+                    this.player.y = y;
+                }
+            }
+        }
+    }
+}
+class fooBotGame extends Phaser.Game {
+    constructor(levelMap, parentId) {
+        let scene = new Scene1(levelMap);
+        let config = {
+            type: Phaser.AUTO,
+            width: 200,
+            height: 200,
+            autoFocus: true,
+            transparent: true,
+            parent: parentId,
+            url: '',
+            title: 'foobot',
+            version: '0.0.1',
+            scene: [scene]
+        };
+        super(config);
+        this.myScene = scene;
+    }
+    run(myCode) {
+        this.myScene.setLevel();
+        var robot = this.myScene.player;
+        var initFunc = (interpreter, globalObject) => {
+            var wrapper = function () {
+                return robot.moveDown();
+            };
+            interpreter.setProperty(globalObject, 'moveDown', interpreter.createNativeFunction(wrapper));
+        };
+        var myInterpreter = newInterpreter(myCode, initFunc);
+        var i = 100000;
+        try {
+            while (i-- && myInterpreter.step()) {
+            }
+        }
+        catch (e) {
+            throw new ExpressionError("Error:code did not execute completely\n Detail:  " + e.message, true, false);
+        }
+        if (i == -1) {
+            throw new ExpressionError("Error: Code contains an infinite loop", true, false);
+        }
+        return "a";
+    }
+}
+class fooBotCanvas extends Container {
+    constructor(parent) {
+        super(parent, "div");
+        this.gameNotYetInitialised = true;
+        this.canvasDiv = new Container(this, "div");
+        this.icon = new Icon(this, IconName.none);
+        this.errorText = new Span(this, "");
+        this.appendChildren([this.canvasDiv, this.icon, this.errorText]);
+    }
+    run(levelMap, code) {
+        if (this.gameNotYetInitialised) {
+            setTimeout(function (container, levelMap) {
+                var container = container;
+                var levelMap = levelMap;
+                return () => { container.game = new fooBotGame(levelMap, container.canvasDiv.UID); };
+            }(this, levelMap), 1000);
+            this.gameNotYetInitialised = false;
+            return undefined;
+        }
+        else {
+            if (!this.game)
+                return undefined;
+            return this.game.run(code);
+        }
+    }
+    setDecisionImage(value) { this.icon.setIconName(value); }
+    setValue(value) { }
+    getValue() { return ""; }
+    setErrorText(value) {
+        this.errorText.innerHTML = value;
+        if (value.length > 0)
+            this.setDecisionImage(IconName.error);
+    }
+    resetError() {
+        this.errorText.innerHTML = "";
+        if (this.icon.getIconName() == IconName.error) {
+            this.setDecisionImage(IconName.none);
+        }
     }
 }
 var helpersMaker = function () {
@@ -2493,6 +2689,10 @@ var helpersMaker = function () {
         let index = arr.indexOf(ref);
         arr = arr.splice(index, 0, item);
     };
+    var getItemImmediatelyBefore = function (arr, after) {
+        let index = arr.indexOf(after);
+        return index == -1 ? undefined : arr[index - 1];
+    };
     var getItemImmediatelyAfter = function (arr, after) {
         let index = arr.indexOf(after);
         return index == -1 ? undefined : arr[index + 1];
@@ -2551,6 +2751,7 @@ var helpersMaker = function () {
         getDomainFromUrl: getDomainFromUrl,
         insertAfter: insertAfter,
         insertBefore: insertBefore,
+        getItemImmediatelyBefore: getItemImmediatelyBefore,
         getItemImmediatelyAfter: getItemImmediatelyAfter,
         removeFromArray: removeFromArray,
         removeCrazySigFigs: removeCrazySigFigs,
@@ -2606,7 +2807,8 @@ var IconName;
     IconName[IconName["calculator"] = 10] = "calculator";
     IconName[IconName["clock"] = 11] = "clock";
     IconName[IconName["help"] = 12] = "help";
-    IconName[IconName["none"] = 13] = "none";
+    IconName[IconName["rightArrow"] = 13] = "rightArrow";
+    IconName[IconName["none"] = 14] = "none";
 })(IconName || (IconName = {}));
 ;
 class Icon extends ICup {
@@ -2644,13 +2846,18 @@ Icon.imageData = [
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAA6UlEQVQ4y2NgIBL8L2aUA+LrQOzGQCoAamIC4sNA/BeIv5NsCFBDFVSzHxCvhhriQqxmCyD+DcQ1QMwFxFuB+D8QfwViB2wa1IC4EYgXAvFUIL4PxNuBWASIj0I1w/BjdM0FUNtgCs4C8XMgvgvEV9E0XwRiPXQDjID4LVRBGBCzAPF0NI0gCzqBmA2Xn2GG3ATizWiaQS6xIibgkF2CjOcSo1kM6kQTLIasJybB7IYq7sfikl5CBjRDFZ4GYgU074ASkhE+zV5QRVPRQxhqSCOhjPIQiKPIyShs0FSnxUAOAMUrEPMwkAkABQjt40jPAagAAAAASUVORK5CYII=",
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAGxSURBVDjLpVM9a8JQFL0vUUGFfowFpw4dxM2vf9G5newv6OIvEDoVOnUQf0G7CEYQHVzUVZQoaKFugoW20EUaTd5L+u6NSQORdvDC5dyEd+499ySPOY4Dh0TEK8rl8n0mk7lOJBIpVVWBMUaJAzCFEMA5B8MwPpfL5VOlUrklonegWq3qEr+c/2Nbq9VWHs9XkEwm0xLUy/Lzn5KbD1exaDR6FlpBURSq4/E4HJ2c4jMwmYpcw6vf31be2bAHQTPVHYEFyAr7VeEACzfAQKPuSmlCy7LINBcteifSx3ROWutzlCAZ3Z9Op9ButyEWi8F8Poder0drXTQ1SNUeqalt22EFQrgvC4UC5HI5mow1EjA/SjdEjEQiYAd+HV8BF5xwNBpBo9EgBZPJBDqdDimYzWbQ7XapmeA8rIDLiRjFYpEm4zTEfD7v19lslhSgJ2EFXBAOh0Oo1+vk/ng8Bk3TyBtd16HVarkrCRFWYFqmrwAzqMDzBhMVWNaeFSzT5P3BQJXI3G+9P14XC8c0t5tQg/V6/dLv9c+l3ATDFrvL5HZyCBxpv5Rvboxv3eOxQ6/zD+IbEqvBQWgxAAAAAElFTkSuQmCC",
     "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAMESURBVDjLXZNrSFNxGMYPgQQRfYv6EgR9kCgKohtFgRAVQUHQh24GQReqhViWlVYbZJlZmZmombfVpJXTdHa3reM8uszmWpqnmQuX5drmLsdjenR7ev9DR3Xgd3h43+d5/pw/HA4AN9zITSPUhJ14R0xn87+h2ZzJvZVInJpzAQOXQOQMt+/5rvhMCLXv9Vjrt1rSXitmwj+Jua1+Ox+2HfGNdGf6yW8l5sUKPNVcRsiaPDA22Ahv6/7Ae/0aKdviQ0G7B/c6f8Zg+gbfh079Mjno0MhS58lflOsgEjh3BXc+bM/0DzbvDwj314znt/bjof0HdPw3FBq6kP+oCxVNfdDZvqPsrQmf6zdFRtyPJgbrFoqUTeS+FnPrekpmiC2lS+QcUx+qrf0wmFzodYfgC0nwhoYh9oegfdmLsmYXHj7JhV23erS7ZNYHyibGLiLtXsO19BoHSiwu6Ok09gwFg/gy8BO/STOkKFBk7EWh2YkLeh5Hy4Ws2B2w157iDvOpxw4UPRPRTSfL41FIsow7ZeXwUFF4dBQ1L96A/xLEFf1HMC/LxAt25PH+VN0HXH1gh2dEwdBoBGO0OKvW4L7hCdIvavBSsMIRVHCi0ArmZZl4wbYrz/yHSq1Ql9vQLylUEoE7GMal3OuxMG/7CO848N6n4HheK5iXZeIFmy88Nu+8aYJG24G3ziB+0Ee7wwqemlvQ5w9hcAJwyUDtpwBOFLeBeVkmXpB0qlK9RV2HlLsCsvUivHRhQwoQjhCkA1TgJX1OK0JVzIN5WSZesPZ44XKia+P5BqSS4aq+BzZXABLdhyQrsJPOqv4MVcEbMA/zsky8gLHyYO7hI9laecOZWuzLfYXU2zzSblmQerMZqjwTknOeY9dlIw5kVcrMG/8XpoQgCEkOhwNNJn5i7bFSrFDpsCrFEIPpLacr0WxpibYIQpS86/8pMBqNswnJ6XSivqHBv3R3pmbxzgwz4Z+EaTXtwqIogrzjxIJ4QVVV1UyihxgjFv3/K09Bu/lEkBgg5rLZH+fT5dvfn7iFAAAAAElFTkSuQmCC",
-    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKkSURBVDjLpZPdT5JhGMb9W+BPaK3matVqndXWOOigA6fmJ9DUcrUMlrN0mNMsKTUznQpq6pyKAm8CIogmypcg8GIiX8rHRHjhVbPt6o01nMvZWge/k3vP9duuZ/edAyDnf/hjoCMP2Vr3gUDj3CdV6zT1xZ6iFDaKnLEkBFOmPfaZArWT5sw60iFP+BAbOzTcQSqDZzsNRyCNkcVoaGghzDlVQKylOHJrMrUZ2Yf52y6kc36IxpyoH1lHF7EBgyMKV4jCJ5U/1UVscU4IZOYEa3I1HtwI01hwxlDLhDoJD/wxGr5YGmOLAdRIrVCuhmD3JdA6SQabx12srGB0KSpc86ew4olDOGjH4x4z0gdHDD9+c4TaQQtq+k2Yt0egXYugTmoVZgV9cyHSxXTtJjZR3WNCVfcK/NE0ppYDUNu2QTMCtS0IbrsOrVMOWL27eNJtJLOCDoWXdgeTEEosqPxoBK/TwDzWY9rowy51gJ1dGr2zLpS2aVH5QQ+Hbw88sZ7OClrGXbQrkMTTAQu4HXqUv9eh7J0OSfo7tiIU+GItilpUuM/AF2tg98eR36Q+FryQ2kjbVhximQu8dgPKxPMoeTuH4tfqDIWvCBQ2KlDQKEe9dBlGTwR36+THFZg+QoUxAL0jgsoOQzYYS+wjskcjTzSToVAkA7Hqg4Spc6tm4vgT+eIFVvmb+eCSMwLlih/cNg0KmpRoGzdl+BXOb5jAsMYNjSWAm9VjwesPR1knFilPNMu510CkdPZtqK1BvJQsoaRZjqLGaTzv1UNp9EJl9uNqxefU5QdDnFNX+Y5Qxrn9bDLUR6zjqzsMizeWYdG5gy6ZDbk8aehiuYRz5jHdeDTKvlY1IrhSMUxe4g9SuVwpdaFsgDxf2i84V9zH/us1/is/AdevBaK9Tb3EAAAAAElFTkSuQmCC"
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAAKkSURBVDjLpZPdT5JhGMb9W+BPaK3matVqndXWOOigA6fmJ9DUcrUMlrN0mNMsKTUznQpq6pyKAm8CIogmypcg8GIiX8rHRHjhVbPt6o01nMvZWge/k3vP9duuZ/edAyDnf/hjoCMP2Vr3gUDj3CdV6zT1xZ6iFDaKnLEkBFOmPfaZArWT5sw60iFP+BAbOzTcQSqDZzsNRyCNkcVoaGghzDlVQKylOHJrMrUZ2Yf52y6kc36IxpyoH1lHF7EBgyMKV4jCJ5U/1UVscU4IZOYEa3I1HtwI01hwxlDLhDoJD/wxGr5YGmOLAdRIrVCuhmD3JdA6SQabx12srGB0KSpc86ew4olDOGjH4x4z0gdHDD9+c4TaQQtq+k2Yt0egXYugTmoVZgV9cyHSxXTtJjZR3WNCVfcK/NE0ppYDUNu2QTMCtS0IbrsOrVMOWL27eNJtJLOCDoWXdgeTEEosqPxoBK/TwDzWY9rowy51gJ1dGr2zLpS2aVH5QQ+Hbw88sZ7OClrGXbQrkMTTAQu4HXqUv9eh7J0OSfo7tiIU+GItilpUuM/AF2tg98eR36Q+FryQ2kjbVhximQu8dgPKxPMoeTuH4tfqDIWvCBQ2KlDQKEe9dBlGTwR36+THFZg+QoUxAL0jgsoOQzYYS+wjskcjTzSToVAkA7Hqg4Spc6tm4vgT+eIFVvmb+eCSMwLlih/cNg0KmpRoGzdl+BXOb5jAsMYNjSWAm9VjwesPR1knFilPNMu510CkdPZtqK1BvJQsoaRZjqLGaTzv1UNp9EJl9uNqxefU5QdDnFNX+Y5Qxrn9bDLUR6zjqzsMizeWYdG5gy6ZDbk8aehiuYRz5jHdeDTKvlY1IrhSMUxe4g9SuVwpdaFsgDxf2i84V9zH/us1/is/AdevBaK9Tb3EAAAAAElFTkSuQmCC",
+    "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAABAAAAAQCAYAAAAf8/9hAAAABGdBTUEAAK/INwWK6QAAABl0RVh0U29mdHdhcmUAQWRvYmUgSW1hZ2VSZWFkeXHJZTwAAADvSURBVDjLY/z//z8DJYCJgUIwxAwImOWx22uSExvZBvz68cvm5/dfV5HFGEGxUHoiExwVf//8Zfjz+w/D719/GH79/A3UAMK/GH4CMYiWFJJk+PXrN8PN27cunWq/oA/SwwIzyUrYluHvP6AB//7A8e+/f4H4N8Pvf0D8Fyb2h+HLl696WllqJ69Nu2XOArMZpBCuGajoN1jxbwT9FyH36/dvkCt/w10Acvb+h3uxOhvoZzCbi4OLQVJSiuH1q9cMt2/cvXB7zj0beBgQAwwKtS2AFuwH2vwIqFmd5Fi40H/1BFDzQaBrdTFiYYTnBQAI58A33Wys0AAAAABJRU5ErkJggg=="
 ];
 class MarginDiv extends Container {
     constructor(parent, questionNumberLogic, questionLogic) {
         super(parent, "div");
         this.classes.push("margin");
-        this.classes.push("greyBackground");
+        if (Settings.instance.presentMode) {
+        }
+        else {
+            this.classes.push("greyBackground");
+        }
         if (questionNumberLogic) {
             let questionNumberDiv = new Container(this, "div", [questionNumberLogic.createSpan(this)]);
             questionNumberDiv.addClass("questionNumber");
@@ -2659,7 +2866,8 @@ class MarginDiv extends Container {
         if (this.settings.allowRowDelete) {
             let deleteButton = new Icon(this, IconName.trash);
             deleteButton.setEvent("onclick", questionLogic.destroy.bind(questionLogic));
-            deleteButton.addClass("deleteButton").addClass("hideOnPrint");
+            deleteButton.addClass("deleteButton").addClass("hideOnPrint")
+                .setAttribute("title", "delete this question");
             this.appendChildElement(deleteButton);
         }
         if (this.settings.allowRowDuplicate) {
@@ -2669,7 +2877,8 @@ class MarginDiv extends Container {
                 var assignment = assignment;
                 return () => { assignment.duplicateRow(ql); };
             }(questionLogic, this.settings.assignment));
-            duplicateButton.addClass("duplicateButton").addClass("hideOnPrint");
+            duplicateButton.addClass("duplicateButton").addClass("hideOnPrint")
+                .setAttribute("title", "duplicate this question");
             this.appendChildElement(duplicateButton);
         }
         if (Settings.instance.allowRefresh &&
@@ -2679,7 +2888,8 @@ class MarginDiv extends Container {
                 var ql = ql;
                 return () => { questionLogic.commentLogic.generateNewDollars(); };
             }(questionLogic));
-            refreshButton.addClass("refreshButton").addClass("hideOnPrint");
+            refreshButton.addClass("refreshButton").addClass("hideOnPrint")
+                .setAttribute("title", "randomise this question");
             this.appendChildElement(refreshButton);
         }
         if (parent.contentDiv.gridlines.length > 0) {
@@ -2688,7 +2898,8 @@ class MarginDiv extends Container {
                 var contentDiv = contentDiv;
                 return () => { contentDiv.toggleGridlines(); };
             }(parent.contentDiv));
-            gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint");
+            gridlinesButton.addClass("gridlinesButton").addClass("hideOnPrint")
+                .setAttribute("title", "show gridlines");
             this.appendChildElement(gridlinesButton);
         }
         if (Settings.instance.allowPin) {
@@ -2697,7 +2908,8 @@ class MarginDiv extends Container {
                 var ql = ql;
                 return () => { QuestionLogic.toggleHideAllQuestionsButOne(ql); };
             }(questionLogic));
-            spotlightButton.addClass("refreshButton").addClass("hideOnPrint");
+            spotlightButton.addClass("refreshButton").addClass("hideOnPrint")
+                .setAttribute("title", "pin this question");
             this.appendChildElement(spotlightButton);
         }
         let calculatorButton = new Icon(this, IconName.calculator);
@@ -2707,7 +2919,8 @@ class MarginDiv extends Container {
                 Settings.instance.calculatorLogic.moveAfterQuestion(ql);
             };
         }(questionLogic));
-        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint");
+        calculatorButton.addClass("calculatorButton").addClass("hideOnPrint")
+            .setAttribute("title", "show inline calculator");
         this.appendChildElement(calculatorButton);
         if (Settings.instance.allowCountdownTimer) {
             let countdownButton = new Icon(this, IconName.clock);
@@ -2717,8 +2930,21 @@ class MarginDiv extends Container {
                     Settings.instance.countdownTimerLogic.moveAfterQuestion(ql);
                 };
             }(questionLogic));
-            countdownButton.addClass("countdownButton").addClass("hideOnPrint");
+            countdownButton.addClass("countdownButton").addClass("hideOnPrint")
+                .setAttribute("title", "show countdown timer");
             this.appendChildElement(countdownButton);
+        }
+        if (Settings.instance.pageMode) {
+            let pageButton = new Icon(this, IconName.rightArrow);
+            pageButton.setEvent("onclick", function (ql) {
+                var ql = ql;
+                return () => {
+                    ql.hideThisAndShowNextQuestion();
+                };
+            }(questionLogic));
+            pageButton.addClass("pageButton").addClass("hideOnPrint")
+                .setAttribute("title", "go to next question");
+            this.appendChildElement(pageButton);
         }
     }
 }
@@ -2743,6 +2969,12 @@ class QuestionLogic {
         if (this.isQuestionOrTemplateOrSudoku) {
             this.commentLogic = new CommentLogic(this.rowData.comment, this.questionDiv.contentDiv.setValueFields, this.rowData.purpose, this);
         }
+        if (Settings.instance.pageMode) {
+            if (QuestionLogic.readOnlyInstances.indexOf(this) + 1 != Settings.instance.pageNumber) {
+                this.questionDiv.removeClass("displayBlock");
+                this.questionDiv.addClass("displayNone");
+            }
+        }
         return this.questionDiv;
     }
     createSolutionDiv(parent) {
@@ -2763,18 +2995,15 @@ class QuestionLogic {
             this.solutionDiv.destroy();
         }
     }
-    get columnHeaders() {
-        let ret = [];
-        if (this.commentLogic) {
-            for (let letter in this.commentLogic.inputsWithCommentLetters) {
-                let field = this.commentLogic.inputsWithCommentLetters[letter];
-                let columnHeader = this.settings.sheetManager.columnHeadersWithFieldUIDs[field.UID];
-                if (columnHeader) {
-                    ret.push(columnHeader);
-                }
-            }
-        }
-        return ret;
+    hideThisAndShowNextQuestion() {
+        var onSuccess = (pageNumber) => {
+            this.questionDiv.removeClass("displayBlock");
+            this.questionDiv.addClass("displayNone");
+            let next = QuestionLogic.readOnlyInstances[pageNumber - 1];
+            if (next)
+                next.questionDiv.addClass("displayBlock");
+        };
+        Connection.instance.pageRequest(onSuccess.bind(this));
     }
     static toggleHideAllQuestionsButOne(questionLogic) {
         if (questionLogic.questionDiv.classes.indexOf("displayBlock") != -1) {
@@ -2800,14 +3029,12 @@ class QuestionDiv extends IQuestionOrSectionDiv {
     constructor(parent, questionTitleLogic, questionNumberLogic, leftRightMarkdown, questionLogic) {
         super(parent, "div");
         this.classes.push("question");
-        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
-            this.classes.push("withMargin");
-        }
-        ;
         this.classes.push("greyBorder");
         this.contentDiv = new ContentDiv(this, questionTitleLogic, leftRightMarkdown);
         this._childNodes = [this.contentDiv];
-        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder) {
+        if (questionLogic.isQuestionOrTemplateOrSudoku || Settings.instance.mode == Mode.builder ||
+            Settings.instance.pageMode) {
+            this.classes.push("withMargin");
             this.marginDiv = new MarginDiv(this, questionNumberLogic, questionLogic);
             this._childNodes.push(this.marginDiv);
         }
@@ -2827,6 +3054,7 @@ class SectionDiv extends IQuestionOrSectionDiv {
 class QuestionNumberLogic {
     constructor(settings, isBlank, questionLogic, after) {
         this.spans = [];
+        this.fieldArraysWithQuestionNumbers = [];
         this.settings = settings;
         this.isBlank = isBlank;
         this.questionLogic = questionLogic;
@@ -2865,8 +3093,78 @@ class QuestionNumberLogic {
         helpers.removeFromArray(QuestionNumberLogic.instances, this);
         QuestionNumberLogic.instances.forEach(qn => qn.refreshSpans());
     }
+    getFullColumnHeader(valueField) {
+        let index = this.fieldArraysWithQuestionNumbers.indexOf(valueField);
+        if (index == 0) {
+            return this.number + "." + this.questionLogic.rowData.title;
+        }
+        else {
+            return this.number + helpers.lowerCaseLetterFromIndex(index);
+        }
+    }
+    get columnHeaders() {
+        return this.fieldArraysWithQuestionNumbers.map(f => this.getFullColumnHeader(f));
+    }
+    registerField(valueField) {
+        this.fieldArraysWithQuestionNumbers.push(valueField);
+        let columnHeader = this.getFullColumnHeader(valueField);
+        if (Settings.instance.responses && columnHeader in Settings.instance.responses) {
+            valueField.setValue(Settings.instance.responses[columnHeader]);
+        }
+    }
+    addFieldToSendBuffer(field, scoreLogic) {
+        let columnHeader = this.getFullColumnHeader(field);
+        if (columnHeader) {
+            if (scoreLogic) {
+                if (field instanceof CheckBoxCup) {
+                    QuestionNumberLogic.scoresToSendBuffer[columnHeader] = {
+                        value: scoreLogic.iconAsString,
+                        color: scoreLogic.color,
+                        append: Settings.instance.appendMode
+                    };
+                }
+                else {
+                    QuestionNumberLogic.scoresToSendBuffer[columnHeader] = {
+                        value: field.getValue(),
+                        color: scoreLogic.color,
+                        append: Settings.instance.appendMode
+                    };
+                }
+            }
+            else {
+                QuestionNumberLogic.scoresToSendBuffer[columnHeader] = {
+                    value: field.getValue(),
+                    color: "white",
+                    append: Settings.instance.appendMode
+                };
+            }
+        }
+    }
+    static addScoresToBuffer(scores) {
+        QuestionNumberLogic.scoresToSendBuffer = helpers.mergeObjects(QuestionNumberLogic.scoresToSendBuffer, scores);
+    }
+    static attemptToSend() {
+        let merged = helpers.mergeObjects(Settings.instance.totalScores, QuestionNumberLogic.scoresToSendBuffer);
+        let onSuccess = (data) => {
+            QuestionNumberLogic.scoresToSendBuffer = {};
+            QuestionNumberLogic.span.innerHTML = "";
+        };
+        let onRetry = (data) => {
+            QuestionNumberLogic.span.innerHTML = "connection error....retrying";
+        };
+        Connection.instance.writeToSheet(onSuccess.bind(this), onRetry.bind(this), merged);
+    }
+    static createCountdownDiv(parent) {
+        QuestionNumberLogic.div = new Container(parent, "div");
+        QuestionNumberLogic.div.addClass("sheetManagerCountdown");
+        QuestionNumberLogic.span = new Span(QuestionNumberLogic.div, "");
+        QuestionNumberLogic.div.appendChildElement(QuestionNumberLogic.span);
+        return QuestionNumberLogic.div;
+    }
 }
 QuestionNumberLogic.instances = [];
+QuestionNumberLogic.scoresToSendBuffer = {};
+QuestionNumberLogic.timerInterval = null;
 class QuestionTitleLogic {
     constructor(title, settings, after) {
         this.value = title;
@@ -2995,7 +3293,7 @@ class ComboCup extends Container {
 ComboCup.optionReplacer = {
     "pattern": /(?:^|\/)([^\/]+)/,
     "nodeConstructorFromMatch": (parent, str) => {
-        return [new OptionCup(parent, str, false)];
+        return [new OptionCup(parent, str, str, false)];
     }
 };
 class InputCup extends ICup {
@@ -3034,7 +3332,7 @@ class TextAreaCup extends ICup {
     }
     setOnClickAway(func) { this.setEvent("onblur", func); }
     getValue() { return this.getAttribute("value"); }
-    setValue(value) { this.innerHTML = value; }
+    setValue(value) { this.setAttribute("value", value); this.innerHTML = value; }
     setDecisionImage(value) { this._decisionImage.setIconName(value); }
     setErrorText(value) {
         this.errorText.innerHTML = value;
@@ -3175,7 +3473,7 @@ class ScoreLogic {
         ScoreLogic.instances.push(this);
         this.settings = settings;
         this.setImageField = setImageField;
-        if (this.questionDiv instanceof QuestionDiv)
+        if (questionDiv instanceof QuestionDiv)
             this.questionDiv = questionDiv;
         this._score = 0;
         this.hasBeenWrong = false;
@@ -3285,6 +3583,8 @@ class Settings {
         this.seed = 1;
         this.title = "";
         this.truncateMarks = -1;
+        this.pageMode = false;
+        this.pageNumber = 1;
         if (Settings.instance) {
             throw "only one of instance of Settings is allowed";
         }
@@ -3296,7 +3596,6 @@ class Settings {
         ;
         this.mode = mode;
         this.setDefaults(mode);
-        this.sheetManager = new SheetManager();
         this.calculatorLogic = new CalculatorLogic();
         this.countdownTimerLogic = new CountdownTimerLogic();
         if (this.startTime)
@@ -3307,8 +3606,8 @@ class Settings {
             this.timerLogic = new QuizTimerLogic(this.endTime, this);
         }
         if (settingsObj.studentNames) {
-            this.mode = Mode.lessonTeacher;
-            this.setDefaults(Mode.lessonTeacher);
+            this.mode = (this.mode == Mode.lessonStudent) ? Mode.lessonTeacher : Mode.presentTeacher;
+            this.setDefaults(this.mode);
             this.studentPicker = new StudentPickerLogic(this, settingsObj.studentNames);
             this.responses = settingsObj.responses;
             this.random = new Random(Number(settingsObj.responses.Seed));
@@ -3353,74 +3652,6 @@ class Settings {
         CommentLogic.instances.forEach(c => c.disable());
     }
 }
-class SheetManager {
-    constructor() {
-        this.numberOfFieldsWithQuestionTitles = {};
-        this.columnHeadersWithFieldUIDs = {};
-        this.scoresToSendBuffer = {};
-        this.timerInterval = null;
-    }
-    registerField(valueField, columnHeaderFirstPart, jsFunctionName) {
-        if (!(columnHeaderFirstPart in this.numberOfFieldsWithQuestionTitles)) {
-            this.numberOfFieldsWithQuestionTitles[columnHeaderFirstPart] = 0;
-        }
-        let letter = jsFunctionName ? jsFunctionName : helpers.lowerCaseLetterFromIndex(this.numberOfFieldsWithQuestionTitles[columnHeaderFirstPart]++);
-        let columnHeader = columnHeaderFirstPart + "." + letter;
-        this.columnHeadersWithFieldUIDs[valueField.UID] = columnHeader;
-        if (Settings.instance.responses && columnHeader in Settings.instance.responses) {
-            valueField.setValue(Settings.instance.responses[columnHeader]);
-        }
-    }
-    addFieldToSendBuffer(field, scoreLogic) {
-        let columnHeader = this.columnHeadersWithFieldUIDs[field.UID];
-        if (columnHeader) {
-            if (scoreLogic) {
-                if (field instanceof CheckBoxCup) {
-                    this.scoresToSendBuffer[columnHeader] = {
-                        value: scoreLogic.iconAsString,
-                        color: scoreLogic.color,
-                        append: Settings.instance.appendMode
-                    };
-                }
-                else {
-                    this.scoresToSendBuffer[columnHeader] = {
-                        value: field.getValue(),
-                        color: scoreLogic.color,
-                        append: Settings.instance.appendMode
-                    };
-                }
-            }
-            else {
-                this.scoresToSendBuffer[columnHeader] = {
-                    value: field.getValue(),
-                    color: "white",
-                    append: Settings.instance.appendMode
-                };
-            }
-        }
-    }
-    addScoresToBuffer(scores) {
-        this.scoresToSendBuffer = helpers.mergeObjects(this.scoresToSendBuffer, scores);
-    }
-    attemptToSend() {
-        let merged = helpers.mergeObjects(Settings.instance.totalScores, this.scoresToSendBuffer);
-        let onSuccess = (data) => {
-            this.scoresToSendBuffer = {};
-            this.span.innerHTML = "";
-        };
-        let onRetry = (data) => {
-            this.span.innerHTML = "connection error....retrying";
-        };
-        Connection.instance.writeToSheet(onSuccess.bind(this), onRetry.bind(this), merged);
-    }
-    createCountdownDiv(parent) {
-        this.div = new Container(parent, "div");
-        this.div.addClass("sheetManagerCountdown");
-        this.span = new Span(this.div, "");
-        this.div.appendChildElement(this.span);
-        return this.div;
-    }
-}
 class SolutionDiv extends Container {
     constructor(parent, questionNumberLogic, commentLogic) {
         super(parent, "div");
@@ -3432,21 +3663,25 @@ class SolutionDiv extends Container {
 }
 class StudentPickerLogic {
     constructor(settings, studentNames) {
+        this.NUMBER_CHARACTERS_VISIBLE = 10;
         this.settings = settings;
         this.studentNames = studentNames;
     }
-    createCombo(parent) {
-        this.combo = new ComboCup(parent, [], new Icon(parent, IconName.none), new Span(parent, ""));
+    createDiv(parent) {
+        this.div = new Container(parent, "div");
+        let teachermodeNotice = new Span(this.div, "teacher mode enabled. Pick a student to view their questions.").addClass("red");
+        this.combo = new ComboCup(this.div, [], new Icon(parent, IconName.none), new Span(parent, "")).addClass("studentPicker");
         this.combo._childNodes = this.studentNames.map(s => {
-            return new OptionCup(this.combo, s, false);
+            let text = (s.length > this.NUMBER_CHARACTERS_VISIBLE) ? s.substr(0, this.NUMBER_CHARACTERS_VISIBLE) + "..." : s;
+            return new OptionCup(this.combo, s, text, false);
         });
         this.combo.setOnClickAway(this.comboClick.bind(this));
-        return this.combo;
+        this.div._childNodes = [teachermodeNotice, this.combo];
+        return this.div;
     }
     comboClick() {
         this.combo.errorText.innerHTML = "";
         let student = this.combo.getValue();
-        console.log(student);
         let onRetry = (data) => {
             this.combo.errorText.innerHTML = "connection error...please try again";
         };

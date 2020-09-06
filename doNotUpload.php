@@ -2,8 +2,8 @@
 // DEV SETTINGS
 
 $API_URL  = "https://script.google.com/macros/s/AKfycbylQm3yW95G8C6vmZKwQ88Id_LIPzeSr6heWCEjwlEuESgD9Emy/exec";
-$QUERY_STRING = "eyJ3IjoiMW5WU3kwTnJDZEtHOVdJWjhOcU1zTkFITkR4NDZvSTVya3pFRDZ6cXVFZ1UiLCJzIjo0NjE1OTIzNzB9";
-$USER = "student1";
+$QUERY_STRING = "e6WxRVN3tDVDMvTxN3Ik5CFiUzIFcycjfDdTpHAyZwSnNDkjRWJIMiTjZUJXhQZJEFOwaEMTJjZwo4UzTWLko113VO==";
+//$USER = "student1";
 $USER = "963642471725942668248468288604604";
 $DOTMIN = ""; // leave blank unless on remote server
 

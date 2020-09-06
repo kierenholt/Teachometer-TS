@@ -1,0 +1,108 @@
+__cup.ts
+
+class CanvasCup extends ICup {
+    constructor(parent: Container) {
+        super(parent, "canvas");
+    }
+}
+
+
+contentDiv.ts
+
+        { //foobot
+            "pattern": /(\[foobot\])/,
+            "nodeConstructorFromMatch": (parent: Container, str: string) => {
+                return [new fooBotCanvas(parent)];
+            },
+        },
+
+
+commentLogic.ts
+
+68: 
+|| d instanceof fooBotCanvas
+
+113: 
+|| v instanceof fooBotCanvas
+
+61:
+
+                let foobotMatches = c.match(/foobot/);
+                else if (foobotMatches) { 
+                    //keep function name in lowercase
+                    this.footbotsWithCommentLetters[commentLetter] = valueFields[i];
+                    commentsWithLetters[commentLetter] = c; //include a comment since it links to a valuefield
+                    if (!(valueFields[i]  instanceof fooBotCanvas)) { throw "foobot canvas not found"}; 
+                }
+
+                74:
+
+                this.engine = new ExpressionEngine(commentsWithLetters,
+                    this.jsFunctionNamesWithCommentLetters,
+                    variableNamesWithCommentLetters,
+                    this.footbotsWithCommentLetters[commentLetter]);
+
+                    266: 
+            if (ret[key] == undefined) ret[key] = '""';
+
+277: 
+    
+            //user info errors are copied into outputs so no criticals will be caught
+            if (e instanceof ExpressionError ) {
+                if (e.isCritical) {
+                    this.questionLogic.questionDiv.contentDiv.destroyAllChildren();
+                    this.questionLogic.questionDiv.contentDiv.appendChildString(`There is an error in this question's comment cell which is preventing it from calculating the solutions.\n Error detail: ${e.message}`);
+                    this.questionLogic.questionDiv.contentDiv.addClass("red");
+                }
+                return null;
+            }
+            else { throw(e)}
+
+306 312 and 318: 
+
+                outputs = null;
+
+
+expression.ts
+48: 
+
+                            buffer += JSON.stringify(val);
+
+198:
+
+        //throw new ExpressionError("unable to parse JSON: " + str, true, false);
+830:
+
+        //CALL FOOBOT FUNCTION 
+        if (this.functionName == "foobot") {
+            let commentLetter = evaluatedParameters[0]; //first parameter is comment letter
+            //second parameter is level map
+            //third parameter is code
+            if (!injector.footbotsWithCommentLetters[commentLetter]) throw new ExpressionError("foobot with letter " + commentLetter + " not found",false,true);
+            if (!evaluatedParameters[1]) throw new ExpressionError("foobot map argument #2 not defined",false,true);
+            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run( evaluatedParameters[1], evaluatedParameters[2]);
+            return JSON.stringify(returnedLevelMap);
+        }
+
+
+
+expressionEngine.ts
+
+41:  ALSO ADD TO CONSTRUCTOR SIGNATURE
+        this.footbotsWithCommentLetters= footbotsWithCommentLetters;
+
+        97: 
+
+                catch (e) {
+                    if (e instanceof ExpressionError) {
+                        //log user errors
+                        if (!e.isCritical) { outputs[key] = e; }
+                        //re-throw critical errors up to commentLogic
+                        else { throw(e) }
+                    }
+                    else { throw(e) }
+                }
+
+acorn.js
+
+1: function newInterpreter(a,b) { return new Interpreter(a,b); }

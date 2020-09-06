@@ -25,17 +25,27 @@ class Connection {
             "action": "checkRequest", 
             "workbookSheetString" : this.workbookSheetString,
             "user" : this.user,
-            "startTime": Number(Settings.instance.startTime)
+            "startTimeAsNumber": Number(Settings.instance.startTime)
         };
         this.sendRequestAndRetry(this.url, object, onSuccess, onRetry)
     }
 
-    writeToSheet(scores, onSuccess, onRetry) {
+    pageRequest(onSuccess) {
+        var object = {
+            "action": "pageRequest", 
+            "workbookSheetString" : this.workbookSheetString,
+            "user" : this.user,
+            "startTimeAsNumber": Number(Settings.instance.startTime)
+        };
+        this.sendRequestAndFail(this.url, object, onSuccess, () => {})
+    }
+
+    writeToSheet(onSuccess, onRetry, scores) {
         var object = {
             "action" : "writeToSheet",
             "workbookSheetString" : this.workbookSheetString,
             "user" : this.user,
-            "startTime": Number(Settings.instance.startTime),
+            "startTimeAsNumber": Number(Settings.instance.startTime),
             "scores" : JSON.stringify(scores)
             };
         this.sendRequestAndRetry(this.url, object, onSuccess, onRetry)
@@ -96,7 +106,7 @@ class Connection {
             var onSuccess = onSuccess;
             return (data) => {
                 onSuccess(data);
-                document.body.removeChild(scriptElement);
+                scriptElement.remove();
             };
         }(scriptElement, onSuccess);
         scriptElement.src = url + queryString + "prefix=callback";

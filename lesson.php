@@ -20,7 +20,7 @@ if ($USER == "") {
 	<script async src="js/assignment<?php echo $DOTMIN ?>.js"></script>
 
 </head>
-<body>
+<body onload="doStuff()">
 
 <div id="topbit"> 
 <div class="widthLimit">
@@ -29,12 +29,7 @@ if ($USER == "") {
 </div>
 
 <p><a href="course.php?<?php echo $QUERY_STRING ?>" target="_blank">Go to Course page</a></p>
-
 </div>
-
-
-
-<body onload="doStuff()">
 
 <div id="assignment"></div>
 
@@ -67,7 +62,7 @@ let onSuccess = function(data) {
 		return;
 	}
 
-	console.log(data);
+	//console.log(data);
 	var settings = new Settings(data,1); //default to student
 	window.assignment = new Assignment(document.getElementById("assignment"),settings);
 };
