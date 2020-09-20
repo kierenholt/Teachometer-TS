@@ -1,6 +1,7 @@
 <html>
 <head> 
 	<meta charset="UTF-8"> 
+	<!---<base id="base" href="https://teachometer.co.uk/user/" /> --->
     <script src="js/phaser.js"></script>
 	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
 		
@@ -228,7 +229,7 @@
 				"title":"foobot",
 				"leftRight": ["code ________________________","[foobot]"],
 				"purpose": "template",
-				"comment": "variable(\"A\")\nfoobot(\"b\",\"r__\",A)"
+				"comment": "variable(\"A\")\nfoobot(\"b\",\"r_,b_,_:_,_,_\",A)==\"_,_,_:_,_,_\""
 			}
 		]
 
@@ -238,7 +239,7 @@
 			pageMode: false,	
 			endTime: null,
 			initialChecksRemaining: -1,
-			questionJSON: JSON.stringify(foobotData),
+			questionJSON: JSON.stringify(foobotData.concat(templateQuestionData)),
 
 			removeHyperlinks: false,
 			responses: null,

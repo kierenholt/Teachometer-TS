@@ -10,17 +10,11 @@
 
 <body>
 
-    <canvas id="foobot" style="
-    margin: 100px;"></canvas>
+    <div id="foobot" style="margin: 100px;"></div>
 
 <script>
-    var game = new fooBotGame(document.getElementById("foobot"));
+    var game = new fooBotGame("_,b_,__,_\nb_,r_,b_,_\n_,b2,_,_\n_,b_,_,_","foobot");
 
-setTimeout( function(game) {
-    var game= game
-    return ()=> {game.startInterpreter("moveDown()")};
-    }(game)
-        ,1000);
 
 </script>
 

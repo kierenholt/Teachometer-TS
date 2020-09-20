@@ -849,7 +849,7 @@ class CommentLogic {
                 else {
                     commentsWithLetters[commentLetter] = c;
                 }
-                this.engine = new ExpressionEngine(commentsWithLetters, this.jsFunctionNamesWithCommentLetters, variableNamesWithCommentLetters, this.footbotsWithCommentLetters);
+                this.engine = new ExpressionEngine(commentsWithLetters, this.jsFunctionNamesWithCommentLetters, variableNamesWithCommentLetters, this.footbotsWithCommentLetters, this);
             }
         }
         if (purpose == "sudoku") {
@@ -946,9 +946,9 @@ class CommentLogic {
     fieldHasChanged(letter) {
         return this.pastInputValuesWithLetters[letter] != this.getInputValues()[letter];
     }
-    onResponseFieldClickAway() {
+    onResponseFieldClickAway(fooBotComplete) {
         let inputValues = this.getInputValues();
-        let outputValues = this.calculate(inputValues);
+        let outputValues = this.calculate(inputValues, fooBotComplete);
         if (outputValues) {
             this.updateDollars(outputValues);
             this.sendToScoreLogics(inputValues, outputValues);
@@ -1005,10 +1005,10 @@ class CommentLogic {
         }
         return ret;
     }
-    calculate(inputValues) {
+    calculate(inputValues, fooBotComplete) {
         let outputs = null;
         try {
-            outputs = this.engine.calculate(inputValues, this.seed);
+            outputs = this.engine.calculate(inputValues, this.seed, fooBotComplete);
         }
         catch (e) {
             if (e instanceof ExpressionError) {
@@ -2256,13 +2256,20 @@ class FunctionExpression extends IExpression {
         }
         if (this.functionName == "foobot") {
             let commentLetter = evaluatedParameters[0];
-            if (!injector.footbotsWithCommentLetters[commentLetter])
+            if (!injector.foobotsWithCommentLetters[commentLetter])
                 throw new ExpressionError("foobot with letter " + commentLetter + " not found", false, true);
             if (!evaluatedParameters[1])
                 throw new ExpressionError("foobot map argument #2 not defined", false, true);
-            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run(evaluatedParameters[1], evaluatedParameters[2]);
-            throw new ExpressionError("running game...", true, false);
-            return JSON.stringify(returnedLevelMap);
+            if (!injector.fooBotComplete) {
+                injector.foobotsWithCommentLetters[commentLetter].run(evaluatedParameters[1], evaluatedParameters[2], function (injector) {
+                    var injector = injector;
+                    return () => injector.commentLogic.onResponseFieldClickAway(true);
+                }(injector));
+                throw new ExpressionError("running game...", true, false);
+            }
+            else {
+                return JSON.stringify(injector.foobotsWithCommentLetters[commentLetter].getCurrentMap());
+            }
         }
         if (typeof (Math[this.functionName]) == "function") {
             let ret = Math[this.functionName](evaluatedParameters[0], evaluatedParameters[1], evaluatedParameters[2]);
@@ -2280,19 +2287,20 @@ class SimpleEngine {
             this.correctAnswers[helpers.lowerCaseLetterFromIndex(i)] = split[i];
         }
     }
-    calculate(inputs, seed) {
+    calculate(inputs, seed, fooBotComplete) {
         return this.correctAnswers;
     }
 }
 class ExpressionEngine {
-    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters, footbotsWithCommentLetters) {
+    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters, footbotsWithCommentLetters, commentLogic) {
         this.overflowCounter = 0;
         this.OVERFLOW_LIMIT = 1000;
         this.allVariablesAndFunctions = {};
         this.numVariables = 0;
         this.jsFunctionsWithLetters = jsFunctionsWithLetters;
         this.variableNamesWithLetters = variableNamesWithLetters;
-        this.footbotsWithCommentLetters = footbotsWithCommentLetters;
+        this.foobotsWithCommentLetters = footbotsWithCommentLetters;
+        this.commentLogic = commentLogic;
         for (let key in commentsWithLetters) {
             this.allVariablesAndFunctions[key] = toExpressionTree(commentsWithLetters[key], 0);
             this.numVariables++;
@@ -2303,7 +2311,7 @@ class ExpressionEngine {
             throw new ExpressionError("contains an infinite loop", true, true);
         }
     }
-    calculate(inputs, seed) {
+    calculate(inputs, seed, fooBotComplete) {
         this.random = new Random(seed);
         this.indexForListEvaluation = this.random.next();
         this.overflowCounter = 0;
@@ -2312,6 +2320,7 @@ class ExpressionEngine {
                 this.allVariablesAndFunctions[letter]._value = undefined;
             }
         }
+        this.fooBotComplete = fooBotComplete ? true : false;
         let outputs = {};
         for (let letter in this.jsFunctionsWithLetters) {
             if (inputs[letter] && inputs[letter].length > 0) {
@@ -2424,26 +2433,250 @@ class ExpressionEngine {
         return colsToShow;
     }
 }
-class Robot extends Phaser.GameObjects.Sprite {
+class Robot extends Phaser.GameObjects.Container {
     constructor(scene, x, y) {
-        super(scene, x, y, "robot");
+        super(scene, x, y, []);
+        this.lookingIndex = 0;
+        this.isScoopDown = true;
         scene.add.existing(this);
+        this.body = new Phaser.GameObjects.Sprite(scene, 0, 0, "body", "RightLowered");
+        this.add(this.body);
         this.setDepth(10);
     }
-    moveDown() {
+    ahead(onComplete) {
+        if (this.isLookingOutOfBounds) {
+            if (onComplete)
+                onComplete();
+            return;
+        }
         this.scene.tweens.add({
             targets: this,
-            y: this.y + 50,
-            duration: 1000,
-            ease: 'Linear',
-            repeat: 0,
-            yoyo: false,
-            paused: false,
-            onStart: () => { this.scene.busy = true; },
-            onComplete: () => { this.scene.busy = false; },
+            x: this.x + Robot.lookingX[this.lookingIndex] * TILE_SIZE,
+            y: this.y + Robot.lookingY[this.lookingIndex] * TILE_SIZE,
+            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
         });
     }
+    back(onComplete) {
+        if (this.isLookingOutOfBounds) {
+            if (onComplete)
+                onComplete();
+            return;
+        }
+        this.scene.tweens.add({
+            targets: this,
+            x: this.x - Robot.lookingX[this.lookingIndex] * TILE_SIZE,
+            y: this.y - Robot.lookingY[this.lookingIndex] * TILE_SIZE,
+            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
+        });
+    }
+    right(onComplete) {
+        this.lookingIndex = (this.lookingIndex + 1) % 4;
+        this.refreshFrame();
+        setTimeout(onComplete, Robot.duration / 2);
+    }
+    left(onComplete) {
+        this.lookingIndex = (this.lookingIndex + 3) % 4;
+        this.refreshFrame();
+        setTimeout(onComplete, Robot.duration / 2);
+    }
+    peek(onComplete) {
+        let fruit = this.getLookingFruit();
+        setTimeout(onComplete, Robot.duration / 2);
+        if (fruit)
+            return this.scene.getFruitCode(fruit);
+        return null;
+    }
+    raise(onComplete) {
+        if (!this.isScoopDown) {
+            if (onComplete)
+                onComplete();
+            return;
+        }
+        let moveTowardsTween = this.scene.tweens.create({
+            targets: this,
+            x: { from: this.x, to: this.x + (this.isSideView ? Robot.lookingX[this.lookingIndex] * Robot.raiseAndLowerDistance : 0) },
+            y: { from: this.y, to: this.y + (this.isSideView ? 0 : Robot.lookingY[this.lookingIndex] * Robot.raiseAndLowerDistance) },
+            duration: Robot.duration / 2, ease: Robot.ease, repeat: 0, yoyo: false, paused: false
+        });
+        let liftScoopInjector = function (paramOnCompleteTween, robot, fruit) {
+            var paramOnCompleteTween = paramOnCompleteTween;
+            var robot = robot;
+            return () => {
+                robot.isScoopDown = false;
+                robot.refreshFrame();
+                if (fruit) {
+                    robot.add(fruit);
+                    robot.scene.food.remove(fruit);
+                    fruit.setPosition(0, -Robot.carryingHeight);
+                }
+                if (paramOnCompleteTween)
+                    paramOnCompleteTween.play();
+            };
+        };
+        let moveAwayTween = this.scene.tweens.create({
+            targets: this,
+            x: { to: this.x, from: this.x + (this.isSideView ? Robot.lookingX[this.lookingIndex] * Robot.raiseAndLowerDistance : 0) },
+            y: { to: this.y, from: this.y + (this.isSideView ? 0 : Robot.lookingY[this.lookingIndex] * Robot.raiseAndLowerDistance) },
+            duration: Robot.duration / 2, ease: Robot.ease, repeat: 0, yoyo: false, paused: false
+        });
+        let fruit = this.getLookingFruit();
+        this.carryingFruit = fruit;
+        if (onComplete)
+            moveAwayTween.on("complete", onComplete);
+        moveTowardsTween.on("complete", liftScoopInjector(moveAwayTween, this, fruit));
+        moveTowardsTween.play();
+    }
+    lower(onComplete) {
+        if (this.isScoopDown) {
+            if (onComplete)
+                onComplete();
+            return;
+        }
+        let moveTowardsTween = this.scene.tweens.create({
+            targets: this,
+            x: { from: this.x, to: this.x + (this.isSideView ? Robot.lookingX[this.lookingIndex] * Robot.raiseAndLowerDistance : 0) },
+            y: { from: this.y, to: this.y + (this.isSideView ? 0 : Robot.lookingY[this.lookingIndex] * Robot.raiseAndLowerDistance) },
+            duration: Robot.duration / 2, ease: Robot.ease, repeat: 0, yoyo: false, paused: false
+        });
+        let liftScoopInjector = function (paramOnCompleteTween, robot, fruit) {
+            var paramOnCompleteTween = paramOnCompleteTween;
+            var robot = robot;
+            return () => {
+                robot.isScoopDown = true;
+                robot.refreshFrame();
+                if (fruit) {
+                    let endFruitX = Robot.lookingX[robot.lookingIndex] * (TILE_SIZE - Robot.raiseAndLowerDistance);
+                    let endFruitY = Robot.lookingY[robot.lookingIndex] * (TILE_SIZE - Robot.raiseAndLowerDistance);
+                    robot.remove(fruit);
+                    fruit.setPosition(robot.x + endFruitX, robot.y + endFruitY);
+                    robot.scene.add.existing(fruit);
+                    robot.scene.food.add(fruit);
+                }
+                if (paramOnCompleteTween)
+                    paramOnCompleteTween.play();
+            };
+        };
+        let moveAwayTween = this.scene.tweens.create({
+            targets: this,
+            x: { to: this.x, from: this.x + (this.isSideView ? Robot.lookingX[this.lookingIndex] * Robot.raiseAndLowerDistance : 0) },
+            y: { to: this.y, from: this.y + (this.isSideView ? 0 : Robot.lookingY[this.lookingIndex] * Robot.raiseAndLowerDistance) },
+            duration: Robot.duration / 2, ease: Robot.ease, repeat: 0, yoyo: false, paused: false
+        });
+        let fruit = this.carryingFruit;
+        this.carryingFruit = null;
+        if (onComplete)
+            moveAwayTween.on("complete", onComplete);
+        moveTowardsTween.on("complete", liftScoopInjector(moveAwayTween, this, fruit));
+        moveTowardsTween.play();
+    }
+    get mapCoords() { return this.scene.getMapCoords(this.x, this.y); }
+    ;
+    get lookingMapCoords() {
+        let [i, j] = this.mapCoords;
+        return [i + Robot.lookingX[this.lookingIndex], j + Robot.lookingY[this.lookingIndex]];
+    }
+    get lookingPosition() {
+        return [this.x + Robot.lookingX[this.lookingIndex] * TILE_SIZE, this.y + Robot.lookingY[this.lookingIndex] * TILE_SIZE];
+    }
+    get isLookingRight() { return this.lookingIndex == 0; }
+    get isSideView() { return this.lookingIndex == 0 || this.lookingIndex == 2; }
+    get isLookingDown() { return this.lookingIndex == 1; }
+    get isLookingOutOfBounds() {
+        let [i, j] = this.lookingMapCoords;
+        return i < 0 || i > this.scene.maxI || j < 0 || j > this.scene.maxJ;
+    }
+    getLookingFruit() {
+        let lookingCoords = this.lookingPosition;
+        for (let fruit of this.scene.food.getChildren()) {
+            if (fruit.x == lookingCoords[0] && fruit.y == lookingCoords[1]) {
+                return (fruit);
+            }
+        }
+        ;
+    }
+    refreshFrame() {
+        this.body.setFrame(Robot.lookingBodyFrames[this.isScoopDown ? 1 : 0][this.lookingIndex]);
+    }
+    runCode(myCode, onComplete) {
+        var robot = this;
+        var initFunc = (interpreter, globalObject) => {
+            var aheadWrapper = function () {
+                robot.moving = true;
+                robot.ahead(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'ahead', interpreter.createNativeFunction(aheadWrapper));
+            var backWrapper = function () {
+                robot.moving = true;
+                robot.back(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'back', interpreter.createNativeFunction(backWrapper));
+            var leftWrapper = function () {
+                robot.moving = true;
+                robot.left(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
+            var rightWrapper = function () {
+                robot.moving = true;
+                robot.right(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'right', interpreter.createNativeFunction(rightWrapper));
+            var leftWrapper = function () {
+                robot.moving = true;
+                robot.left(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
+            var raiseWrapper = function () {
+                robot.moving = true;
+                robot.raise(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'raise', interpreter.createNativeFunction(raiseWrapper));
+            var lowerWrapper = function () {
+                robot.moving = true;
+                robot.lower(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'lower', interpreter.createNativeFunction(lowerWrapper));
+            var peekWrapper = function () {
+                robot.moving = true;
+                return robot.peek(() => { robot.moving = false; robot.nextStep(); });
+            };
+            interpreter.setProperty(globalObject, 'peek', interpreter.createNativeFunction(peekWrapper));
+            var logWrapper = function (str) {
+                console.log(str);
+            };
+            interpreter.setProperty(globalObject, 'log', interpreter.createNativeFunction(logWrapper));
+        };
+        this.myInterpreter = newInterpreter(myCode, initFunc);
+        this.nextStep();
+        this.onComplete = onComplete;
+    }
+    nextStep() {
+        while (!this.moving && this.myInterpreter.step()) {
+        }
+        ;
+        if (!this.moving && this.onComplete) {
+            this.onComplete();
+        }
+    }
 }
+Robot.ease = 'Cubic.easeInOut';
+Robot.duration = 1000;
+Robot.lookingX = [1, 0, -1, 0];
+Robot.lookingY = [0, 1, 0, -1];
+Robot.lookingBodyFrames = [["RightRaised", "DownRaised", "LeftRaised", "UpRaised"],
+    ["RightLowered", "DownLowered", "LeftLowered", "UpLowered"]];
+Robot.raiseAndLowerDistance = 32;
+Robot.carryingHeight = 32;
+const MAP_ROW_DELIMITER = ":";
+const MAP_COL_DELIMITER = ",";
+const TILE_SIZE = 64;
+const TILE_OFFSET = 64;
+const FOOD_SCALE = 0.75;
+const floorMapTextureCodes = {
+    "_": ["sprite1", "sprite2", "sprite3", "sprite4"]
+};
+const foodMapTextureCodes = {
+    "b": "banana"
+};
 class Scene1 extends Phaser.Scene {
     constructor(levelMap) {
         super({
@@ -2460,28 +2693,86 @@ class Scene1 extends Phaser.Scene {
         this.levelMap = levelMap;
     }
     preload() {
-        this.load.image("robot", "images/robot.png");
-        this.load.image("floor", "images/floor.png");
+        if (document.getElementById("base"))
+            this.load.setBaseURL(document.getElementById("base").href);
+        this.load.image("bg", "images/BG.png");
+        this.load.atlas("body", "images/foobotSpriteSheet.png", "images/foobotSpriteSheet.json");
+        this.load.atlas("food", "images/foodSpriteSheet64.png", "images/foodSpriteSheet64.json");
+        this.load.atlas("floor", "images/floorSpriteSheet.png", "images/floorSpriteSheet.json");
     }
     create() {
         this.player = new Robot(this, 100, 100);
         this.floors = this.physics.add.staticGroup();
-        this.setLevel();
+        this.food = this.physics.add.group();
+        this.add.image(352, 352, "bg").setDepth(-200);
+        this.resetMap();
     }
-    setLevel() {
+    resetMap() {
         this.floors.clear(true, true);
-        let map = this.levelMap.split("\n");
+        this.food.clear(true, true);
+        let map = this.levelMap.split(MAP_ROW_DELIMITER).map(s => s.split(MAP_COL_DELIMITER));
         for (let j = 0; j < map.length; j++) {
-            let y = 32 + j * 64;
+            let y = TILE_OFFSET + TILE_SIZE / 2 + j * TILE_SIZE;
             for (let i = 0; i < map[j].length; i++) {
-                let x = 32 + 64 * i;
-                this.floors.create(x, y, 'floor');
-                if (map[j][i] == "r") {
-                    this.player.x = x;
-                    this.player.y = y;
+                let x = TILE_OFFSET + TILE_SIZE / 2 + TILE_SIZE * i;
+                let letters = map[j][i];
+                for (let letter of letters) {
+                    if (letter in floorMapTextureCodes) {
+                        this.floors.create(x, y, 'floor', helpers.getRandomItem(floorMapTextureCodes[letter]));
+                    }
+                    if (letter in foodMapTextureCodes) {
+                        let newFood = this.food.create(x, y, 'food', foodMapTextureCodes[letter]);
+                        newFood.setScale(FOOD_SCALE);
+                    }
+                    if (letter == "r") {
+                        this.player.x = x;
+                        this.player.y = y;
+                    }
                 }
             }
         }
+        this.game.scale.resize(this.maxX, this.maxY);
+        console.log(this.food.getLength());
+        this.floors.setDepth(-100);
+        this.player.lookingIndex = 0;
+        if (this.player.carryingFruit)
+            this.player.carryingFruit.destroy();
+        this.player.isScoopDown = true;
+        this.player.refreshFrame();
+    }
+    get maxX() { return Math.max(...this.floors.children.entries.map(e => e.x + TILE_SIZE / 2)); }
+    get maxY() { return Math.max(...this.floors.children.entries.map(e => e.y + TILE_SIZE / 2)); }
+    get maxI() { return Math.round((this.maxX - TILE_OFFSET) / TILE_SIZE) - 1; }
+    ;
+    get maxJ() { return Math.round((this.maxY - TILE_OFFSET) / TILE_SIZE) - 1; }
+    ;
+    getMap() {
+        let rows = Array(this.maxJ + 1).fill(1).map(e => Array(this.maxI + 1).fill(""));
+        this.floors.getChildren().forEach(element => {
+            let [i, j] = this.getMapCoords(element.x, element.y);
+            let texture = element.frame.name;
+            for (let key in floorMapTextureCodes) {
+                if (floorMapTextureCodes[key].indexOf(texture) > -1) {
+                    rows[j][i] += key;
+                }
+            }
+        });
+        this.food.getChildren().forEach(fruit => {
+            if (fruit != this.player.getLookingFruit()) {
+                let [i, j] = this.getMapCoords(fruit.x, fruit.y);
+                rows[j][i] += this.getFruitCode(fruit);
+            }
+        });
+        return rows.map(row => row.join(MAP_COL_DELIMITER)).join(MAP_ROW_DELIMITER);
+    }
+    getFruitCode(fruit) {
+        let texture = fruit.frame.name;
+        return helpers.getKeyFromValue(foodMapTextureCodes, texture);
+    }
+    getMapCoords(x, y) {
+        let i = Math.floor((x - TILE_OFFSET) / TILE_SIZE);
+        let j = Math.floor((y - TILE_OFFSET) / TILE_SIZE);
+        return [i, j];
     }
 }
 class fooBotGame extends Phaser.Game {
@@ -2502,28 +2793,12 @@ class fooBotGame extends Phaser.Game {
         super(config);
         this.myScene = scene;
     }
-    run(myCode) {
-        this.myScene.setLevel();
-        var robot = this.myScene.player;
-        var initFunc = (interpreter, globalObject) => {
-            var wrapper = function () {
-                return robot.moveDown();
-            };
-            interpreter.setProperty(globalObject, 'moveDown', interpreter.createNativeFunction(wrapper));
-        };
-        var myInterpreter = newInterpreter(myCode, initFunc);
-        var i = 100000;
-        try {
-            while (i-- && myInterpreter.step()) {
-            }
-        }
-        catch (e) {
-            throw new ExpressionError("Error:code did not execute completely\n Detail:  " + e.message, true, false);
-        }
-        if (i == -1) {
-            throw new ExpressionError("Error: Code contains an infinite loop", true, false);
-        }
-        return "a";
+    getCurrentMap() {
+        return this.myScene.getMap();
+    }
+    run(myCode, onComplete) {
+        this.myScene.resetMap();
+        this.myScene.player.runCode(myCode, onComplete);
     }
 }
 class fooBotCanvas extends Container {
@@ -2535,7 +2810,7 @@ class fooBotCanvas extends Container {
         this.errorText = new Span(this, "");
         this.appendChildren([this.canvasDiv, this.icon, this.errorText]);
     }
-    run(levelMap, code) {
+    run(levelMap, code, onComplete) {
         if (this.gameNotYetInitialised) {
             setTimeout(function (container, levelMap) {
                 var container = container;
@@ -2548,9 +2823,10 @@ class fooBotCanvas extends Container {
         else {
             if (!this.game)
                 return undefined;
-            return this.game.run(code);
+            return this.game.run(code, onComplete);
         }
     }
+    getCurrentMap() { return this.game.getCurrentMap(); }
     setDecisionImage(value) { this.icon.setIconName(value); }
     setValue(value) { }
     getValue() { return ""; }
@@ -2697,6 +2973,10 @@ var helpersMaker = function () {
         let index = arr.indexOf(after);
         return index == -1 ? undefined : arr[index + 1];
     };
+    var getRandomItem = function (arr) {
+        let index = Math.floor(Math.random() * arr.length);
+        return arr[index];
+    };
     var removeFromArray = function (array, item) {
         for (let i = array.length; i >= 0; i--) {
             if (array[i] == item) {
@@ -2711,6 +2991,12 @@ var helpersMaker = function () {
             ret++;
         }
         return ret;
+    };
+    var getKeyFromValue = function (obj, value) {
+        for (let key in obj) {
+            if (obj[key] == value)
+                return key;
+        }
     };
     var getValuesFromObject = function (obj) {
         let ret = [];
@@ -2753,6 +3039,7 @@ var helpersMaker = function () {
         insertBefore: insertBefore,
         getItemImmediatelyBefore: getItemImmediatelyBefore,
         getItemImmediatelyAfter: getItemImmediatelyAfter,
+        getRandomItem: getRandomItem,
         removeFromArray: removeFromArray,
         removeCrazySigFigs: removeCrazySigFigs,
         lowerCaseLetterFromIndex: lowerCaseLetterFromIndex,
@@ -2760,6 +3047,7 @@ var helpersMaker = function () {
         lengthOfObject: lengthOfObject,
         getValuesFromObject: getValuesFromObject,
         getKeysFromObject: getKeysFromObject,
+        getKeyFromValue: getKeyFromValue,
         mergeObjects: mergeObjects
     };
 };

@@ -1,6 +1,6 @@
 
 interface IEngine {
-    calculate(inputs: any, seed: number): any;
+    calculate(inputs: any, seed: number, fooBotComplete?: boolean): any;
 }
 
 
@@ -16,7 +16,7 @@ class SimpleEngine {
         }
     }
 
-    calculate(inputs, seed) { //outputs can be hourglass? undefined? if inputs are undefined?
+    calculate(inputs, seed, fooBotComplete?: boolean) { //outputs can be hourglass? undefined? if inputs are undefined?
         //comment variables are "a" "b" etc.
         return this.correctAnswers;
     }
@@ -31,14 +31,21 @@ class ExpressionEngine implements IEngine {
     random: Random;
     jsFunctionsWithLetters: any;
     variableNamesWithLetters: any;
-    footbotsWithCommentLetters: any;
+    foobotsWithCommentLetters: any;
     numVariables = 0;
+    commentLogic: CommentLogic;
+    fooBotComplete: boolean;
 
-    constructor(commentsWithLetters, jsFunctionsWithLetters, variableNamesWithLetters, footbotsWithCommentLetters) {
+    constructor(commentsWithLetters, 
+        jsFunctionsWithLetters, 
+        variableNamesWithLetters, 
+        footbotsWithCommentLetters,
+        commentLogic) {
         //expression tree
         this.jsFunctionsWithLetters = jsFunctionsWithLetters;
         this.variableNamesWithLetters = variableNamesWithLetters;
-        this.footbotsWithCommentLetters= footbotsWithCommentLetters;
+        this.foobotsWithCommentLetters= footbotsWithCommentLetters;
+        this.commentLogic = commentLogic;
         for (let key in commentsWithLetters) {
             this.allVariablesAndFunctions[key] = toExpressionTree(commentsWithLetters[key],0);
             this.numVariables++;
@@ -51,7 +58,7 @@ class ExpressionEngine implements IEngine {
         }
     }
 
-    calculate(inputs, seed: number) {
+    calculate(inputs, seed: number, fooBotComplete?: boolean) {
         //reset everything
         this.random =  new Random(seed);
         this.indexForListEvaluation = this.random.next();
@@ -61,6 +68,7 @@ class ExpressionEngine implements IEngine {
                 this.allVariablesAndFunctions[letter]._value = undefined;
             }
         }
+        this.fooBotComplete = fooBotComplete ? true : false;
 
         let outputs = {};
         //prepare jsfunctions

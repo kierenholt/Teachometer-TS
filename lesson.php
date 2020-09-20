@@ -14,10 +14,11 @@ if ($USER == "") {
 <html>
 <head> 
 	<meta charset="UTF-8"> 
+    <script src="js/phaser.js"></script>
 	<link id="style" rel="stylesheet" type="text/css" href="css/assignment.css">
 	<link id="style" rel="stylesheet" type="text/css" href="css/header.css">
-	<script async src="js/acorn_interpreter.js"></script>
 	<script async src="js/assignment<?php echo $DOTMIN ?>.js"></script>
+	<script async src="js/acorn_interpreter.js"></script>
 
 </head>
 <body onload="doStuff()">

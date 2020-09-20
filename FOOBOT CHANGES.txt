@@ -45,6 +45,10 @@ commentLogic.ts
                     266: 
             if (ret[key] == undefined) ret[key] = '""';
 
+205: 
+
+    onResponseFieldClickAway(fooBotComplete?: boolean) {
+
 277: 
     
             //user info errors are copied into outputs so no criticals will be caught
@@ -80,13 +84,29 @@ expression.ts
             //third parameter is code
             if (!injector.footbotsWithCommentLetters[commentLetter]) throw new ExpressionError("foobot with letter " + commentLetter + " not found",false,true);
             if (!evaluatedParameters[1]) throw new ExpressionError("foobot map argument #2 not defined",false,true);
-            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run( evaluatedParameters[1], evaluatedParameters[2]);
-            return JSON.stringify(returnedLevelMap);
+
+            if (!injector.fooBotComplete) {
+                injector.footbotsWithCommentLetters[commentLetter].run( 
+                    evaluatedParameters[1], 
+                    evaluatedParameters[2],
+                    function(injector) { 
+                        var injector = injector;
+                        return () => injector.commentLogic.onResponseFieldClickAway(true) 
+                    }(injector)
+                    );
+                    throw new ExpressionError("running game...",true,false);
+                }
+            else { //completed foobot - do not throw error, do evaluation
+                return JSON.stringify(injector.footbotsWithCommentLetters[commentLetter].getCurrentMap());
+            }
+
         }
 
 
-
 expressionEngine.ts
+
+47: 
+        this.commentLogic = commentLogic;
 
 41:  ALSO ADD TO CONSTRUCTOR SIGNATURE
         this.footbotsWithCommentLetters= footbotsWithCommentLetters;
@@ -102,6 +122,9 @@ expressionEngine.ts
                     }
                     else { throw(e) }
                 }
+
+60: 
+    calculate(inputs, seed: number, fooBotComplete?: boolean) {
 
 acorn.js
 

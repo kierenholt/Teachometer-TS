@@ -833,12 +833,24 @@ class FunctionExpression extends IExpression {
             let commentLetter = evaluatedParameters[0]; //first parameter is comment letter
             //second parameter is level map
             //third parameter is code
-            if (!injector.footbotsWithCommentLetters[commentLetter]) throw new ExpressionError("foobot with letter " + commentLetter + " not found",false,true);
+            if (!injector.foobotsWithCommentLetters[commentLetter]) throw new ExpressionError("foobot with letter " + commentLetter + " not found",false,true);
             if (!evaluatedParameters[1]) throw new ExpressionError("foobot map argument #2 not defined",false,true);
-            let returnedLevelMap = injector.footbotsWithCommentLetters[commentLetter].run( evaluatedParameters[1], evaluatedParameters[2]);
-            
-            throw new ExpressionError("running game...",true,false);
-            return JSON.stringify(returnedLevelMap);
+
+            if (!injector.fooBotComplete) {
+                injector.foobotsWithCommentLetters[commentLetter].run( 
+                    evaluatedParameters[1], 
+                    evaluatedParameters[2],
+                    function(injector) { 
+                        var injector = injector;
+                        return () => injector.commentLogic.onResponseFieldClickAway(true) 
+                    }(injector)
+                    );
+                    throw new ExpressionError("running game...",true,false);
+                }
+            else { //completed foobot - do not throw error, do evaluation
+                return JSON.stringify(injector.foobotsWithCommentLetters[commentLetter].getCurrentMap());
+            }
+
         }
 
         //try Math

@@ -155,6 +155,11 @@ var helpersMaker = function() {
       return index == -1 ? undefined : arr[index+1];
     }
 
+    var getRandomItem = function(arr) {
+      let index = Math.floor(Math.random() * arr.length);
+      return arr[index];
+    }
+
     //removes all instances not just the first
     var removeFromArray = function(array, item) {
       for (let i = array.length; i >= 0 ; i--) {
@@ -168,6 +173,10 @@ var helpersMaker = function() {
       let ret = 0;
       for (let key in obj) { ret++ }
       return ret;
+    }
+
+    var getKeyFromValue = function(obj, value) {
+      for (let key in obj) { if (obj[key] == value) return key }
     }
 
     var getValuesFromObject = function(obj: any) {
@@ -211,6 +220,7 @@ var helpersMaker = function() {
         insertBefore: insertBefore,
         getItemImmediatelyBefore: getItemImmediatelyBefore,
         getItemImmediatelyAfter: getItemImmediatelyAfter,
+        getRandomItem: getRandomItem,
         removeFromArray: removeFromArray, 
         removeCrazySigFigs: removeCrazySigFigs, 
         lowerCaseLetterFromIndex: lowerCaseLetterFromIndex,
@@ -218,6 +228,7 @@ var helpersMaker = function() {
         lengthOfObject: lengthOfObject, 
         getValuesFromObject: getValuesFromObject,
         getKeysFromObject: getKeysFromObject,
+        getKeyFromValue: getKeyFromValue,
         mergeObjects: mergeObjects
       };
 

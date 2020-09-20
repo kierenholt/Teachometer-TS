@@ -75,7 +75,8 @@ class CommentLogic {
                 this.engine = new ExpressionEngine(commentsWithLetters,
                     this.jsFunctionNamesWithCommentLetters,
                     variableNamesWithCommentLetters,
-                    this.footbotsWithCommentLetters);
+                    this.footbotsWithCommentLetters, 
+                    this);
                 //do not add scorelogic to variables which map to jsfunctions 
             }
         } 
@@ -201,9 +202,9 @@ class CommentLogic {
         return this.pastInputValuesWithLetters[letter] != this.getInputValues()[letter];
     }
 
-    onResponseFieldClickAway() {
+    onResponseFieldClickAway(fooBotComplete?: boolean) {
         let inputValues = this.getInputValues();
-        let outputValues = this.calculate(inputValues);
+        let outputValues = this.calculate(inputValues, fooBotComplete);
         if (outputValues) {
             this.updateDollars(outputValues);
             this.sendToScoreLogics(inputValues, outputValues); //only updated if values have changed
@@ -268,11 +269,11 @@ class CommentLogic {
         return ret;
     }
     
-    calculate(inputValues: any): any {
+    calculate(inputValues: any, fooBotComplete?: boolean): any {
         //put into calculation engine
         let outputs = null;
         try {
-            outputs = this.engine.calculate(inputValues, this.seed);
+            outputs = this.engine.calculate(inputValues, this.seed, fooBotComplete);
         }
         catch (e) {
             //user info errors are copied into outputs so no criticals will be caught
