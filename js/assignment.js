@@ -776,7 +776,7 @@ class JSFunction {
         }
         else {
             if (this.interpreter.value === undefined) {
-                evaluated = "undefined";
+                evaluated = undefined;
             }
             else {
                 evaluated = JSON.stringify(this.interpreter.value);
@@ -2032,7 +2032,7 @@ class FunctionExpression extends IExpression {
             let ret = Math.abs(evaluatedParameters[0]);
             return JSON.stringify(ret);
         }
-        if (this.functionName == "mean") {
+        if (this.functionName == "mean" || this.functionName == "average") {
             let sum = evaluatedParameters.reduce(function (acc, val) { return acc + val; });
             let ret = sum / evaluatedParameters.length;
             return JSON.stringify(ret);
@@ -2261,11 +2261,17 @@ class FunctionExpression extends IExpression {
             if (!evaluatedParameters[1])
                 throw new ExpressionError("foobot map argument #2 not defined", false, true);
             if (!injector.fooBotComplete) {
-                injector.foobotsWithCommentLetters[commentLetter].run(evaluatedParameters[1], evaluatedParameters[2], function (injector) {
-                    var injector = injector;
-                    return () => injector.commentLogic.onResponseFieldClickAway(true);
-                }(injector));
-                throw new ExpressionError("running game...", true, false);
+                if (!injector.foobotsWithCommentLetters[commentLetter].initialised) {
+                    injector.foobotsWithCommentLetters[commentLetter].initialise(evaluatedParameters[1]);
+                    return "null";
+                }
+                else {
+                    injector.foobotsWithCommentLetters[commentLetter].run(evaluatedParameters[2], function (injector) {
+                        var injector = injector;
+                        return () => injector.commentLogic.onResponseFieldClickAway(true);
+                    }(injector));
+                    throw new ExpressionError("running game...", true, false);
+                }
             }
             else {
                 return JSON.stringify(injector.foobotsWithCommentLetters[commentLetter].getCurrentMap());
@@ -2438,12 +2444,13 @@ class Robot extends Phaser.GameObjects.Container {
         super(scene, x, y, []);
         this.lookingIndex = 0;
         this.isScoopDown = true;
+        this.carryingFruit = null;
         scene.add.existing(this);
         this.body = new Phaser.GameObjects.Sprite(scene, 0, 0, "body", "RightLowered");
         this.add(this.body);
         this.setDepth(10);
     }
-    ahead(onComplete) {
+    ahead(onComplete, repeats) {
         if (this.isLookingOutOfBounds) {
             if (onComplete)
                 onComplete();
@@ -2453,11 +2460,14 @@ class Robot extends Phaser.GameObjects.Container {
             targets: this,
             x: this.x + Robot.lookingX[this.lookingIndex] * TILE_SIZE,
             y: this.y + Robot.lookingY[this.lookingIndex] * TILE_SIZE,
-            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
+            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false,
+            onComplete: repeats > 1 ?
+                this.ahead.bind(this, onComplete, repeats - 1) :
+                onComplete
         });
     }
-    back(onComplete) {
-        if (this.isLookingOutOfBounds) {
+    back(onComplete, repeats) {
+        if (this.isLookingOutOfBoundsBackwards) {
             if (onComplete)
                 onComplete();
             return;
@@ -2466,18 +2476,31 @@ class Robot extends Phaser.GameObjects.Container {
             targets: this,
             x: this.x - Robot.lookingX[this.lookingIndex] * TILE_SIZE,
             y: this.y - Robot.lookingY[this.lookingIndex] * TILE_SIZE,
-            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
+            duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false,
+            onComplete: repeats > 1 ?
+                this.back.bind(this, onComplete, repeats - 1) :
+                onComplete
         });
     }
-    right(onComplete) {
+    right(onComplete, repeats) {
         this.lookingIndex = (this.lookingIndex + 1) % 4;
         this.refreshFrame();
-        setTimeout(onComplete, Robot.duration / 2);
+        if (repeats > 1) {
+            setTimeout(this.right.bind(this, onComplete, repeats - 1), Robot.duration / 2);
+        }
+        else {
+            setTimeout(onComplete, Robot.duration / 2);
+        }
     }
-    left(onComplete) {
+    left(onComplete, repeats) {
         this.lookingIndex = (this.lookingIndex + 3) % 4;
         this.refreshFrame();
-        setTimeout(onComplete, Robot.duration / 2);
+        if (repeats > 1) {
+            setTimeout(this.left.bind(this, onComplete, repeats - 1), Robot.duration / 2);
+        }
+        else {
+            setTimeout(onComplete, Robot.duration / 2);
+        }
     }
     peek(onComplete) {
         let fruit = this.getLookingFruit();
@@ -2575,6 +2598,10 @@ class Robot extends Phaser.GameObjects.Container {
         let [i, j] = this.mapCoords;
         return [i + Robot.lookingX[this.lookingIndex], j + Robot.lookingY[this.lookingIndex]];
     }
+    get lookingMapCoordsBehind() {
+        let [i, j] = this.mapCoords;
+        return [i + Robot.lookingX[(this.lookingIndex + 2) % 4], j + Robot.lookingY[(this.lookingIndex + 2) % 4]];
+    }
     get lookingPosition() {
         return [this.x + Robot.lookingX[this.lookingIndex] * TILE_SIZE, this.y + Robot.lookingY[this.lookingIndex] * TILE_SIZE];
     }
@@ -2583,6 +2610,10 @@ class Robot extends Phaser.GameObjects.Container {
     get isLookingDown() { return this.lookingIndex == 1; }
     get isLookingOutOfBounds() {
         let [i, j] = this.lookingMapCoords;
+        return i < 0 || i > this.scene.maxI || j < 0 || j > this.scene.maxJ;
+    }
+    get isLookingOutOfBoundsBackwards() {
+        let [i, j] = this.lookingMapCoordsBehind;
         return i < 0 || i > this.scene.maxI || j < 0 || j > this.scene.maxJ;
     }
     getLookingFruit() {
@@ -2600,29 +2631,24 @@ class Robot extends Phaser.GameObjects.Container {
     runCode(myCode, onComplete) {
         var robot = this;
         var initFunc = (interpreter, globalObject) => {
-            var aheadWrapper = function () {
+            var aheadWrapper = function (repeats) {
                 robot.moving = true;
-                robot.ahead(() => { robot.moving = false; robot.nextStep(); });
+                robot.ahead(() => { robot.moving = false; robot.nextStep(); }, repeats);
             };
             interpreter.setProperty(globalObject, 'ahead', interpreter.createNativeFunction(aheadWrapper));
-            var backWrapper = function () {
+            var backWrapper = function (repeats) {
                 robot.moving = true;
-                robot.back(() => { robot.moving = false; robot.nextStep(); });
+                robot.back(() => { robot.moving = false; robot.nextStep(); }, repeats);
             };
             interpreter.setProperty(globalObject, 'back', interpreter.createNativeFunction(backWrapper));
-            var leftWrapper = function () {
+            var rightWrapper = function (repeats) {
                 robot.moving = true;
-                robot.left(() => { robot.moving = false; robot.nextStep(); });
-            };
-            interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
-            var rightWrapper = function () {
-                robot.moving = true;
-                robot.right(() => { robot.moving = false; robot.nextStep(); });
+                robot.right(() => { robot.moving = false; robot.nextStep(); }, repeats);
             };
             interpreter.setProperty(globalObject, 'right', interpreter.createNativeFunction(rightWrapper));
-            var leftWrapper = function () {
+            var leftWrapper = function (repeats) {
                 robot.moving = true;
-                robot.left(() => { robot.moving = false; robot.nextStep(); });
+                robot.left(() => { robot.moving = false; robot.nextStep(); }, repeats);
             };
             interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
             var raiseWrapper = function () {
@@ -2646,8 +2672,8 @@ class Robot extends Phaser.GameObjects.Container {
             interpreter.setProperty(globalObject, 'log', interpreter.createNativeFunction(logWrapper));
         };
         this.myInterpreter = newInterpreter(myCode, initFunc);
-        this.nextStep();
         this.onComplete = onComplete;
+        setTimeout(this.nextStep.bind(this), Robot.duration / 2);
     }
     nextStep() {
         while (!this.moving && this.myInterpreter.step()) {
@@ -2675,7 +2701,10 @@ const floorMapTextureCodes = {
     "_": ["sprite1", "sprite2", "sprite3", "sprite4"]
 };
 const foodMapTextureCodes = {
-    "b": "banana"
+    "a": "apple",
+    "b": "banana",
+    "c": "cherry",
+    "d": "dragonBallOrange"
 };
 class Scene1 extends Phaser.Scene {
     constructor(levelMap) {
@@ -2748,6 +2777,12 @@ class Scene1 extends Phaser.Scene {
     ;
     getMap() {
         let rows = Array(this.maxJ + 1).fill(1).map(e => Array(this.maxI + 1).fill(""));
+        this.food.getChildren().forEach(fruit => {
+            if (this.player.carryingFruit == null || fruit != this.player.carryingFruit) {
+                let [i, j] = this.getMapCoords(fruit.x, fruit.y);
+                rows[j][i] += this.getFruitCode(fruit);
+            }
+        });
         this.floors.getChildren().forEach(element => {
             let [i, j] = this.getMapCoords(element.x, element.y);
             let texture = element.frame.name;
@@ -2757,13 +2792,9 @@ class Scene1 extends Phaser.Scene {
                 }
             }
         });
-        this.food.getChildren().forEach(fruit => {
-            if (fruit != this.player.getLookingFruit()) {
-                let [i, j] = this.getMapCoords(fruit.x, fruit.y);
-                rows[j][i] += this.getFruitCode(fruit);
-            }
-        });
-        return rows.map(row => row.join(MAP_COL_DELIMITER)).join(MAP_ROW_DELIMITER);
+        var ret = rows.map(row => row.join(MAP_COL_DELIMITER)).join(MAP_ROW_DELIMITER);
+        console.log(ret);
+        return ret;
     }
     getFruitCode(fruit) {
         let texture = fruit.frame.name;
@@ -2804,27 +2835,24 @@ class fooBotGame extends Phaser.Game {
 class fooBotCanvas extends Container {
     constructor(parent) {
         super(parent, "div");
-        this.gameNotYetInitialised = true;
+        this.initialised = false;
         this.canvasDiv = new Container(this, "div");
         this.icon = new Icon(this, IconName.none);
         this.errorText = new Span(this, "");
         this.appendChildren([this.canvasDiv, this.icon, this.errorText]);
     }
-    run(levelMap, code, onComplete) {
-        if (this.gameNotYetInitialised) {
-            setTimeout(function (container, levelMap) {
-                var container = container;
-                var levelMap = levelMap;
-                return () => { container.game = new fooBotGame(levelMap, container.canvasDiv.UID); };
-            }(this, levelMap), 1000);
-            this.gameNotYetInitialised = false;
+    initialise(levelMap) {
+        this.initialised = true;
+        setTimeout(function (container, levelMap) {
+            var container = container;
+            var levelMap = levelMap;
+            return () => { container.game = new fooBotGame(levelMap, container.canvasDiv.UID); };
+        }(this, levelMap), 1000);
+    }
+    run(code, onComplete) {
+        if (!this.game)
             return undefined;
-        }
-        else {
-            if (!this.game)
-                return undefined;
-            return this.game.run(code, onComplete);
-        }
+        return this.game.run(code, onComplete);
     }
     getCurrentMap() { return this.game.getCurrentMap(); }
     setDecisionImage(value) { this.icon.setIconName(value); }

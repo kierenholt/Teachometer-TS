@@ -574,7 +574,7 @@ class FunctionExpression extends IExpression {
             return JSON.stringify(ret);
         }
 
-        if (this.functionName == "mean") {
+        if (this.functionName == "mean" || this.functionName == "average") {
             let sum = evaluatedParameters.reduce(function(acc, val) { return acc + val; });
             let ret =  sum/evaluatedParameters.length;
             return JSON.stringify(ret);
@@ -837,15 +837,20 @@ class FunctionExpression extends IExpression {
             if (!evaluatedParameters[1]) throw new ExpressionError("foobot map argument #2 not defined",false,true);
 
             if (!injector.fooBotComplete) {
-                injector.foobotsWithCommentLetters[commentLetter].run( 
-                    evaluatedParameters[1], 
-                    evaluatedParameters[2],
-                    function(injector) { 
-                        var injector = injector;
-                        return () => injector.commentLogic.onResponseFieldClickAway(true) 
-                    }(injector)
-                    );
-                    throw new ExpressionError("running game...",true,false);
+                if (!injector.foobotsWithCommentLetters[commentLetter].initialised) { //page has just loaded, do not run the game since code is empty
+                    injector.foobotsWithCommentLetters[commentLetter].initialise( evaluatedParameters[1]);
+                    return "null";
+                }
+                else {
+                    injector.foobotsWithCommentLetters[commentLetter].run( 
+                        evaluatedParameters[2],
+                        function(injector) { 
+                            var injector = injector;
+                            return () => injector.commentLogic.onResponseFieldClickAway(true) 
+                        }(injector)
+                        );
+                        throw new ExpressionError("running game...",true,false);
+                    }
                 }
             else { //completed foobot - do not throw error, do evaluation
                 return JSON.stringify(injector.foobotsWithCommentLetters[commentLetter].getCurrentMap());

@@ -43,7 +43,7 @@ class JSFunction {
             throw new ExpressionError("Error: Code contains an infinite loop",true,false);            
         }
 
-        //array is returned as object
+        //array is returned as JSON string, except undefined 
         var evaluated = undefined;
         if (this.interpreter.value && this.interpreter.value.K == "Array") {
             var t = 0;
@@ -55,7 +55,7 @@ class JSFunction {
             evaluated = JSON.stringify(arr);
         }
         else {
-            if (this.interpreter.value === undefined) { evaluated = "undefined" }
+            if (this.interpreter.value === undefined) { evaluated = undefined }
             else {
                 evaluated = JSON.stringify(this.interpreter.value);
             }

@@ -19,7 +19,7 @@ class Robot extends Phaser.GameObjects.Container {
   
   lookingIndex: number = 0; //0 = right, 1 = down, 2 = left, 3 = up //getter and setter
   isScoopDown: boolean = true;
-  carryingFruit: Phaser.GameObjects.Sprite;
+  carryingFruit: Phaser.GameObjects.Sprite = null;
 
   body: Phaser.GameObjects.Sprite;
   //getter and setter for carrying sprite
@@ -33,7 +33,7 @@ class Robot extends Phaser.GameObjects.Container {
       this.setDepth(10);
     }
 
-    ahead(onComplete) {
+    ahead(onComplete,repeats) {
       if (this.isLookingOutOfBounds) {
         if (onComplete) onComplete();
         return;
@@ -42,13 +42,16 @@ class Robot extends Phaser.GameObjects.Container {
         targets: this,
         x: this.x + Robot.lookingX[this.lookingIndex]* TILE_SIZE,
         y: this.y + Robot.lookingY[this.lookingIndex]* TILE_SIZE,
-        duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
+        duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, 
+        onComplete: repeats > 1 ? 
+            this.ahead.bind(this,onComplete,repeats-1) :
+            onComplete
       });
       //this.rollWheels(this.lookingIndex == 0);
     }
 
-    back(onComplete) {
-      if (this.isLookingOutOfBounds) {
+    back(onComplete,repeats) {
+      if (this.isLookingOutOfBoundsBackwards) {
         if (onComplete) onComplete();
         return;
       }
@@ -56,23 +59,36 @@ class Robot extends Phaser.GameObjects.Container {
         targets: this,
         x: this.x - Robot.lookingX[this.lookingIndex]* TILE_SIZE,
         y: this.y - Robot.lookingY[this.lookingIndex]*TILE_SIZE ,
-        duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, onComplete: onComplete,
+        duration: Robot.duration, ease: Robot.ease, repeat: 0, yoyo: false, paused: false, 
+        onComplete: repeats > 1 ? 
+            this.back.bind(this,onComplete,repeats-1) :
+            onComplete
       });
       //this.rollWheels(this.lookingIndex != 0);
     }
 
-    right(onComplete) {
+    right(onComplete,repeats) {
       //play animation
       this.lookingIndex = (this.lookingIndex+1)%4;
       this.refreshFrame();
-      setTimeout(onComplete,Robot.duration/2);
+      if (repeats > 1) {
+        setTimeout(this.right.bind(this,onComplete,repeats-1),Robot.duration/2);
+      }
+      else {
+        setTimeout(onComplete,Robot.duration/2);
+      }
     }        
 
-    left(onComplete) {
+    left(onComplete,repeats) {
       //play animation
       this.lookingIndex = (this.lookingIndex+3)%4;
       this.refreshFrame();
-      setTimeout(onComplete,Robot.duration/2);
+      if (repeats > 1) {
+        setTimeout(this.left.bind(this,onComplete,repeats-1),Robot.duration/2);
+      }
+      else {
+        setTimeout(onComplete,Robot.duration/2);
+      }
     }
 
     peek(onComplete) {
@@ -155,7 +171,7 @@ class Robot extends Phaser.GameObjects.Container {
             robot.refreshFrame();
 
             if (fruit) { 
-              //pick it up
+              //drop it
               let endFruitX = Robot.lookingX[robot.lookingIndex] * (TILE_SIZE - Robot.raiseAndLowerDistance);
               let endFruitY = Robot.lookingY[robot.lookingIndex] * (TILE_SIZE - Robot.raiseAndLowerDistance);
               robot.remove(fruit);
@@ -189,6 +205,10 @@ class Robot extends Phaser.GameObjects.Container {
       let [i,j] = this.mapCoords;
       return [i + Robot.lookingX[this.lookingIndex], j + Robot.lookingY[this.lookingIndex]];
     }
+    get lookingMapCoordsBehind() {
+      let [i,j] = this.mapCoords;
+      return [i + Robot.lookingX[(this.lookingIndex+2)%4], j + Robot.lookingY[(this.lookingIndex+2)%4]];
+    }
     get lookingPosition() {
       return [this.x + Robot.lookingX[this.lookingIndex]*TILE_SIZE, this.y + Robot.lookingY[this.lookingIndex]*TILE_SIZE];
     }
@@ -197,6 +217,10 @@ class Robot extends Phaser.GameObjects.Container {
     get isLookingDown() { return this.lookingIndex == 1 }
     get isLookingOutOfBounds() {
       let [i,j] = this.lookingMapCoords;
+      return i < 0 || i > this.scene.maxI || j < 0 || j > this.scene.maxJ;
+    }
+    get isLookingOutOfBoundsBackwards() {
+      let [i,j] = this.lookingMapCoordsBehind;
       return i < 0 || i > this.scene.maxI || j < 0 || j > this.scene.maxJ;
     }
 
@@ -217,33 +241,28 @@ class Robot extends Phaser.GameObjects.Container {
     runCode(myCode, onComplete) {
       var robot = this;
       var initFunc =  (interpreter, globalObject) => {
-        var aheadWrapper = function() {
+        
+        var aheadWrapper = function(repeats) {
             robot.moving = true;
-            robot.ahead(() => { robot.moving = false; robot.nextStep();});
+            robot.ahead(() => { robot.moving = false; robot.nextStep();},repeats);
         };
         interpreter.setProperty(globalObject, 'ahead', interpreter.createNativeFunction(aheadWrapper));
 
-        var backWrapper = function() {
+        var backWrapper = function(repeats) {
           robot.moving = true;
-          robot.back(() => { robot.moving = false; robot.nextStep();});
+          robot.back(() => { robot.moving = false; robot.nextStep();},repeats);
         };
         interpreter.setProperty(globalObject, 'back', interpreter.createNativeFunction(backWrapper));
 
-        var leftWrapper = function() {
+        var rightWrapper = function(repeats) {
           robot.moving = true;
-          robot.left(() => { robot.moving = false; robot.nextStep();});
-        };
-        interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
-
-        var rightWrapper = function() {
-          robot.moving = true;
-          robot.right(() => { robot.moving = false; robot.nextStep();});
+          robot.right(() => { robot.moving = false; robot.nextStep();},repeats);
         };
         interpreter.setProperty(globalObject, 'right', interpreter.createNativeFunction(rightWrapper));
 
-        var leftWrapper = function() {
+        var leftWrapper = function(repeats) {
           robot.moving = true;
-          robot.left(() => { robot.moving = false; robot.nextStep();});
+          robot.left(() => { robot.moving = false; robot.nextStep();},repeats);
         };
         interpreter.setProperty(globalObject, 'left', interpreter.createNativeFunction(leftWrapper));
 
@@ -272,8 +291,9 @@ class Robot extends Phaser.GameObjects.Container {
 
     };
       this.myInterpreter = newInterpreter(myCode, initFunc);
-      this.nextStep();
       this.onComplete = onComplete;
+      
+      setTimeout(this.nextStep.bind(this),Robot.duration/2);
     }
 
     nextStep() {
@@ -303,7 +323,10 @@ const floorMapTextureCodes = {
   "_": ["sprite1","sprite2","sprite3","sprite4"]
 }
 const foodMapTextureCodes = {
-  "b": "banana"
+  "a": "apple",
+  "b": "banana",
+  "c": "cherry",
+  "d": "dragonBallOrange"
 }
 
 class Scene1 extends Phaser.Scene {
@@ -399,6 +422,13 @@ class Scene1 extends Phaser.Scene {
 
   getMap() {
     let rows = Array(this.maxJ+1).fill(1).map(e => Array(this.maxI+1).fill(""));
+    //food
+    (this.food.getChildren() as Phaser.GameObjects.Sprite[]).forEach(fruit => {
+      if (this.player.carryingFruit == null || fruit != this.player.carryingFruit) {
+        let [i,j] = this.getMapCoords(fruit.x,fruit.y);
+        rows[j][i] += this.getFruitCode(fruit);
+      }
+    });
     //floors
     (this.floors.getChildren() as Phaser.GameObjects.Sprite[]).forEach(element => {
       let [i,j] = this.getMapCoords(element.x,element.y);
@@ -409,15 +439,10 @@ class Scene1 extends Phaser.Scene {
         }
       }
     });
-    //food
-    (this.food.getChildren() as Phaser.GameObjects.Sprite[]).forEach(fruit => {
-      if (fruit != this.player.getLookingFruit()) {
-        let [i,j] = this.getMapCoords(fruit.x,fruit.y);
-        rows[j][i] += this.getFruitCode(fruit);
-      }
-    });
 
-    return rows.map(row => row.join(MAP_COL_DELIMITER)).join(MAP_ROW_DELIMITER);
+    var ret = rows.map(row => row.join(MAP_COL_DELIMITER)).join(MAP_ROW_DELIMITER);
+    console.log(ret);
+    return ret;
   }
 
   getFruitCode(fruit:Phaser.GameObjects.Sprite) {
@@ -491,7 +516,7 @@ class fooBotCanvas extends Container implements ValueField, SetImageField {
   icon: Icon;
   canvasDiv: CanvasCup;
   game: fooBotGame;
-  gameNotYetInitialised = true;
+  initialised: boolean = false;
   constructor(parent) {
     super(parent,"div");
     this.canvasDiv = new Container(this,"div");
@@ -501,21 +526,18 @@ class fooBotCanvas extends Container implements ValueField, SetImageField {
     this.appendChildren([this.canvasDiv,this.icon,this.errorText]);
   }
 
-  run(levelMap,code,onComplete) {
-    if (this.gameNotYetInitialised) { //first time - called when the comment is checked at the start.
-      //but no element exists, so set a timeout
-      setTimeout( function(container,levelMap) {
-        var container = container;
-        var levelMap = levelMap;
-        return () => {container.game = new fooBotGame(levelMap,container.canvasDiv.UID);}
-      }(this,levelMap), 1000 );
-      this.gameNotYetInitialised = false;
-      return undefined;
-    }
-    else {
+  initialise(levelMap) {
+    this.initialised = true;
+    setTimeout( function(container,levelMap) {
+      var container = container;
+      var levelMap = levelMap;
+      return () => {container.game = new fooBotGame(levelMap,container.canvasDiv.UID);}
+    }(this,levelMap), 1000 );
+  }
+
+  run(code,onComplete) {
       if (!this.game) return undefined;
       return this.game.run(code, onComplete);
-    }    
   }
 
   getCurrentMap() { return this.game.getCurrentMap();}

@@ -227,9 +227,15 @@
 		]
 		let foobotData = [{
 				"title":"foobot",
-				"leftRight": ["code ________________________","[foobot]"],
+				"leftRight": ["target 0,0\ncode ________________________","[foobot]"],
 				"purpose": "template",
-				"comment": "variable(\"A\")\nfoobot(\"b\",\"r_,b_,_:_,_,_\",A)==\"_,_,_:_,_,_\""
+				"comment": "variable(\"A\")\nfoobot(\"b\",\"_,r_,b_:_,_,_:_,_,_\",A)==\"b_,_,_:_,_,_:_,_,_\""
+			},
+			{
+				"title":"foobot",
+				"leftRight": ["target 2,2\ncode ________________________","[foobot]"],
+				"purpose": "template",
+				"comment": "variable(\"A\")\nfoobot(\"b\",\"_,r_,c_:_,_,_:_,_,_\",A)==\"_,_,_:_,_,_:_,_,c_\""
 			}
 		]
 
@@ -239,7 +245,8 @@
 			pageMode: false,	
 			endTime: null,
 			initialChecksRemaining: -1,
-			questionJSON: JSON.stringify(foobotData.concat(templateQuestionData)),
+			//questionJSON: JSON.stringify(jsfunctionData),
+			questionJSON: JSON.stringify(foobotData.concat(jsfunctionData)),
 
 			removeHyperlinks: false,
 			responses: null,
