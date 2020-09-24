@@ -12,17 +12,17 @@
             "group": "build"
         },
         {
-            "label": "chrome_debug_index",
+            "label": "chrome_debug_lesson",
             "type": "shell",
-            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/index.html",
+            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/lesson.html",
             "args": [],
             "group": "build",
             "problemMatcher": []
         },
         {
-            "label": "chrome_debug_sites",
+            "label": "chrome_debug_builder",
             "type": "shell",
-            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/sites.html",
+            "command": "google-chrome --remote-debugging-port=9222 http://0.0.0.0:8000/builder.html",
             "args": [],
             "group": "build",
             "problemMatcher": []
@@ -30,7 +30,15 @@
         {
             "label": "python_server",
             "type": "shell",
-            "command": "cd out\npython3 -m http.server 8000",
+            "command": "python3 -m http.server 8000",
+            "args": [],
+            "group": "build",
+            "problemMatcher": []
+        },        
+        {
+            "label": "php_server",
+            "type": "shell",
+            "command": "php -S localhost:8000 -t ~/Documents/Teachometer/code/",
             "args": [],
             "group": "build",
             "problemMatcher": []

@@ -1,0 +1,24 @@
+
+div#topbit {
+    width: 100%;
+    background-image: url(stripeBG.gif);
+    height: 100px;
+}
+div#topbit p {
+    clear: none;
+}
+
+
+p#teachometer {
+    display: block;
+    float: right;
+    color: #373748;
+    font-size: 30px;
+    margin: 35px 10px 0 0;
+  text-shadow: 2px 2px 5px #fff;
+}
+
+img#logo {
+    float: right;
+    height: 100px;
+}

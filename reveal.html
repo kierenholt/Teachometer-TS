@@ -1,0 +1,168 @@
+<html>
+<head>
+
+    <meta charset="UTF-8"> 
+    <link id="style" rel="stylesheet" type="text/css" href="css/reveal.css">
+    <script src="js/assignment.js"></script>
+    <script src="js/reveal.js"></script>
+    <script async src="js/acorn_interpreter.js"></script>
+
+</head>
+
+<body onload="init()">
+    <div id="assignment"></div>
+    <script>
+
+let notesData = [
+			{
+				"title":"blank both",
+				"leftRight": ["", ""],
+				"purpose": "notes"
+			},{
+				"title":"code block with line numbers?",
+				"leftRight": ["```line1\nline2\nline3\n```", ""],
+				"purpose": "notes"
+			},{
+				"title":"table with empty cells too",
+				"leftRight": ["|a|b|c\n|x|y|z\nFIRST ROW\n???\n line 2", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"combo",
+				"leftRight": ["{a/b/c}", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"rollover",
+				"leftRight": ["???\n hidden stuff\n???\n", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"radio",
+				"leftRight": ["A. blue\nB. green\nC. orange D. another", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"bullet",
+				"leftRight": ["* a bullet\n* another bullet\n not a * bullet", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"line break",
+				"leftRight": ["\n a line break\n another line break\nanother line break", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"basic fraction",
+				"leftRight": ["~[top A.](bottom^2)", ""],
+				"purpose": "notes"
+			},
+			{
+				"title":"link",
+				"leftRight": ["[google](www.google.co.uk)", ""],
+				"purpose": "notes"
+			},
+			{ //index 10
+				"title":"image",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)", "![Imgur](https://i.imgur.com/SMh0hnf.gif)"],
+				"purpose": "notes"
+			},
+			{
+				"title":"textarea",
+				"leftRight": ["______________________________________","2"],
+				"purpose": "notes"
+			},
+			{
+				"title":"relative position",
+				"leftRight": ["![Imgur](https://i.imgur.com/SMh0hnf.gif)\n@[50,50](RELATIVE)","="],
+				"purpose": "notes"
+			}
+			];
+
+let simpleQuestionData = [
+			{ //question with no title
+				"title":"",
+				"leftRight": ["aubergines are __",""],
+				"purpose": "question",
+				"comment": "purple"
+			},
+			{
+				"title":"simple input question",
+				"leftRight": ["the sky is __",""],
+				"purpose": "question",
+				"comment": "blue"
+			},
+			{
+				"title":"simple combo question",
+				"leftRight": ["cheese is {red/green/blue/yellow}",""],
+				"purpose": "question",
+				"comment": "yellow"
+			},
+			{
+				"title":"simple textarea question",
+				"leftRight": ["a tomato is ____________________________________________",""],
+				"purpose": "question",
+				"comment": "red"
+			},
+			{
+				"title":"simple radio question",
+				"leftRight": ["grass is A. red B. green C. blue",""],
+				"purpose": "question",
+				"comment": "B"
+			},
+			{ //index 5
+				"title":"lots of inputs",
+				"leftRight": ["1 2 3 4 5 __ __ __ __ __",""],
+				"purpose": "question",
+				"comment": "6\n7\n8\n9\n10"
+			}
+		]
+        function init() {
+            var revealSettings = new Settings({
+                appendMode: false,
+                endTime: null,
+                initialChecksRemaining : -1,
+                presentMode: true,
+                questionJSON: JSON.stringify(notesData),
+
+                removeHyperlinks: false,
+                responses: null,
+                shuffleQuestions: false,
+                startTime: new Date(),
+                title: ""
+            },3);
+
+        window.assignment = new Assignment(document.getElementById("assignment"),revealSettings);
+        }
+    </script>
+</body>
+</html>
+
+
+<!---
+<div id="assignment" style="margin: 0;"></div>
+
+div#assignment - add class reveal
+  div.questionsDiv - add class slides
+    
+    div.question
+      div.content
+      div.margin
+
+    OR 
+
+    section
+
+
+  <div class="reveal">
+    <div class="slides"> 
+      <section class="poo">Single Horizontal Slide
+        <a href="#">A LINK</a>
+      </section>
+      <section>
+        <section>Vertical Slide 1</section>
+        <section>Vertical Slide 2</section>
+      </section>
+    </div>
+  </div>
+-->
